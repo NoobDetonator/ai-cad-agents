@@ -74,4 +74,7 @@ thread principal do Qt.
 
 ## Arquitetura
 
-Consulte [docs/architecture.md](docs/architecture.md) e [docs/product-vision.md](docs/product-vision.md).
+Consulte [docs/architecture.md](docs/architecture.md),
+[docs/product-vision.md](docs/product-vision.md) e
+[docs/milestones.md](docs/milestones.md). O último contém o plano completo de
+marcos e o roteiro para retomar o projeto em outro computador ou chat.
