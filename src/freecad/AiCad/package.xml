@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package format="1">
+  <name>AI CAD Workbench</name>
+  <description>AI-first parametric modeling workbench with MCP integration.</description>
+  <version>0.1.0</version>
+  <maintainer email="">AI CAD Agents</maintainer>
+  <license file="">Private development</license>
+  <url type="repository" branch="main">https://github.com/NoobDetonator/ai-cad-agents</url>
+  <content>
+    <workbench>
+      <classname>AICadWorkbench</classname>
+      <subdirectory>./</subdirectory>
+    </workbench>
+  </content>
+</package>

@@ -1,0 +1,42 @@
+# Ambientes e ferramentas locais
+.venv/
+.tools/
+.downloads/
+.runtime/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Arquivos CAD gerados durante desenvolvimento
+*.FCStd
+*.FCStd1
+*.brep
+*.step
+*.stp
+*.iges
+*.igs
+*.stl
+*.3mf
+
+# IDE e sistema
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
