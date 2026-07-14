@@ -132,6 +132,29 @@ class ToolRegistry:
                     raise ToolInputError(
                         f"{argument_name} must be greater than {minimum}."
                     )
+                inclusive_minimum = property_schema.get("minimum")
+                inclusive_maximum = property_schema.get("maximum")
+                if inclusive_minimum is not None and value < inclusive_minimum:
+                    raise ToolInputError(
+                        f"{argument_name} must be at least {inclusive_minimum}."
+                    )
+                if inclusive_maximum is not None and value > inclusive_maximum:
+                    raise ToolInputError(
+                        f"{argument_name} must be at most {inclusive_maximum}."
+                    )
+            elif expected_type == "integer":
+                if isinstance(value, bool) or not isinstance(value, int):
+                    raise ToolInputError(f"{argument_name} must be an integer.")
+                minimum = property_schema.get("minimum")
+                maximum = property_schema.get("maximum")
+                if minimum is not None and value < minimum:
+                    raise ToolInputError(
+                        f"{argument_name} must be at least {minimum}."
+                    )
+                if maximum is not None and value > maximum:
+                    raise ToolInputError(
+                        f"{argument_name} must be at most {maximum}."
+                    )
             elif expected_type == "string":
                 if not isinstance(value, str):
                     raise ToolInputError(f"{argument_name} must be a string.")
@@ -144,6 +167,11 @@ class ToolRegistry:
                     raise ToolInputError(f"{argument_name} is too long.")
                 if pattern is not None and re.fullmatch(pattern, value) is None:
                     raise ToolInputError(f"{argument_name} has an invalid format.")
+                allowed_values = property_schema.get("enum")
+                if allowed_values is not None and value not in allowed_values:
+                    raise ToolInputError(
+                        f"{argument_name} must be one of the allowed values."
+                    )
             else:
                 raise RuntimeError(
                     f"Unsupported argument type for {spec.name}: {expected_type}"
@@ -171,6 +199,35 @@ def build_default_registry() -> ToolRegistry:
             description="Read the objects, faces and edges selected by the user.",
             risk=ToolRisk.READ,
             input_schema=empty_object,
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="cad.get_context_snapshot",
+            description=(
+                "Read a bounded, versioned snapshot of the active document, "
+                "selection and recently changed objects."
+            ),
+            risk=ToolRisk.READ,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "detail_level": {
+                        "type": "string",
+                        "enum": ["minimal", "work"],
+                    },
+                    "max_objects": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                    },
+                    "cursor": {
+                        "type": "integer",
+                        "minimum": 0,
+                    },
+                },
+                "additionalProperties": False,
+            },
         )
     )
     registry.register(

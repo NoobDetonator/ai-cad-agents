@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $Runtime = Join-Path $ProjectRoot ".runtime"
 $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+$VenvSitePackages = Join-Path $ProjectRoot ".venv\Lib\site-packages"
 $FreeCadCmdFile = Join-Path $Runtime "freecadcmd-exe.txt"
 $FreeCadExeFile = Join-Path $Runtime "freecad-exe.txt"
 $FreeCadModule = Join-Path $ProjectRoot "src\freecad\AiCad"
@@ -24,6 +25,7 @@ try {
         $env:AICAD_PROJECT_ROOT = $ProjectRoot
         $freeCadOutput = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
             -M $FreeCadModule `
+            -P $VenvSitePackages `
             -P (Join-Path $ProjectRoot "src") `
             (Join-Path $ProjectRoot "tests\freecad_smoke.py") 2>&1
         $freeCadOutput | ForEach-Object { Write-Host $_ }

@@ -18,6 +18,7 @@ adapter = FreeCadAdapter()
 result = adapter.create_box(10, 20, 30, "SmokeTestBox")
 cylinder_result = adapter.create_cylinder(30, 60, "SmokeTestCylinder")
 validation = adapter.validate_document()
+context = adapter.get_context_snapshot()
 
 assert result["valid"] is True
 assert result["volume_mm3"] == 6000.0
@@ -28,6 +29,21 @@ assert math.isclose(
     rel_tol=1e-9,
 )
 assert validation["valid"] is True, validation
+assert context["active"] is True
+assert context["summary"]["object_count"] == 2
+assert set(context["recent_objects"]) == {"SmokeTestBox", "SmokeTestCylinder"}
+assert context["state_token"]["revision"] == 1
+stable_context = adapter.get_context_snapshot()
+assert stable_context["state_token"] == context["state_token"]
+App.ActiveDocument.getObject("SmokeTestBox").Length = 11
+App.ActiveDocument.recompute()
+manual_context = adapter.get_context_snapshot()
+assert manual_context["state_token"]["revision"] == 2
+assert manual_context["state_token"] != context["state_token"]
+box_context = next(
+    item for item in manual_context["objects"] if item["name"] == "SmokeTestBox"
+)
+assert box_context["parameters"]["Length"] == 11
 assert len(App.ActiveDocument.Objects) == 2
 assert App.ActiveDocument.UndoCount == 2
 undo_result = adapter.undo()

@@ -28,6 +28,19 @@ class RecordingAdapter:
     def get_selection(self) -> dict[str, Any]:
         return {"selection": []}
 
+    def get_context_snapshot(
+        self,
+        detail_level: str = "work",
+        max_objects: int = 25,
+        cursor: int = 0,
+    ) -> dict[str, Any]:
+        self.read_thread_ids.append(get_ident())
+        return {
+            "detail_level": detail_level,
+            "max_objects": max_objects,
+            "cursor": cursor,
+        }
+
     def create_box(
         self,
         length: float,

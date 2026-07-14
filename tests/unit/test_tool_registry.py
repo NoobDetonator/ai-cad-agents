@@ -15,6 +15,7 @@ def test_default_registry_has_unique_tools() -> None:
     assert len(names) == len(set(names))
     assert "cad.create_box" in names
     assert "cad.create_cylinder" in names
+    assert "cad.get_context_snapshot" in names
 
 
 def test_registry_executes_connected_handler() -> None:
@@ -99,3 +100,23 @@ def test_registry_can_validate_a_call_without_a_handler() -> None:
 
     with pytest.raises(ToolInputError):
         registry.validate_arguments("cad.undo", ["not", "an", "object"])
+
+
+def test_registry_validates_context_pagination_and_detail_level() -> None:
+    registry = build_default_registry()
+
+    assert registry.validate_arguments(
+        "cad.get_context_snapshot",
+        {"detail_level": "work", "max_objects": 25, "cursor": 0},
+    ) == {"detail_level": "work", "max_objects": 25, "cursor": 0}
+
+    for arguments in (
+        {"detail_level": "full"},
+        {"max_objects": 0},
+        {"max_objects": 101},
+        {"max_objects": 1.5},
+        {"cursor": -1},
+        {"cursor": True},
+    ):
+        with pytest.raises(ToolInputError):
+            registry.validate_arguments("cad.get_context_snapshot", arguments)

@@ -11,6 +11,7 @@ HELP_TEXT = (
     "Comandos locais disponíveis:<br>"
     "• <code>resumo</code> — lê o documento ativo<br>"
     "• <code>seleção</code> — lê a seleção atual<br>"
+    "• <code>contexto</code> — lê o contexto versionado do trabalho atual<br>"
     "• <code>validar</code> — recalcula e verifica o documento<br>"
     "• <code>caixa 10 x 20 x 30 nome MinhaCaixa</code> — prepara uma caixa em mm<br>"
     "• <code>cilindro 30 x 60 nome Eixo</code> — prepara um cilindro por "
@@ -64,6 +65,12 @@ def parse_chat_command(text: str) -> ChatCommand:
         )
     if command in {"selecao", "ler selecao", "selecao atual"}:
         return ChatCommand("Vou ler a seleção atual.", "cad.get_selection")
+    if command in {"contexto", "contexto atual", "estado atual"}:
+        return ChatCommand(
+            "Vou ler o contexto versionado do documento sem modificá-lo.",
+            "cad.get_context_snapshot",
+            {"detail_level": "work", "max_objects": 25, "cursor": 0},
+        )
     if command in {"validar", "validar documento", "verificar documento"}:
         return ChatCommand(
             "Vou recalcular e validar o documento sem alterar sua geometria.",
@@ -135,6 +142,24 @@ def format_tool_result(tool_name: str, result: Any) -> str:
             return "Nenhum objeto, face ou aresta está selecionado."
         names = ", ".join(escape(str(item["label"])) for item in selection)
         return f"Seleção atual ({len(selection)}): {names}."
+    if tool_name == "cad.get_context_snapshot":
+        if not result["active"]:
+            return "Nenhum documento CAD está ativo para formar o contexto."
+        summary = result["summary"]
+        label = escape(str(result["document_label"]))
+        recent = result["recent_objects"]
+        recent_text = (
+            "; recentes: " + ", ".join(escape(str(name)) for name in recent)
+            if recent
+            else ""
+        )
+        return (
+            f"Contexto <b>{label}</b>, revisão "
+            f"{result['state_token']['revision']}: "
+            f"{summary['object_count']} objetos, "
+            f"{summary['selected_count']} selecionados, "
+            f"{summary['error_count']} com erro{recent_text}."
+        )
     if tool_name == "cad.create_box":
         dimensions = " × ".join(f"{value:g}" for value in result["dimensions_mm"])
         label = escape(str(result["label"]))

@@ -310,7 +310,10 @@ def show_chat_panel() -> None:
 
     def request_deepseek_plan(text: str) -> None:
         try:
-            document_context = registry.execute("cad.get_document_summary")
+            document_context = registry.execute(
+                "cad.get_context_snapshot",
+                {"detail_level": "work", "max_objects": 25, "cursor": 0},
+            )
         except (KeyError, PermissionError, RuntimeError, ValueError):
             append_assistant(
                 "Não foi possível preparar o contexto do documento para a DeepSeek."
@@ -337,7 +340,7 @@ def show_chat_panel() -> None:
                 )
                 plan = orchestrator.create_plan(
                     text,
-                    context={"document": document_context},
+                    context={"snapshot": document_context},
                 )
             except Exception:
                 ai_results.put(("provider_error", None))

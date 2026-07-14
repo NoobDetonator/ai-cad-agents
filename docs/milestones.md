@@ -19,7 +19,7 @@ rollback composto sem alterar as regras ou os marcos já concluídos.
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD portátil 1.1.1 e Python 3.11 fornecido
   pelo próprio pacote do FreeCAD.
-- **Última validação completa:** 88 testes unitários, `FREECAD_SMOKE_OK` e
+- **Última validação completa:** 94 testes unitários, `FREECAD_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`, incluindo o fluxo MCP gráfico.
 
 O caminho local pode ser diferente no computador de casa. Nenhum código deve
@@ -139,6 +139,7 @@ flowchart LR
 | --- | --- | --- |
 | `cad.get_document_summary` | `read` | Funciona dentro do FreeCAD |
 | `cad.get_selection` | `read` | Funciona dentro da GUI do FreeCAD |
+| `cad.get_context_snapshot` | `read` | L0/L1 versionado, limitado e paginado |
 | `cad.create_box` | `modify` | Funciona com confirmação e transação |
 | `cad.create_cylinder` | `modify` | Diâmetro × altura, eixo Z, confirmação e undo |
 | `cad.validate_document` | `read` | Funciona e recalcula o documento |
@@ -310,6 +311,10 @@ ferramentas e confirmação já exercitada pelo MCP.
   corpus de 30 pedidos e runner offline sem FreeCAD, rede ou credencial.
 - Baseline local: 14/20 ferramentas exatas, 0/5 esclarecimentos explícitos,
   0/5 rejeições explicativas e bloqueio seguro dos 10 casos sem ferramenta.
+- M3.2 concluído com `DocumentStateToken`, `ContextSnapshot` L0/L1, seleção,
+  objetos recentes, parâmetros, forma, limites e paginação.
+- DeepSeek e MCP recebem o contexto pela mesma ferramenta registrada; mudança
+  manual relevante altera a revisão sem executar mutação.
 
 ### M3.1 — Medição e contratos — concluído
 
@@ -321,6 +326,17 @@ ferramentas e confirmação já exercitada pelo MCP.
 - `scripts/benchmark_agent.ps1` executa a baseline reproduzível.
 - Os contratos ainda não substituem os resultados atuais do painel; a migração
   será feita pelo controlador do loop em uma etapa posterior.
+
+### M3.2 — Contexto versionado — concluído
+
+- Modelos e rastreador ficam em `aicad.core.context`, fora do FreeCAD.
+- `FreeCadAdapter` produz L0/L1 sem recomputar intencionalmente o documento.
+- Fingerprints cobrem identidade, parâmetros, placement, forma e seleção.
+- O comando local `contexto` apresenta revisão, contagens e objetos recentes.
+- O painel DeepSeek envia o snapshot limitado em vez do resumo simples.
+- MCP lista e executa a leitura pelo registro e pela ponte já autenticada.
+- FreeCADCmd comprova estabilidade do token e detecção de alteração manual.
+- Smoke gráfico comprova leitura MCP e apresentação visual com seleção.
 
 ### Passos
 
@@ -479,7 +495,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\testar.ps1
 
 Resultado esperado:
 
-- 88 testes Python aprovados ou quantidade superior;
+- 94 testes Python aprovados ou quantidade superior;
 - `FREECAD_SMOKE_OK`;
 - `FREECAD_GUI_SMOKE_OK`;
 - janela gráfica abre e fecha automaticamente;
@@ -584,10 +600,11 @@ e execute scripts/testar.ps1 para confirmar a base.
 O baseline desta revisão é 971df80 ou um commit posterior. Na árvore atual, o
 Workbench, o chat local seguro, caixa e cilindro transacionais, undo, ToolRegistry
 compartilhado, ponte MCP–GUI autenticada e planejamento opcional com DeepSeek já
-funcionam e estão testados. O M3.1 também possui contratos estruturados, métricas
-e benchmark offline. A DeepSeek ainda usa uma rodada e uma ferramenta. O próximo
-marco recomendado é M3.2 em docs/ai-agent-optimization-plan.md: implementar
-DocumentStateToken e ContextSnapshot L0/L1 sem habilitar novas mutações.
+funcionam e estão testados. M3.1 e M3.2 também possuem contratos estruturados,
+métricas, benchmark offline e contexto versionado compartilhado. A DeepSeek ainda
+usa uma rodada e uma ferramenta. O próximo marco recomendado é M3.3 em
+docs/ai-agent-optimization-plan.md: enriquecer ToolSpec e criar seleção local
+top-N PT/EN sem habilitar novas mutações.
 
 Mantenha o FreeCAD como adaptador, não crie execução arbitrária de Python, não
 salve credenciais no projeto e faça toda mutação de forma transacional, validada

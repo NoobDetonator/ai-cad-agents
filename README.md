@@ -18,6 +18,8 @@ O primeiro protótipo usa o FreeCAD como motor de modelagem, visualização e do
 - Base de orquestração neutra valida planos e chamadas sem executar ferramentas.
 - Contrato versionado para resultados, erros seguros e métricas monotônicas do agente.
 - Benchmark offline v1 com 30 pedidos em português e baseline reproduzível.
+- Contexto L0/L1 versionado com documento, seleção, objetos recentes e paginação.
+- Mudanças manuais relevantes alteram o token de estado e invalidam contexto antigo.
 - Testes unitários, teste transacional no FreeCADCmd e fluxo MCP gráfico automatizado.
 - Instalação reproduzível e isolada para Windows.
 
@@ -46,6 +48,7 @@ O painel aceita, nesta fase, um vocabulário fechado. Exemplos:
 ```text
 resumo
 seleção
+contexto
 validar
 caixa 10 x 20 x 30 nome MinhaCaixa
 cilindro 30 x 60 nome Eixo
@@ -87,8 +90,8 @@ do painel. Abrir o painel não consulta o cofre. Depois de configurar ou remover
 o status mostra apenas o estado da credencial, nunca seu conteúdo.
 
 O modo começa desligado. Marcar a opção não faz uma chamada por si só, mas cada
-envio feito enquanto ela estiver marcada transmite o texto e um resumo limitado
-do documento ativo para https://api.deepseek.com/chat/completions. O adaptador
+envio feito enquanto ela estiver marcada transmite o texto e um snapshot limitado
+e versionado do documento ativo para https://api.deepseek.com/chat/completions. O adaptador
 usa **deepseek-v4-flash** e uma rodada com no máximo uma chamada de ferramenta.
 
 Respostas de leitura podem usar o ToolRegistry imediatamente. Operações
@@ -128,6 +131,10 @@ depende da opção visível **Usar IA DeepSeek**.
 O MCP não acessa o adaptador diretamente. Toda chamada passa pelo protocolo
 tipado, pela validação do `ToolRegistry`, pela fila da GUI e, nas mutações, pela
 confirmação visual.
+
+`cad.get_context_snapshot` está no mesmo registro usado pelo chat e pelo MCP.
+Ela é somente leitura, limita objetos, suporta paginação e não expõe token da
+ponte, segredo ou caminho local.
 
 ## Arquitetura
 

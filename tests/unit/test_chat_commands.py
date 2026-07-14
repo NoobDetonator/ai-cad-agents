@@ -4,6 +4,7 @@ from aicad.core.chat_commands import format_tool_result, parse_chat_command
 def test_parser_maps_read_commands_to_named_tools() -> None:
     assert parse_chat_command("resumo").tool_name == "cad.get_document_summary"
     assert parse_chat_command("seleção").tool_name == "cad.get_selection"
+    assert parse_chat_command("contexto").tool_name == "cad.get_context_snapshot"
     assert parse_chat_command("validar").tool_name == "cad.validate_document"
 
 
@@ -70,3 +71,24 @@ def test_result_formatter_escapes_document_labels() -> None:
     )
     assert "<img" not in message
     assert "&lt;img" in message
+
+
+def test_context_result_formatter_reports_revision_and_recent_objects() -> None:
+    message = format_tool_result(
+        "cad.get_context_snapshot",
+        {
+            "active": True,
+            "document_label": "Peça",
+            "state_token": {"revision": 3},
+            "summary": {
+                "object_count": 2,
+                "selected_count": 1,
+                "error_count": 0,
+            },
+            "recent_objects": ["Box"],
+        },
+    )
+
+    assert "revisão 3" in message
+    assert "2 objetos" in message
+    assert "recentes: Box" in message

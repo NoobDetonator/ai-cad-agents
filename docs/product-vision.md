@@ -50,6 +50,12 @@ e um corpus offline de 30 pedidos registra a baseline do parser atual. Isso aind
 não muda o comportamento do painel; fornece a régua segura para o contexto
 versionado do M3.2.
 
+O M3.2 está concluído. O contexto agora possui revisão e fingerprints, inclui
+seleção, parâmetros, forma, objetos recentes e paginação, e é consumido pela
+DeepSeek e pelo MCP por meio da mesma ferramenta de leitura. Uma alteração manual
+relevante muda o token; isso prepara a futura recusa de planos obsoletos sem
+liberar nenhuma nova mutação.
+
 ## Diferenciais pretendidos
 
 - operação local e privada;

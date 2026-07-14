@@ -89,8 +89,19 @@ def inspect() -> None:
         summary_response = run_bridge_request(bridge_client, summary_request)
         assert summary_response.status is BridgeResponseStatus.COMPLETED
         assert summary_response.result["active"] is False
-
-
+        context_request = BridgeRequest(
+            request_id=uuid4(),
+            tool_name="cad.get_context_snapshot",
+            arguments={
+                "detail_level": "work",
+                "max_objects": 25,
+                "cursor": 0,
+            },
+            source="mcp",
+        )
+        context_response = run_bridge_request(bridge_client, context_request)
+        assert context_response.status is BridgeResponseStatus.COMPLETED
+        assert context_response.result["active"] is False
 
         prompt.setPlainText("resumo")
         send.click()
@@ -115,6 +126,11 @@ def inspect() -> None:
         send.click()
         QtWidgets.QApplication.processEvents()
         assert "Seleção atual (1): GuiSmokeBox" in history.toPlainText()
+        prompt.setPlainText("contexto")
+        send.click()
+        QtWidgets.QApplication.processEvents()
+        assert "1 selecionados" in history.toPlainText()
+        assert "recentes: GuiSmokeBox" in history.toPlainText()
         Gui.Selection.clearSelection()
 
         prompt.setPlainText("validar")

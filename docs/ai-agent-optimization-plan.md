@@ -14,6 +14,7 @@ como registrados em `docs/milestones.md`.
 - **Validação inicial:** 73 testes unitários, `FREECAD_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`.
 - **Estado do M3.1:** concluído após essa baseline, com 88 testes unitários.
+- **Estado do M3.2:** concluído, com 94 testes unitários e smokes reais.
 - **Capacidades atuais:** resumo, seleção, caixa, cilindro, validação e undo.
 - **IA atual:** uma rodada, no máximo uma chamada, sem retorno do resultado ao
   modelo.
@@ -537,7 +538,7 @@ Arquivos entregues: `src/aicad/core/tool_results.py`,
 `benchmarks/agent-corpus-v1.json` e `scripts/benchmark_agent.ps1`. A execução é
 offline, não lê credencial e não altera o comportamento do painel.
 
-### M3.2 — Contexto versionado
+### M3.2 — Contexto versionado — concluído
 
 Entregas:
 
@@ -549,6 +550,17 @@ Entregas:
 
 Aceite: o agente identifica documento, seleção e último objeto sem o usuário
 repetir essas informações; mudança manual relevante invalida o token.
+
+Resultado registrado:
+
+- `aicad.core.context` define token, snapshot, paginação e rastreador sem FreeCAD;
+- L0/L1 contém documento, unidade, contagens, seleção, parâmetros, placement,
+  forma e objetos recentes;
+- a ferramenta `cad.get_context_snapshot` é compartilhada por chat e MCP;
+- o painel DeepSeek envia o snapshot limitado no lugar do resumo básico;
+- leitura repetida mantém o token e alteração manual real avança a revisão;
+- payloads são limitados a 64 KiB e páginas a no máximo 100 objetos;
+- nenhuma ferramenta de mutação ou permissão nova foi adicionada.
 
 ### M3.3 — Recuperação de ferramentas
 
@@ -646,7 +658,7 @@ Para reduzir risco e tempo de entrega, os próximos incrementos devem ser pequen
 
 1. **Benchmark e envelopes — concluído:** sem UI e sem mudar CAD; criou a régua
    para todas as decisões seguintes.
-2. **ContextSnapshot L0/L1 — próximo:** reaproveita o adaptador e o registro atuais; dá ganho
+2. **ContextSnapshot L0/L1 — concluído:** reaproveita o adaptador e o registro atuais; dá ganho
    direto para pedidos contextuais.
 3. **Loop read-only:** prova múltiplas rodadas, cancelamento e retorno de resultados
    antes de autorizar qualquer nova mutação.
@@ -762,7 +774,7 @@ O marco de otimização estará concluído quando:
 ## 26. Orientação para retomada em outro chat
 
 Ao continuar, não começar aumentando o número de ferramentas nem alterando a
-ponte. O M3.1 está concluído; implementar o M3.2 deste documento e seguir os
-critérios de aceite em ordem. Qualquer atalho que introduza Python arbitrário, um
-registro paralelo ou aprovação ampla deve ser recusado mesmo que produza uma
+ponte. M3.1 e M3.2 estão concluídos; implementar o M3.3 deste documento e seguir
+os critérios de aceite em ordem. Qualquer atalho que introduza Python arbitrário,
+um registro paralelo ou aprovação ampla deve ser recusado mesmo que produza uma
 demonstração mais rápida.

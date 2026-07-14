@@ -130,6 +130,32 @@ O corpus `benchmarks/agent-corpus-v1.json` contém 30 pedidos em português:
 pedidos perigosos que devem ser rejeitados. O runner em `aicad.evaluation` usa o
 parser local atual como baseline reproduzível, sem rede e sem FreeCAD.
 
+## Contexto versionado do documento
+
+O M3.2 adiciona contratos neutros em `aicad.core.context`. `DocumentStateToken`
+identifica sessão local, documento, revisão, fingerprint do documento e
+fingerprint da seleção. O ID da sessão é identidade de contexto, não é o token de
+autenticação da ponte.
+
+`ContextStateTracker` não importa FreeCAD. Ele mantém uma revisão monotônica por
+documento e compara fingerprints de cada objeto. Uma leitura repetida sem mudança
+mantém o token. Alterar geometria, propriedade, label, placement, objetos ou
+seleção produz outra revisão. Objetos novos ou alterados entram na lista limitada
+de recentes.
+
+`FreeCadAdapter.get_context_snapshot` projeta o documento para `ContextSnapshot`:
+
+- L0 `minimal`: identidade, unidade interna, revisão e contagens;
+- L1 `work`: seleção, página de objetos, parâmetros geométricos comuns, placement,
+  bounding box, volume, área, validade e objetos recentes;
+- no máximo 100 objetos por página e 64 KiB por snapshot;
+- cursor inválido, valor não finito e contrato inconsistente são recusados.
+
+A ferramenta `cad.get_context_snapshot` pertence ao mesmo `ToolRegistry` e chega
+ao MCP pela ponte autenticada. O modo DeepSeek usa essa leitura no lugar do resumo
+simples, ainda com uma única rodada e uma única ferramenta proposta. Nenhuma
+permissão de mutação foi ampliada.
+
 ## Credenciais de provedor
 
 CredentialStore mantém identificadores de provedor separados das chaves e usa
@@ -146,7 +172,7 @@ externa depende da opção visível e de um novo envio do usuário.
 
 ## Fluxo do modo DeepSeek
 
-1. A thread Qt lê um resumo limitado do documento pelo ToolRegistry.
+1. A thread Qt lê um snapshot limitado e versionado pelo ToolRegistry.
 2. Um worker recupera a chave do cofre e chama o adaptador DeepSeek.
 3. AiOrchestrator revalida ferramenta, argumentos, risco e limites sem executar.
 4. O timer Qt recebe somente o plano validado e o apresenta com dados escapados.
@@ -202,9 +228,8 @@ clique do usuário. Repetir a request com o mesmo ID consulta o resultado.
 
 ## Próxima etapa técnica
 
-O M3.1 foi concluído. Seguir o M3.2 em
-`docs/ai-agent-optimization-plan.md`: criar `DocumentStateToken` experimental e
-`ContextSnapshot` L0/L1, incluindo seleção e objetos recentes. Depois entram
-seleção local de ferramentas e loop iterativo somente leitura. Mutações com planos
-imutáveis e planos compostos continuam bloqueadas até essas bases passarem nos
-critérios de aceite.
+M3.1 e M3.2 foram concluídos. Seguir o M3.3 em
+`docs/ai-agent-optimization-plan.md`: enriquecer metadados de `ToolSpec` e criar o
+seletor local PT/EN com top-N e ordenação canônica. Depois entra o loop iterativo
+somente leitura. Mutações com planos imutáveis e planos compostos continuam
+bloqueadas até essas bases passarem nos critérios de aceite.

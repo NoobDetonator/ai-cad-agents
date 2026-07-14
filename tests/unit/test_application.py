@@ -10,6 +10,18 @@ class FakeCadAdapter:
     def get_selection(self) -> dict[str, Any]:
         return {"selection": []}
 
+    def get_context_snapshot(
+        self,
+        detail_level: str = "work",
+        max_objects: int = 25,
+        cursor: int = 0,
+    ) -> dict[str, Any]:
+        return {
+            "detail_level": detail_level,
+            "max_objects": max_objects,
+            "cursor": cursor,
+        }
+
     def create_box(
         self, length: float, width: float, height: float, name: str = "AIBox"
     ) -> dict[str, Any]:
@@ -43,3 +55,13 @@ def test_application_connects_every_shared_tool_to_one_adapter() -> None:
         confirmed=True,
     )
     assert cylinder == {"name": "TestCylinder", "diameter": 20, "height": 50}
+
+    context = registry.execute(
+        "cad.get_context_snapshot",
+        {"detail_level": "minimal", "max_objects": 10, "cursor": 0},
+    )
+    assert context == {
+        "detail_level": "minimal",
+        "max_objects": 10,
+        "cursor": 0,
+    }
