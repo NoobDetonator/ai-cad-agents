@@ -67,7 +67,7 @@ def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
     report = run_tool_retrieval_benchmark(load_corpus(CORPUS_PATH))
 
     assert report.strategy_name == "local_tool_selector_v1"
-    assert report.catalog_tools == 25
+    assert report.catalog_tools == 26
     assert report.top_n == 4
     assert report.recall_hits == report.tool_call_cases == 20
     assert report.recall_percent == 100
@@ -86,7 +86,7 @@ def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
 def test_m4_tool_selector_recovers_every_mechanical_capability() -> None:
     report = run_tool_retrieval_benchmark(load_corpus(M4_CORPUS_PATH))
 
-    assert report.catalog_tools == 25
+    assert report.catalog_tools == 26
     assert report.recall_hits == report.tool_call_cases == 30
     assert report.recall_percent == 100
     assert report.average_selected_tools <= 4

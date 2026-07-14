@@ -23,8 +23,9 @@ def test_default_registry_has_unique_tools() -> None:
         "cad.get_context_snapshot"
     ]
     mechanical_specs = specs[7:]
-    assert len(mechanical_specs) == 18
+    assert len(mechanical_specs) == 19
     assert all(spec.output_schema is not None for spec in mechanical_specs)
+    assert mechanical_specs[-1].name == "cad.create_spur_gear"
 
 
 def test_registry_executes_connected_handler() -> None:
@@ -84,6 +85,25 @@ def test_registry_rejects_invalid_cylinder_dimensions() -> None:
             {"diameter": 0, "height": 60},
             confirmed=True,
         )
+
+
+def test_registry_rejects_invalid_spur_gear_parameters() -> None:
+    registry = build_default_registry()
+
+    for arguments in (
+        {"teeth": 5, "module": 2, "thickness": 8, "bore_diameter": 8},
+        {"teeth": 20, "module": 0, "thickness": 8, "bore_diameter": 8},
+        {"teeth": 20, "module": 2, "thickness": 8, "bore_diameter": -1},
+        {
+            "teeth": 20,
+            "module": 2,
+            "thickness": 8,
+            "bore_diameter": 8,
+            "pressure_angle": 30,
+        },
+    ):
+        with pytest.raises(ToolInputError):
+            registry.validate_arguments("cad.create_spur_gear", arguments)
 
 
 def test_registry_requires_confirmation_for_modifications() -> None:

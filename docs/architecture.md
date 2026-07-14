@@ -263,7 +263,7 @@ progresso e rollback permanecem na thread Qt.
 
 ## Modelagem mecânica do M4
 
-O M4 acrescenta 18 contratos ao catálogo, totalizando 25 ferramentas. Specs,
+O M4 acrescentou 18 contratos ao catálogo, totalizando 25 ferramentas. Specs,
 schemas de entrada e saída, aliases PT/EN, risco e ordem canônica ficam em
 `aicad.core.mechanical_tools`, que não importa FreeCAD.
 
@@ -311,6 +311,12 @@ fica fora do repositório.
 O MCP projeta esses serviços como `available_cad_recipes`, `submit_cad_recipe`,
 recurso `aicad://recipes`, template de imagem e três prompts guiados. Ferramentas,
 receitas, chat e MCP continuam convergindo no mesmo registro e no mesmo executor.
+
+Após o fechamento do M4, `cad.create_spur_gear` elevou o catálogo a 26 ferramentas.
+O contrato apenas parametriza o gerador involuto oficial já distribuído com o
+FreeCAD, transforma o perfil fechado em sólido, corta um furo opcional e conserva
+o perfil como fonte. A operação inteira permanece em uma transação e pode ser
+desfeita sem expor macro ou execução genérica de Python.
 
 ## Credenciais de provedor
 

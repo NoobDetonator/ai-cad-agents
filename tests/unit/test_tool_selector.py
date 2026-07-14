@@ -93,6 +93,14 @@ def test_selector_uses_selection_context_for_relative_requests() -> None:
     )
 
 
+def test_selector_recovers_the_safe_spur_gear_tool_in_portuguese() -> None:
+    selection = ToolSelector(build_default_registry()).select(
+        "Faça uma engrenagem reta de 20 dentes, módulo 2."
+    )
+
+    assert "cad.create_spur_gear" in selection.tool_names
+
+
 def test_low_confidence_fallback_is_read_only() -> None:
     registry = build_default_registry()
     selection = ToolSelector(registry).select(

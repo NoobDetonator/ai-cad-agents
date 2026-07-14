@@ -216,6 +216,21 @@ execute_and_undo(
     },
 )
 
+gear = execute_and_undo(
+    "cad.create_spur_gear",
+    {
+        "teeth": 20,
+        "module": 2,
+        "thickness": 8,
+        "bore_diameter": 8,
+        "pressure_angle": 20,
+        "name": "M4SpurGear",
+    },
+)
+assert gear["pitch_diameter_mm"] == 40
+assert gear["outside_diameter_mm"] == 44
+assert gear["volume_mm3"] > 0
+
 try:
     registry.execute(
         "cad.create_through_hole",

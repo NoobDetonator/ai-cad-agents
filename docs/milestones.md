@@ -20,7 +20,7 @@ rollback composto sem alterar as regras ou os marcos já concluídos.
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD portátil 1.1.1 e Python 3.11 fornecido
   pelo próprio pacote do FreeCAD.
-- **Última validação completa:** 134 testes unitários, `FREECAD_SMOKE_OK`,
+- **Última validação completa:** 136 testes unitários, `FREECAD_SMOKE_OK`,
   `FREECAD_M4_SMOKE_OK` e `FREECAD_GUI_SMOKE_OK`, incluindo modelagem mecânica,
   receitas, fluxo MCP gráfico e captura visual.
 
@@ -157,6 +157,7 @@ flowchart LR
 | Furos | `create_through_hole`, `create_rectangular_hole_pattern`, `create_circular_hole_pattern` | `modify` | BRep derivado e reversível |
 | Construção | `create_rectangular_sketch`, `pad_sketch`, `boolean_operation` | `modify` | Fontes vinculadas e reversíveis |
 | Acabamento | `fillet_edges`, `chamfer_edges` | `modify` | Assinatura geométrica de aresta |
+| Engrenagem | `create_spur_gear` | `modify` | Involuta oficial, transacional e reversível |
 | Histórico CAD | `undo` | `modify` | Confirmação obrigatória |
 
 ## 5. Resumo dos marcos
@@ -671,7 +672,7 @@ e execute scripts/testar.ps1 para confirmar a base.
 
 Use como baseline o commit que contém a conclusão do M4 ou um posterior. Na árvore
 atual, M0 a M4 estão concluídos: Workbench e painel, ToolRegistry compartilhado
-com 25 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
+com 26 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
 compostos, rollback, leituras mecânicas, edição, placa, furos/padrões, sketch/pad,
 booleanas, filete/chanfro, três receitas, seleção aguardada e captura visual já
 funcionam e estão testados. O próximo marco é M5 — histórico e auditoria. Defina

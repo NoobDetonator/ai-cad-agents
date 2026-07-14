@@ -93,6 +93,16 @@ class CadAdapter(Protocol):
         self, object: str, size: float, edge_reference: str, name: str = "AIChamfer"
     ) -> dict[str, Any]: ...
 
+    def create_spur_gear(
+        self,
+        teeth: int,
+        module: float,
+        thickness: float,
+        bore_diameter: float,
+        pressure_angle: float = 20,
+        name: str = "SpurGear",
+    ) -> dict[str, Any]: ...
+
     def validate_document(self) -> dict[str, Any]: ...
 
     def undo(self) -> dict[str, bool]: ...
@@ -138,6 +148,7 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.boolean_operation": "boolean_operation",
         "cad.fillet_edges": "fillet_edges",
         "cad.chamfer_edges": "chamfer_edges",
+        "cad.create_spur_gear": "create_spur_gear",
         "cad.validate_document": "validate_document",
         "cad.undo": "undo",
     }

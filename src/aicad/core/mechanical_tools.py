@@ -450,4 +450,32 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
             order=230,
             output_schema=OBJECT_RESULT,
         ),
+        _spec(
+            "cad.create_spur_gear",
+            "Create a solid external involute spur gear with an optional bore.",
+            ToolRisk.MODIFY,
+            _object_schema(
+                {
+                    "teeth": {"type": "integer", "minimum": 6, "maximum": 200},
+                    "module": {"type": "number", "exclusiveMinimum": 0},
+                    "thickness": {"type": "number", "exclusiveMinimum": 0},
+                    "bore_diameter": {"type": "number", "minimum": 0},
+                    "pressure_angle": {
+                        "type": "number",
+                        "minimum": 14.5,
+                        "maximum": 25,
+                    },
+                    "name": NAME,
+                },
+                ("teeth", "module", "thickness", "bore_diameter"),
+            ),
+            family="mechanical",
+            aliases=("engrenagem reta", "engrenagem", "spur gear", "involute gear"),
+            tags=("dentes", "módulo", "involuta", "gear", "teeth", "module"),
+            examples=(
+                "Crie uma engrenagem de 20 dentes, módulo 2 e 8 mm de espessura.",
+            ),
+            order=240,
+            output_schema=OBJECT_RESULT,
+        ),
     )
