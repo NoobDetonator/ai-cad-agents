@@ -21,7 +21,7 @@ como registrados em `docs/milestones.md`.
 - **Estado do M3.6:** concluído com 126 testes, rollback real e planos via MCP.
 - **Estado do M4.1–M4.3:** concluído com 25 ferramentas, três receitas, seleção
   interativa, captura visual, projeções MCP e smoke mecânico real.
-- **Capacidades atuais:** 28 ferramentas de leitura, modelagem e auditoria, três receitas,
+- **Capacidades atuais:** 30 ferramentas de leitura, modelagem e auditoria, três receitas,
   planos compostos, seleção aguardada e captura visual.
 - **Extensão pós-M4:** engrenagem reta involuta exposta por ferramenta segura que
   reutiliza o gerador oficial já instalado no FreeCAD.

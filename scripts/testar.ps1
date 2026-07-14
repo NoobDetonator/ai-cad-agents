@@ -46,6 +46,16 @@ try {
         if ($LASTEXITCODE -ne 0 -or $m4Text -notmatch "FREECAD_M4_SMOKE_OK") {
             throw "O teste mecanico M4 do FreeCAD falhou."
         }
+        $m6Output = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
+            -M $FreeCadModule `
+            -P $VenvSitePackages `
+            -P (Join-Path $ProjectRoot "src") `
+            (Join-Path $ProjectRoot "tests\freecad_m6_smoke.py") 2>&1
+        $m6Output | ForEach-Object { Write-Host $_ }
+        $m6Text = $m6Output -join "`n"
+        if ($LASTEXITCODE -ne 0 -or $m6Text -notmatch "FREECAD_M6_SMOKE_OK") {
+            throw "O teste de exportacao M6 do FreeCAD falhou."
+        }
     }
     if (Test-Path -LiteralPath $FreeCadExeFile) {
         $FreeCadExe = (Get-Content -Raw $FreeCadExeFile).Trim()

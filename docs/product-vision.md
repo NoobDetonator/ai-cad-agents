@@ -54,7 +54,7 @@ Peças mecânicas para impressão 3D e fabricação leve:
 O Workbench **AI CAD** abre um painel funcional dentro do FreeCAD. O modo local
 entende comandos fechados; o modo DeepSeek opcional interpreta linguagem natural,
 seleciona ferramentas PT/EN e pode executar leituras em um loop limitado. Ambos,
-assim como o MCP, usam o mesmo `ToolRegistry` com 28 ferramentas.
+assim como o MCP, usam o mesmo `ToolRegistry` com 30 ferramentas.
 
 O produto já consegue:
 
@@ -72,7 +72,9 @@ O produto já consegue:
 - aprovar uma mutação ou um plano de duas a oito operações e desfazê-lo;
 - projetar o mesmo catálogo, receitas, prompts e capturas pela ponte MCP segura.
 - registrar e exportar localmente o histórico redigido de ações, planos,
-  aprovações, resultados, validações, commits, aborts e undos.
+  aprovações, resultados, validações, commits, aborts e undos;
+- exportar um objeto sólido validado como STL ou STEP para um destino
+  explícito, com confirmação, sem sobrescrita silenciosa e com checksum.
 
 Todas as mutações são chamadas estruturadas, confirmadas, transacionais,
 recalculadas e validadas. Texto do modelo nunca vira Python, macro ou shell. A
@@ -91,8 +93,9 @@ de origem e são reversíveis, porém ainda são BReps controlados: não formam 
 edição. O sketch retangular não é totalmente constrangido, e ainda faltam loft,
 sweep, revolução, superfícies, chapas, assemblies, desenhos técnicos, CAM e FEM.
 
-Ainda faltam validações de fabricação e exportação STEP/STL. Esses itens pertencem
-ao M6.
+A exportação STL/STEP de um objeto por vez já existe. Ainda faltam checagens
+configuráveis de fabricação, prévia do artefato e exportação de vários objetos;
+esses itens continuam no M6.
 
 ## Diferenciais pretendidos
 

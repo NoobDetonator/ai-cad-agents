@@ -184,6 +184,7 @@ flowchart LR
 | Construção | `create_rectangular_sketch`, `pad_sketch`, `boolean_operation` | `modify` | Fontes vinculadas e reversíveis |
 | Acabamento | `fillet_edges`, `chamfer_edges` | `modify` | Assinatura geométrica de aresta |
 | Engrenagem | `create_spur_gear` | `modify` | Involuta oficial, transacional e reversível |
+| Exportação CAD | `export_stl`, `export_step` | `export` | Documento validado antes, destino absoluto, sem sobrescrita silenciosa, checksum |
 | Histórico CAD | `undo` | `modify` | Confirmação obrigatória |
 
 ## 5. Resumo dos marcos
@@ -196,7 +197,7 @@ flowchart LR
 | M3 — Orquestrador de IA | Concluído | Contexto, seleção, loop seguro e planos reversíveis via chat/MCP |
 | M4 — Modelagem mecânica básica | Concluído | 18 capacidades mecânicas, receitas, seleção e visão |
 | M5 — Histórico e auditoria | Concluído | Ações, planos, aprovações, transações e exportação auditáveis |
-| M6 — MCP como produto | Planejado | Exportação STL/STEP, validação básica e integração documentada com Claude Code, Codex e Cursor |
+| M6 — MCP como produto | Em andamento | Exportação STL/STEP, validação básica e integração documentada com Claude Code, Codex e Cursor |
 | M7 — Cobertura de modelagem | Planejado | Sketch constrangido, revolução, sweep, loft, receitas novas e feedback visual pós-mutação |
 | M8 — Lançamento público | Planejado | Instalação simples, docs de usuário, demo gravada e repositório público |
 
@@ -567,22 +568,30 @@ documentação, conectar o agente ao FreeCAD e ir de um pedido em linguagem
 natural até um arquivo STL/STEP no disco — com confirmação visual em cada
 mutação.
 
-### M6.1 — Exportação controlada
+### M6.1 — Exportação controlada — primeiro corte concluído
 
-A exportação fecha o fluxo de valor e por isso vem primeiro:
+A exportação fecha o fluxo de valor e por isso veio primeiro. Entregue:
 
-1. validação dimensional e de forma antes de exportar;
-2. checagens configuráveis para impressão 3D;
-3. prévia do artefato a exportar;
-4. exportação STL;
-5. exportação STEP;
-6. confirmação explícita de destino e sobrescrita;
-7. checksum, tamanho e resumo do artefato;
-8. testes com diretórios temporários.
+- `cad.export_stl` e `cad.export_step` no mesmo `ToolRegistry` (catálogo com
+  30 ferramentas), risco `export`, confirmação obrigatória e fora da aprovação
+  automática do modo rápido — o mesmo trilho de `cad.export_audit_history`;
+- destino absoluto obrigatório, extensão conferida (`.stl`, `.step`/`.stp`),
+  diretório existente, recusa de symlink e de sobrescrita sem
+  `overwrite=true`;
+- o documento é validado antes de exportar e a exportação exige um objeto
+  explícito com sólido válido;
+- escrita em arquivo parcial com substituição atômica; o resultado devolve
+  destino, formato, objeto, tamanho e SHA-256 para o chamador verificar;
+- testes unitários sem FreeCAD (schema, risco, confirmação, validação de
+  destino) e `tests/freecad_m6_smoke.py` no FreeCAD real cobrindo STL, STEP,
+  sobrescrita recusada, sobrescrita explícita e objeto inexistente, integrado
+  ao `scripts/testar.ps1` com o marcador `FREECAD_M6_SMOKE_OK`.
 
-Ferramentas de exportação usam risco `export`, não escrevem fora do destino
-escolhido e nunca sobrescrevem silenciosamente. O fluxo de confirmação é o
-mesmo já usado pelo histórico (`cad.export_audit_history`).
+Pendente no M6.1:
+
+1. checagens configuráveis para impressão 3D (espessura mínima, watertight);
+2. prévia do artefato antes de exportar;
+3. exportação de vários objetos ou do documento inteiro em um arquivo.
 
 ### M6.2 — Integração com agentes externos
 
@@ -815,7 +824,7 @@ e execute scripts/testar.ps1 para confirmar a base.
 
 Use como baseline o commit que contém a conclusão do M5 ou um posterior. Na árvore
 atual, M0 a M5 estão concluídos: Workbench e painel, ToolRegistry compartilhado
-com 28 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
+com 30 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
 compostos, rollback, leituras mecânicas, edição, placa, furos/padrões, sketch/pad,
 booleanas, filete/chanfro, três receitas, seleção aguardada e captura visual já
 funcionam e estão testados. Histórico local versionado registra pedidos, planos,

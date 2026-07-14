@@ -535,6 +535,98 @@ def build_default_registry() -> ToolRegistry:
             canonical_order=320,
         )
     )
+    cad_export_schema = {
+        "type": "object",
+        "properties": {
+            "destination": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024,
+            },
+            "object": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+            },
+            "overwrite": {"type": "boolean"},
+        },
+        "required": ["destination", "object"],
+        "additionalProperties": False,
+    }
+    registry.register(
+        ToolSpec(
+            name="cad.export_stl",
+            description=(
+                "Export one validated solid object as an STL mesh file to one "
+                "explicit absolute destination without silent overwrite. The "
+                "document is validated first and the result includes size and "
+                "sha256 so the caller can verify the artifact."
+            ),
+            risk=ToolRisk.EXPORT,
+            input_schema=cad_export_schema,
+            family="export",
+            aliases=(
+                "exportar stl",
+                "export stl",
+                "salvar stl",
+                "save stl",
+            ),
+            tags=(
+                "stl",
+                "malha",
+                "mesh",
+                "impressão",
+                "impressao",
+                "3d print",
+                "exportar",
+                "export",
+                "arquivo",
+                "file",
+            ),
+            examples=(
+                "Exporte a peça Base como STL para impressão 3D.",
+                "Export the MountingPlate object to C:/parts/plate.stl.",
+            ),
+            canonical_order=400,
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="cad.export_step",
+            description=(
+                "Export one validated solid object as a STEP file to one "
+                "explicit absolute destination without silent overwrite. The "
+                "document is validated first and the result includes size and "
+                "sha256 so the caller can verify the artifact."
+            ),
+            risk=ToolRisk.EXPORT,
+            input_schema=cad_export_schema,
+            family="export",
+            aliases=(
+                "exportar step",
+                "export step",
+                "salvar step",
+                "save step",
+            ),
+            tags=(
+                "step",
+                "stp",
+                "cad",
+                "fabricação",
+                "fabricacao",
+                "manufacturing",
+                "exportar",
+                "export",
+                "arquivo",
+                "file",
+            ),
+            examples=(
+                "Exporte o flange como STEP para o fornecedor.",
+                "Export the Flange object to C:/parts/flange.step.",
+            ),
+            canonical_order=410,
+        )
+    )
     from aicad.core.mechanical_tools import mechanical_tool_specs
 
     for spec in mechanical_tool_specs():

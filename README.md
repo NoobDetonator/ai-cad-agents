@@ -19,7 +19,7 @@ chat local e um modo DeepSeek standalone opcional, ambos em manutenção.
 Os marcos M0 a M5 estão implementados. O corte funcional atual oferece:
 
 - Workbench **AI CAD** e painel lateral testados no FreeCAD 1.1.1;
-- um único `ToolRegistry`, com 28 ferramentas, usado pelo chat e pelo MCP;
+- um único `ToolRegistry`, com 30 ferramentas, usado pelo chat e pelo MCP;
 - chat local determinístico e modo DeepSeek opcional;
 - leituras de documento, seleção, contexto, objetos, medidas, dependências,
   parâmetros editáveis e imagem da vista;
@@ -124,6 +124,12 @@ Mutações:
 - `cad.boolean_operation`, `cad.fillet_edges`, `cad.chamfer_edges`.
 - `cad.create_spur_gear`, baseada no gerador involuto oficial do FreeCAD.
 
+Exportações (M6, risco `export`, confirmação sempre manual):
+
+- `cad.export_stl` e `cad.export_step` exportam um objeto sólido validado para
+  um destino absoluto explícito, sem sobrescrita silenciosa, e devolvem
+  tamanho e SHA-256 do artefato para verificação.
+
 Todas têm schemas pequenos e são validadas pelo registro. Mutações usam a mesma
 rotina transacional: abrem uma transação nomeada, recalculam, validam forma e
 documento, confirmam no sucesso e abortam na falha. Operações por aresta recebem
@@ -167,6 +173,7 @@ MCP, seleção e captura visual. Os marcadores esperados são:
 ```text
 FREECAD_SMOKE_OK
 FREECAD_M4_SMOKE_OK
+FREECAD_M6_SMOKE_OK
 FREECAD_GUI_SMOKE_OK
 ```
 
@@ -177,7 +184,7 @@ O benchmark offline não usa rede, chave ou FreeCAD:
 ```
 
 No corpus mecânico M4, o seletor recupera 30/30 ferramentas esperadas. No corpus
-geral, envia em média 2,83 das 28 ferramentas e economiza 91,8% dos bytes de
+geral, envia um subconjunto pequeno das 30 ferramentas e economiza 91,8% dos bytes de
 schemas.
 
 ## Segurança

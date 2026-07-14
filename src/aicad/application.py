@@ -105,6 +105,14 @@ class CadAdapter(Protocol):
 
     def validate_document(self) -> dict[str, Any]: ...
 
+    def export_stl(
+        self, destination: str, object: str, overwrite: bool = False
+    ) -> dict[str, Any]: ...
+
+    def export_step(
+        self, destination: str, object: str, overwrite: bool = False
+    ) -> dict[str, Any]: ...
+
     def undo(self) -> dict[str, bool]: ...
 
 
@@ -150,6 +158,8 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.chamfer_edges": "chamfer_edges",
         "cad.create_spur_gear": "create_spur_gear",
         "cad.validate_document": "validate_document",
+        "cad.export_stl": "export_stl",
+        "cad.export_step": "export_step",
         "cad.undo": "undo",
     }
     for tool_name, method_name in bindings.items():
