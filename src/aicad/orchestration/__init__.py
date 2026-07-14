@@ -18,6 +18,11 @@ from aicad.orchestration.models import (
     ProviderToolDefinition,
     tool_definition_from_spec,
 )
+from aicad.orchestration.metrics import (
+    AgentStage,
+    AgentTimingEvent,
+    TurnMetricsRecorder,
+)
 from aicad.orchestration.orchestrator import (
     AiOrchestrator,
     InvalidProviderResponseError,
@@ -34,6 +39,8 @@ __all__ = [
     "AiOrchestrator",
     "AiProvider",
     "AiProviderError",
+    "AgentStage",
+    "AgentTimingEvent",
     "CREDENTIAL_SERVICE",
     "CredentialStore",
     "CredentialStoreError",
@@ -54,5 +61,6 @@ __all__ = [
     "ProviderToolCall",
     "ProviderToolDefinition",
     "ProviderUnavailableError",
+    "TurnMetricsRecorder",
     "tool_definition_from_spec",
 ]

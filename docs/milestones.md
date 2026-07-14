@@ -19,7 +19,7 @@ rollback composto sem alterar as regras ou os marcos já concluídos.
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD portátil 1.1.1 e Python 3.11 fornecido
   pelo próprio pacote do FreeCAD.
-- **Última validação completa:** 73 testes unitários, `FREECAD_SMOKE_OK` e
+- **Última validação completa:** 88 testes unitários, `FREECAD_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`, incluindo o fluxo MCP gráfico.
 
 O caminho local pode ser diferente no computador de casa. Nenhum código deve
@@ -306,6 +306,21 @@ ferramentas e confirmação já exercitada pelo MCP.
 - Uma rodada propõe no máximo uma ferramenta; leituras executam e mutações
   aguardam confirmação.
 - O loop iterativo com retorno de resultados ao modelo ainda não foi implementado.
+- M3.1 concluído com `ToolResultEnvelope`, erros categorizados, eventos monotônicos,
+  corpus de 30 pedidos e runner offline sem FreeCAD, rede ou credencial.
+- Baseline local: 14/20 ferramentas exatas, 0/5 esclarecimentos explícitos,
+  0/5 rejeições explicativas e bloqueio seguro dos 10 casos sem ferramenta.
+
+### M3.1 — Medição e contratos — concluído
+
+- `src/aicad/core/tool_results.py` define resultado, erro, objetos afetados e
+  validações com limites e invariantes.
+- `src/aicad/orchestration/metrics.py` mede etapas somente em memória e rejeita
+  metadados sensíveis.
+- `benchmarks/agent-corpus-v1.json` registra 30 casos em português.
+- `scripts/benchmark_agent.ps1` executa a baseline reproduzível.
+- Os contratos ainda não substituem os resultados atuais do painel; a migração
+  será feita pelo controlador do loop em uma etapa posterior.
 
 ### Passos
 
@@ -464,7 +479,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\testar.ps1
 
 Resultado esperado:
 
-- testes Python aprovados;
+- 88 testes Python aprovados ou quantidade superior;
 - `FREECAD_SMOKE_OK`;
 - `FREECAD_GUI_SMOKE_OK`;
 - janela gráfica abre e fecha automaticamente;
@@ -569,10 +584,10 @@ e execute scripts/testar.ps1 para confirmar a base.
 O baseline desta revisão é 971df80 ou um commit posterior. Na árvore atual, o
 Workbench, o chat local seguro, caixa e cilindro transacionais, undo, ToolRegistry
 compartilhado, ponte MCP–GUI autenticada e planejamento opcional com DeepSeek já
-funcionam e estão testados. A DeepSeek ainda usa uma rodada e uma ferramenta. O
-próximo marco recomendado é M3.1 em docs/ai-agent-optimization-plan.md: criar a
-baseline de benchmark e os envelopes estruturados antes de ampliar o catálogo ou
-habilitar novas mutações.
+funcionam e estão testados. O M3.1 também possui contratos estruturados, métricas
+e benchmark offline. A DeepSeek ainda usa uma rodada e uma ferramenta. O próximo
+marco recomendado é M3.2 em docs/ai-agent-optimization-plan.md: implementar
+DocumentStateToken e ContextSnapshot L0/L1 sem habilitar novas mutações.
 
 Mantenha o FreeCAD como adaptador, não crie execução arbitrária de Python, não
 salve credenciais no projeto e faça toda mutação de forma transacional, validada

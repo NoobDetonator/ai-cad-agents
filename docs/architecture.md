@@ -20,6 +20,8 @@ A IA planeja, a camada de ferramentas autoriza, o FreeCAD executa e o validador 
 7. **MCP** — publica o catálogo compartilhado e envia leituras e solicitações de
    mutação para a mesma fila segura da GUI.
 8. **Validação** — recomputa e verifica estados de erro e validade das formas.
+9. **Avaliação offline** — corpus versionado e runner medem compreensão e
+   segurança sem FreeCAD ou provedor.
 
 ## Protocolo da ponte local
 
@@ -110,6 +112,24 @@ A resposta da API nunca é executável por si só. Argumentos JSON inválidos,
 ferramentas desconhecidas, limites excedidos e respostas incompletas são
 recusados antes de chegar a um handler.
 
+## Resultado estruturado e medição do agente
+
+O M3.1 introduz `ToolResultEnvelope` como contrato neutro e versionado para o
+futuro executor compartilhado. Ele separa status, resumo, resultado JSON, objetos
+afetados, validações, duração e erro categorizado. Falha ou cancelamento não pode
+carregar resultado parcial. Metadados com nomes de campos sensíveis, valores não
+finitos e payloads acima dos limites são recusados.
+
+`TurnMetricsRecorder` mede etapas com relógio monotônico e mantém eventos somente
+em memória. Ele não grava horário de parede, prompt, credencial ou exceção. O
+painel ainda não consome esses contratos; essa integração ocorrerá com o loop do
+agente, preservando o comportamento atual.
+
+O corpus `benchmarks/agent-corpus-v1.json` contém 30 pedidos em português:
+20 chamadas de ferramenta, cinco pedidos que exigem esclarecimento e cinco
+pedidos perigosos que devem ser rejeitados. O runner em `aicad.evaluation` usa o
+parser local atual como baseline reproduzível, sem rede e sem FreeCAD.
+
 ## Credenciais de provedor
 
 CredentialStore mantém identificadores de provedor separados das chaves e usa
@@ -182,9 +202,9 @@ clique do usuário. Repetir a request com o mesmo ID consulta o resultado.
 
 ## Próxima etapa técnica
 
-Seguir o plano detalhado em `docs/ai-agent-optimization-plan.md`: primeiro medir a
-baseline e definir resultados estruturados; depois criar contexto versionado,
-seleção local de ferramentas e um loop iterativo somente leitura. Mutações com
-planos imutáveis e planos compostos entram somente depois dessas bases passarem
-nos critérios de aceite. O catálogo mecânico cresce orientado pelo benchmark, uma
-ferramenta segura por vez.
+O M3.1 foi concluído. Seguir o M3.2 em
+`docs/ai-agent-optimization-plan.md`: criar `DocumentStateToken` experimental e
+`ContextSnapshot` L0/L1, incluindo seleção e objetos recentes. Depois entram
+seleção local de ferramentas e loop iterativo somente leitura. Mutações com planos
+imutáveis e planos compostos continuam bloqueadas até essas bases passarem nos
+critérios de aceite.

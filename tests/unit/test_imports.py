@@ -6,3 +6,5 @@ def test_freecad_facing_modules_import_without_freecad_installed() -> None:
     import_module("aicad.runtime")
     import_module("aicad.ui.chat_panel")
     import_module("aicad.orchestration")
+    import_module("aicad.core.tool_results")
+    import_module("aicad.evaluation.benchmark")

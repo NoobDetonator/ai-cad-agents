@@ -13,6 +13,7 @@ como registrados em `docs/milestones.md`.
 - **Estado do Git na análise:** `main` limpa e sincronizada com `origin/main`.
 - **Validação inicial:** 73 testes unitários, `FREECAD_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`.
+- **Estado do M3.1:** concluído após essa baseline, com 88 testes unitários.
 - **Capacidades atuais:** resumo, seleção, caixa, cilindro, validação e undo.
 - **IA atual:** uma rodada, no máximo uma chamada, sem retorno do resultado ao
   modelo.
@@ -508,7 +509,7 @@ live é opcional, manual, nunca faz parte do CI e lê credencial somente do cofr
 
 ## 19. Sequência de implementação
 
-### M3.1 — Medição e contratos de resultado
+### M3.1 — Medição e contratos de resultado — concluído
 
 Entregas:
 
@@ -519,6 +520,22 @@ Entregas:
 
 Aceite: números reproduzíveis, testes sem FreeCAD e nenhuma telemetria persistente
 fora de `.runtime`.
+
+Resultado registrado:
+
+| Medida | Baseline `local_chat_parser_v1` |
+| --- | ---: |
+| Casos totais | 30 |
+| Ferramentas exatas | 14/20 |
+| Esclarecimentos explícitos | 0/5 |
+| Rejeições explicativas | 0/5 |
+| Casos sem ferramenta bloqueados com segurança | 10/10 |
+| Casos não tratados | 16 |
+
+Arquivos entregues: `src/aicad/core/tool_results.py`,
+`src/aicad/orchestration/metrics.py`, `src/aicad/evaluation/benchmark.py`,
+`benchmarks/agent-corpus-v1.json` e `scripts/benchmark_agent.ps1`. A execução é
+offline, não lê credencial e não altera o comportamento do painel.
 
 ### M3.2 — Contexto versionado
 
@@ -627,9 +644,9 @@ registradas, sem código gerado e com uma revisão clara do plano.
 
 Para reduzir risco e tempo de entrega, os próximos incrementos devem ser pequenos:
 
-1. **Benchmark e envelopes:** sem UI e sem mudar CAD; cria a régua para todas as
-   decisões seguintes.
-2. **ContextSnapshot L0/L1:** reaproveita o adaptador e o registro atuais; dá ganho
+1. **Benchmark e envelopes — concluído:** sem UI e sem mudar CAD; criou a régua
+   para todas as decisões seguintes.
+2. **ContextSnapshot L0/L1 — próximo:** reaproveita o adaptador e o registro atuais; dá ganho
    direto para pedidos contextuais.
 3. **Loop read-only:** prova múltiplas rodadas, cancelamento e retorno de resultados
    antes de autorizar qualquer nova mutação.
@@ -745,7 +762,7 @@ O marco de otimização estará concluído quando:
 ## 26. Orientação para retomada em outro chat
 
 Ao continuar, não começar aumentando o número de ferramentas nem alterando a
-ponte. Implementar primeiro o M3.1 deste documento, registrar a baseline e seguir
-os critérios de aceite em ordem. Qualquer atalho que introduza Python arbitrário,
-um registro paralelo ou aprovação ampla deve ser recusado mesmo que produza uma
+ponte. O M3.1 está concluído; implementar o M3.2 deste documento e seguir os
+critérios de aceite em ordem. Qualquer atalho que introduza Python arbitrário, um
+registro paralelo ou aprovação ampla deve ser recusado mesmo que produza uma
 demonstração mais rápida.

@@ -16,6 +16,8 @@ O primeiro protótipo usa o FreeCAD como motor de modelagem, visualização e do
 - Ponte MCP–GUI autenticada, restrita ao loopback e executada pela thread Qt.
 - Mutações MCP pendentes até confirmação explícita no painel.
 - Base de orquestração neutra valida planos e chamadas sem executar ferramentas.
+- Contrato versionado para resultados, erros seguros e métricas monotônicas do agente.
+- Benchmark offline v1 com 30 pedidos em português e baseline reproduzível.
 - Testes unitários, teste transacional no FreeCADCmd e fluxo MCP gráfico automatizado.
 - Instalação reproduzível e isolada para Windows.
 
@@ -103,6 +105,17 @@ opção restaura o chat local fechado. O botão **Remover chave** apaga a creden
 
 A suíte abre e fecha automaticamente uma instância isolada do FreeCAD para
 confirmar que o Workbench aparece, o painel abre e o fluxo criar/desfazer funciona.
+
+O benchmark offline não usa provedor, chave ou FreeCAD:
+
+```powershell
+.\scripts\benchmark_agent.ps1
+```
+
+A baseline M3.1 mede o parser local atual em 30 casos: 14 das 20 escolhas de
+ferramenta são exatas, os 10 pedidos sem ferramenta são bloqueados com segurança
+e ainda não há esclarecimento ou rejeição explicativa. Esses números são a régua
+para contexto e seleção de ferramentas nas próximas etapas.
 
 ## Segurança
 

@@ -44,6 +44,12 @@ até confirmação visual. Este primeiro corte usa somente uma rodada e uma
 ferramenta, sem loop autônomo. Exportação para fabricação ainda não foi
 implementada.
 
+O M3.1 também está concluído: resultados e erros do futuro loop possuem contrato
+versionado, as etapas podem ser medidas com relógio monotônico sem persistir dados
+e um corpus offline de 30 pedidos registra a baseline do parser atual. Isso ainda
+não muda o comportamento do painel; fornece a régua segura para o contexto
+versionado do M3.2.
+
 ## Diferenciais pretendidos
 
 - operação local e privada;
