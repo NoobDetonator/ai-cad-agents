@@ -10,6 +10,7 @@ $UserConfig = Join-Path $Runtime "test-user.cfg"
 $SystemConfig = Join-Path $Runtime "test-system.cfg"
 $GuiSmokeTimeoutSeconds = 60
 $env:AICAD_VISUAL_CACHE = Join-Path $Runtime "visual-cache"
+$env:AICAD_AUDIT_DIR = Join-Path $Runtime "audit"
 $env:AICAD_QUICK_TEST_MODE = "0"
 
 if (-not (Test-Path -LiteralPath $VenvPython)) {

@@ -108,3 +108,42 @@ def test_context_result_formatter_reports_revision_and_recent_objects() -> None:
     assert "revisão 3" in message
     assert "2 objetos" in message
     assert "recentes: Box" in message
+
+
+def test_parser_exposes_audit_history_and_confirmed_export() -> None:
+    history = parse_chat_command("histórico")
+    assert history.tool_name == "cad.get_audit_history"
+    assert history.arguments == {"limit": 20}
+
+    export = parse_chat_command(r'exportar histórico "C:\temp\audit.json"')
+    assert export.tool_name == "cad.export_audit_history"
+    assert export.arguments == {
+        "destination": r"C:\temp\audit.json",
+        "overwrite": False,
+    }
+
+
+def test_audit_result_formatters_are_bounded_and_escape_values() -> None:
+    history = format_tool_result(
+        "cad.get_audit_history",
+        {
+            "count": 1,
+            "actions": [
+                {
+                    "tool_names": ["cad.<unsafe>"],
+                    "kind": "tool",
+                    "status": "completed",
+                    "approval": "not_required",
+                }
+            ],
+        },
+    )
+    assert "&lt;unsafe&gt;" in history
+    assert "<unsafe>" not in history
+
+    exported = format_tool_result(
+        "cad.export_audit_history",
+        {"record_count": 3, "destination": "C:/tmp/<audit>.json"},
+    )
+    assert "3 registros" in exported
+    assert "&lt;audit&gt;" in exported

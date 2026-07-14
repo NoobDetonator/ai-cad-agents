@@ -16,6 +16,13 @@ from aicad.core.context import (
     ContextStateTracker,
     ContextSummary,
 )
+from aicad.core.transactions import (
+    CadTransactionOutcome,
+    current_transaction_trace,
+    mark_transaction,
+    mark_undone_transaction,
+    transaction_title,
+)
 from aicad.core.visual_cache import (
     MAX_CAPTURE_BYTES,
     new_capture_path,
@@ -29,6 +36,7 @@ class FreeCadAdapter:
 
     def __init__(self, *, context_tracker: ContextStateTracker | None = None) -> None:
         self._context_tracker = context_tracker or ContextStateTracker()
+        self._audited_transactions: list[tuple[str, str, int]] = []
 
     @staticmethod
     def _modules() -> tuple[Any, Any]:
@@ -541,7 +549,8 @@ class FreeCadAdapter:
         document = app.ActiveDocument or app.newDocument("AICadDocument")
         if document.UndoMode == 0:
             document.UndoMode = 1
-        document.openTransaction(f"AI CAD: create {name}")
+        label = transaction_title(f"create {name}")
+        document.openTransaction(label)
         try:
             item = configure(document)
             item.Label = name
@@ -555,9 +564,12 @@ class FreeCadAdapter:
                     + "; ".join(validation["errors"])
                 )
             document.commitTransaction()
+            mark_transaction(CadTransactionOutcome.COMMITTED)
+            self._remember_audited_transaction(label, document.UndoCount)
             self._context_tracker.record_recent(document.Name, (item.Name,))
         except Exception:
             document.abortTransaction()
+            mark_transaction(CadTransactionOutcome.ABORTED)
             document.recompute()
             raise
         return item
@@ -629,7 +641,8 @@ class FreeCadAdapter:
     ) -> Any:
         document = self._active_document()
         self._ensure_undo(document)
-        document.openTransaction(f"AI CAD: {title}")
+        label = transaction_title(title)
+        document.openTransaction(label)
         try:
             item = operation(document)
             document.recompute()
@@ -643,12 +656,22 @@ class FreeCadAdapter:
                     + "; ".join(validation["errors"])
                 )
             document.commitTransaction()
+            mark_transaction(CadTransactionOutcome.COMMITTED)
+            self._remember_audited_transaction(label, document.UndoCount)
             self._context_tracker.record_recent(document.Name, (item.Name,))
             return item
         except Exception:
             document.abortTransaction()
+            mark_transaction(CadTransactionOutcome.ABORTED)
             document.recompute()
             raise
+
+    def _remember_audited_transaction(self, label: str, undo_count: int) -> None:
+        trace = current_transaction_trace()
+        if trace is not None:
+            self._audited_transactions.append(
+                (trace.transaction_id, label, int(undo_count))
+            )
 
     @classmethod
     def _derived_feature(
@@ -1237,6 +1260,26 @@ class FreeCadAdapter:
         document = app.ActiveDocument
         if document is None or document.UndoCount == 0:
             return {"undone": False}
+        undo_count = int(document.UndoCount)
+        while (
+            self._audited_transactions
+            and self._audited_transactions[-1][2] > undo_count
+        ):
+            self._audited_transactions.pop()
+        audited = (
+            self._audited_transactions[-1]
+            if self._audited_transactions
+            and self._audited_transactions[-1][2] == undo_count
+            else None
+        )
         document.undo()
         document.recompute()
+        if audited is not None:
+            transaction_id, label, _ = self._audited_transactions.pop()
+            mark_undone_transaction(transaction_id, label)
+        else:
+            trace = current_transaction_trace()
+            if trace is not None:
+                trace.label = "FreeCAD undo of an untracked transaction"
+                trace.outcome = CadTransactionOutcome.UNDONE
         return {"undone": True}

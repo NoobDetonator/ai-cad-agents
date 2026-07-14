@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from enum import StrEnum
 import hashlib
 import json
@@ -203,6 +204,7 @@ class PlanExecutionResult(BaseModel):
 
 
 ContextReader = Callable[[], Mapping[str, Any]]
+CallScope = Callable[[str], AbstractContextManager[None]]
 
 
 class SingleMutationPlanExecutor:
@@ -223,6 +225,8 @@ class SingleMutationPlanExecutor:
         self,
         plan: ValidatedPlan,
         grant: ApprovalGrant,
+        *,
+        call_scope: CallScope | None = None,
     ) -> PlanExecutionResult:
         grant.authorize(plan, now=self._clock())
         current = self._read_state_token()
@@ -238,11 +242,17 @@ class SingleMutationPlanExecutor:
             plan.call.arguments,
         )
         try:
-            result = self._registry.execute(
-                plan.call.name,
-                arguments,
-                confirmed=True,
+            scope = (
+                call_scope(plan.call.call_id)
+                if call_scope is not None
+                else nullcontext()
             )
+            with scope:
+                result = self._registry.execute(
+                    plan.call.name,
+                    arguments,
+                    confirmed=True,
+                )
             validation = self._registry.execute("cad.validate_document")
             if not isinstance(validation, Mapping) or validation.get("valid") is not True:
                 raise PlanExecutionError(

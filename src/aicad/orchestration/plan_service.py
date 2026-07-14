@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from enum import StrEnum
 import hashlib
 import json
@@ -202,6 +203,7 @@ class PlanStatusSnapshot(BaseModel):
 
 ContextReader = Callable[[], Mapping[str, Any]]
 CancellationCheck = Callable[[], bool]
+CallScope = Callable[[str], AbstractContextManager[None]]
 
 
 class CompositePlanExecutor:
@@ -223,6 +225,7 @@ class CompositePlanExecutor:
         *,
         is_cancelled: CancellationCheck | None = None,
         on_progress: Callable[[int], None] | None = None,
+        call_scope: CallScope | None = None,
     ) -> CompositeExecutionResult:
         grant.authorize(plan, now=self._clock())
         self._prevalidate(plan)
@@ -232,17 +235,23 @@ class CompositePlanExecutor:
 
         results: list[JsonValue] = []
         validations: list[dict[str, JsonValue]] = []
-        committed = 0
+        committed: list[ValidatedPlanCall] = []
         try:
             for call in plan.calls:
                 if is_cancelled is not None and is_cancelled():
                     raise CompositePlanError("The composite plan was cancelled.")
-                result = self._registry.execute(
-                    call.name,
-                    call.arguments,
-                    confirmed=True,
+                scope = (
+                    call_scope(call.call_id)
+                    if call_scope is not None
+                    else nullcontext()
                 )
-                committed += 1
+                with scope:
+                    result = self._registry.execute(
+                        call.name,
+                        call.arguments,
+                        confirmed=True,
+                    )
+                committed.append(call)
                 validation = self._registry.execute("cad.validate_document")
                 if (
                     not isinstance(validation, Mapping)
@@ -254,7 +263,7 @@ class CompositePlanExecutor:
                 results.append(result)
                 validations.append(dict(validation))
                 if on_progress is not None:
-                    on_progress(committed)
+                    on_progress(len(committed))
             state_after = self._read_state_token()
             if state_after.document_fingerprint == baseline.document_fingerprint:
                 raise CompositePlanError("The composite plan did not change CAD state.")
@@ -268,7 +277,7 @@ class CompositePlanExecutor:
             )
         except Exception as exc:
             if committed:
-                self._rollback(committed, baseline)
+                self._rollback(tuple(committed), baseline, call_scope)
             if isinstance(exc, (PlanApprovalError, StalePlanError)):
                 raise
             if isinstance(exc, CompositeRollbackError):
@@ -288,9 +297,20 @@ class CompositePlanExecutor:
         if not self._registry.has_handler("cad.undo"):
             raise PlanExecutionError("Composite rollback is unavailable.")
 
-    def _rollback(self, count: int, baseline: DocumentStateToken) -> None:
-        for _ in range(count):
-            result = self._registry.execute("cad.undo", confirmed=True)
+    def _rollback(
+        self,
+        committed: tuple[ValidatedPlanCall, ...],
+        baseline: DocumentStateToken,
+        call_scope: CallScope | None,
+    ) -> None:
+        for call in reversed(committed):
+            scope = (
+                call_scope(f"rollback:{call.call_id}")
+                if call_scope is not None
+                else nullcontext()
+            )
+            with scope:
+                result = self._registry.execute("cad.undo", confirmed=True)
             if not isinstance(result, Mapping) or result.get("undone") is not True:
                 raise CompositeRollbackError("A composite rollback step failed.")
         validation = self._registry.execute("cad.validate_document")
@@ -318,13 +338,28 @@ class CompositePlanExecutor:
 class PlanService:
     """In-memory idempotent plan status service suitable for chat or MCP polling."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        audit_service: Any | None = None,
+        registry: ToolRegistry | None = None,
+    ) -> None:
         self._lock = RLock()
         self._plans: dict[UUID, CompositeValidatedPlan] = {}
         self._status: dict[UUID, PlanStatusSnapshot] = {}
         self._cancelled: set[UUID] = set()
+        self._audit_service = audit_service
+        self._registry = registry
+        if audit_service is not None and registry is None:
+            raise ValueError("An audited plan service requires the shared registry.")
 
-    def submit(self, plan: CompositeValidatedPlan) -> PlanStatusSnapshot:
+    def submit(
+        self,
+        plan: CompositeValidatedPlan,
+        *,
+        audit_source: Any = "system",
+        original_request: str | None = None,
+        parent_action_id: UUID | None = None,
+    ) -> PlanStatusSnapshot:
         with self._lock:
             existing = self._plans.get(plan.plan_id)
             if existing is not None:
@@ -338,6 +373,14 @@ class PlanService:
                 completed_calls=0,
                 total_calls=len(plan.calls),
             )
+            if self._audit_service is not None:
+                self._audit_service.begin_plan(
+                    plan,
+                    self._registry,
+                    source=audit_source,
+                    original_request=original_request,
+                    parent_action_id=parent_action_id,
+                )
             self._plans[plan.plan_id] = plan
             self._status[plan.plan_id] = status
             return status
@@ -348,7 +391,14 @@ class PlanService:
                 raise KeyError("Unknown composite plan.")
             return self._status[plan_id]
 
-    def cancel(self, plan_id: UUID) -> PlanStatusSnapshot:
+    def cancel(
+        self,
+        plan_id: UUID,
+        *,
+        audit_source: str = "system",
+        denied: bool = False,
+        error_code: str = "cancelled",
+    ) -> PlanStatusSnapshot:
         with self._lock:
             current = self.get_status(plan_id)
             if current.status in {
@@ -359,6 +409,13 @@ class PlanService:
                 return current
             self._cancelled.add(plan_id)
             if current.status is CompositePlanStatus.AWAITING_APPROVAL:
+                if self._audit_service is not None:
+                    self._audit_service.cancel_plan(
+                        plan_id,
+                        source=audit_source,
+                        denied=denied,
+                        error_code=error_code,
+                    )
                 current = current.model_copy(
                     update={"status": CompositePlanStatus.CANCELLED}
                 )
@@ -372,6 +429,8 @@ class PlanService:
         executor: CompositePlanExecutor,
         *,
         on_progress: Callable[[PlanStatusSnapshot], None] | None = None,
+        approval_automatic: bool = False,
+        approval_source: str = "ui",
     ) -> CompositeExecutionResult:
         with self._lock:
             plan = self._plans[plan_id]
@@ -380,6 +439,13 @@ class PlanService:
                 raise ValueError("A completed plan cannot execute again.")
             if plan_id in self._cancelled:
                 raise ValueError("A cancelled plan cannot execute.")
+            if self._audit_service is not None:
+                self._audit_service.approve_plan(
+                    plan_id,
+                    automatic=approval_automatic,
+                    source=approval_source,
+                    grant_id=grant.grant_id,
+                )
             self._status[plan_id] = current.model_copy(
                 update={"status": CompositePlanStatus.RUNNING}
             )
@@ -400,6 +466,14 @@ class PlanService:
                 grant,
                 is_cancelled=lambda: plan_id in self._cancelled,
                 on_progress=progress,
+                call_scope=(
+                    lambda call_id: self._audit_service.plan_call_scope(
+                        plan_id,
+                        call_id,
+                    )
+                )
+                if self._audit_service is not None
+                else None,
             )
         except CompositeRollbackError:
             with self._lock:
@@ -409,6 +483,14 @@ class PlanService:
                         "status": CompositePlanStatus.FAILED,
                         "error_code": "rollback_failed",
                     }
+                )
+            if self._audit_service is not None:
+                from aicad.audit.models import AuditActionStatus
+
+                self._audit_service.finish_plan_failure(
+                    plan_id,
+                    status=AuditActionStatus.FAILED,
+                    error_code="rollback_failed",
                 )
             raise
         except CompositePlanError:
@@ -427,6 +509,18 @@ class PlanService:
                         ),
                     }
                 )
+            if self._audit_service is not None:
+                from aicad.audit.models import AuditActionStatus
+
+                self._audit_service.finish_plan_failure(
+                    plan_id,
+                    status=(
+                        AuditActionStatus.CANCELLED
+                        if cancelled
+                        else AuditActionStatus.ROLLED_BACK
+                    ),
+                    error_code=("cancelled" if cancelled else "execution_failed"),
+                )
             raise
         except Exception:
             with self._lock:
@@ -437,6 +531,14 @@ class PlanService:
                         "error_code": "precondition_failed",
                     }
                 )
+            if self._audit_service is not None:
+                from aicad.audit.models import AuditActionStatus
+
+                self._audit_service.finish_plan_failure(
+                    plan_id,
+                    status=AuditActionStatus.FAILED,
+                    error_code="precondition_failed",
+                )
             raise
         with self._lock:
             snapshot = self._status[plan_id]
@@ -446,4 +548,6 @@ class PlanService:
                     "completed_calls": len(plan.calls),
                 }
             )
+        if self._audit_service is not None:
+            self._audit_service.finish_plan_success(plan_id, result)
         return result

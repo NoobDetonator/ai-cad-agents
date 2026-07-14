@@ -142,7 +142,11 @@ class PlanBridgeDispatcher:
         try:
             self._on_confirmation_requested(plan)
         except Exception:
-            self._plan_service.cancel(plan.plan_id)
+            self._plan_service.cancel(
+                plan.plan_id,
+                audit_source="system",
+                error_code="confirmation_unavailable",
+            )
             with self._lock:
                 self._active_confirmation = None
         return True
@@ -157,6 +161,7 @@ class PlanBridgeDispatcher:
         *,
         approved: bool,
         on_progress: Callable[[PlanStatusSnapshot], None] | None = None,
+        automatic: bool = False,
     ) -> PlanStatusSnapshot:
         """Approve or deny one remote plan and execute it on the GUI thread."""
 
@@ -175,7 +180,11 @@ class PlanBridgeDispatcher:
         if active != plan_id:
             raise ValueError("The remote plan is not awaiting visual confirmation.")
         if not approved:
-            snapshot = self._plan_service.cancel(plan_id)
+            snapshot = self._plan_service.cancel(
+                plan_id,
+                audit_source="ui",
+                denied=True,
+            )
             with self._lock:
                 self._active_confirmation = None
             return snapshot
@@ -186,6 +195,8 @@ class PlanBridgeDispatcher:
                 CompositeApprovalGrant.issue(plan, source="mcp"),
                 CompositePlanExecutor(self._registry, self._context_reader),
                 on_progress=on_progress,
+                approval_automatic=automatic,
+                approval_source="quick_test" if automatic else "ui",
             )
         except Exception:
             pass
@@ -205,12 +216,16 @@ class PlanBridgeDispatcher:
             self._queued.clear()
             self._active_confirmation = None
         for plan_id in pending_ids:
-            self._plan_service.cancel(plan_id)
+            self._plan_service.cancel(plan_id, audit_source="system")
 
     def _handle_locked(self, request: BridgePlanRequest) -> PlanStatusSnapshot:
         if isinstance(request, BridgePlanSubmitRequest):
             plan = request.plan
-            snapshot = self._plan_service.submit(plan)
+            snapshot = self._plan_service.submit(
+                plan,
+                audit_source="mcp",
+                original_request="MCP composite plan submission.",
+            )
             self._plans.setdefault(plan.plan_id, plan)
             if (
                 snapshot.status is CompositePlanStatus.AWAITING_APPROVAL
@@ -223,7 +238,10 @@ class PlanBridgeDispatcher:
         if isinstance(request, BridgePlanStatusRequest):
             return self._plan_service.get_status(request.plan_id)
         if isinstance(request, BridgePlanCancelRequest):
-            return self._plan_service.cancel(request.plan_id)
+            return self._plan_service.cancel(
+                request.plan_id,
+                audit_source="mcp",
+            )
         raise ValueError("Unsupported bridge plan operation.")
 
     def _remember(

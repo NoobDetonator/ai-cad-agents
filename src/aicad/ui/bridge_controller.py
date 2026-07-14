@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 from uuid import UUID
 
+from aicad.audit.service import AuditService
 from aicad.bridge.dispatcher import BridgeDispatcher
 from aicad.bridge.plan_dispatcher import PlanBridgeDispatcher
 from aicad.bridge.protocol import BridgeRequest, BridgeResponse
@@ -19,7 +20,7 @@ from aicad.orchestration.plan_service import (
     PlanService,
     PlanStatusSnapshot,
 )
-from aicad.runtime import get_plan_service, get_tool_registry
+from aicad.runtime import get_audit_service, get_plan_service, get_tool_registry
 
 
 GUI_REQUEST_TIMEOUT_SECONDS = 120.0
@@ -35,13 +36,16 @@ class GuiBridgeController:
         *,
         plan_service: PlanService | None = None,
         session_store: BridgeSessionStore | None = None,
+        audit_service: AuditService | None = None,
     ) -> None:
+        self._audit_service = audit_service or get_audit_service()
         self._confirmation_listener: Callable[[BridgeRequest], None] | None = None
         self._plan_confirmation_listener: (
             Callable[[CompositeValidatedPlan], None] | None
         ) = None
         self._dispatcher = BridgeDispatcher(
             registry,
+            audit_service=self._audit_service,
             on_confirmation_requested=self._request_confirmation,
             request_timeout=GUI_REQUEST_TIMEOUT_SECONDS,
         )
@@ -96,7 +100,10 @@ class GuiBridgeController:
             raise RuntimeError("The GUI bridge requires a running Qt application.")
         endpoint = self._server.start()
         try:
-            record = self._session_store.publish(endpoint)
+            record = self._session_store.publish(
+                endpoint,
+                session_id=self._audit_service.session_id,
+            )
         except Exception:
             self._server.stop()
             raise
@@ -116,10 +123,12 @@ class GuiBridgeController:
         request_id: UUID,
         *,
         approved: bool,
+        automatic: bool = False,
     ) -> BridgeResponse:
         return self._dispatcher.resolve_confirmation(
             request_id,
             approved=approved,
+            automatic=automatic,
         )
 
     def is_remote_plan(self, plan_id: UUID) -> bool:
@@ -131,11 +140,13 @@ class GuiBridgeController:
         *,
         approved: bool,
         on_progress: Callable[[PlanStatusSnapshot], None] | None = None,
+        automatic: bool = False,
     ) -> PlanStatusSnapshot:
         return self._plan_dispatcher.resolve_confirmation(
             plan_id,
             approved=approved,
             on_progress=on_progress,
+            automatic=automatic,
         )
 
     def stop(self) -> None:
@@ -185,7 +196,10 @@ def get_or_start_gui_bridge(
     global _controller
 
     if _controller is None:
-        _controller = GuiBridgeController(get_tool_registry())
+        _controller = GuiBridgeController(
+            get_tool_registry(),
+            audit_service=get_audit_service(),
+        )
     _controller.set_confirmation_listener(confirmation_listener)
     if plan_confirmation_listener is not None:
         _controller.set_plan_confirmation_listener(plan_confirmation_listener)

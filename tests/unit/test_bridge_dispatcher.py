@@ -7,6 +7,13 @@ from uuid import uuid4
 import pytest
 
 from aicad.application import build_cad_tool_registry
+from aicad.audit import (
+    AuditActionStatus,
+    AuditApprovalDecision,
+    AuditService,
+    AuditSource,
+    AuditStore,
+)
 from aicad.bridge.dispatcher import BridgeDispatcher
 from aicad.bridge.protocol import (
     BridgeErrorCode,
@@ -280,3 +287,49 @@ def test_nonterminal_request_limit_is_enforced() -> None:
     assert rejected.status is BridgeResponseStatus.REJECTED
     assert rejected.error is not None
     assert rejected.error.code is BridgeErrorCode.QUEUE_FULL
+
+
+def test_mcp_dispatcher_audits_automatic_approval_and_result(tmp_path) -> None:
+    adapter = RecordingAdapter()
+    registry = build_cad_tool_registry(adapter)
+    audit = AuditService(AuditStore(tmp_path / "audit"))
+    dispatcher = BridgeDispatcher(
+        registry,
+        audit_service=audit,
+        on_confirmation_requested=lambda _: None,
+    )
+    payload = request_payload(
+        "cad.create_box",
+        arguments={"length": 1, "width": 2, "height": 3, "name": "Audited"},
+    )
+
+    pending = dispatcher.submit(payload)
+    assert dispatcher.process_next() is True
+    completed = dispatcher.resolve_confirmation(
+        pending.request_id,
+        approved=True,
+        automatic=True,
+    )
+
+    assert completed.status is BridgeResponseStatus.COMPLETED
+    record = audit.store.load(audit.session_id, pending.request_id)
+    assert record.source is AuditSource.MCP
+    assert record.status is AuditActionStatus.COMPLETED
+    assert record.approval.decision is AuditApprovalDecision.APPROVED_AUTOMATIC
+    assert record.result["name"] == "Audited"
+
+    denied_payload = request_payload(
+        "cad.create_box",
+        arguments={"length": 2, "width": 2, "height": 2, "name": "Denied"},
+    )
+    denied_pending = dispatcher.submit(denied_payload)
+    assert dispatcher.process_next() is True
+    denied = dispatcher.resolve_confirmation(
+        denied_pending.request_id,
+        approved=False,
+    )
+    assert denied.status is BridgeResponseStatus.CANCELLED
+    denied_record = audit.store.load(audit.session_id, denied_pending.request_id)
+    assert denied_record.status is AuditActionStatus.CANCELLED
+    assert denied_record.approval.decision is AuditApprovalDecision.DENIED
+    assert "Denied" not in adapter.created_names

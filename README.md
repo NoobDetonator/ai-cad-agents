@@ -6,10 +6,10 @@ permanecem independentes dele.
 
 ## Estado atual
 
-Os marcos M0 a M4 estão implementados. O corte funcional atual oferece:
+Os marcos M0 a M5 estão implementados. O corte funcional atual oferece:
 
 - Workbench **AI CAD** e painel lateral testados no FreeCAD 1.1.1;
-- um único `ToolRegistry`, com 26 ferramentas, usado pelo chat e pelo MCP;
+- um único `ToolRegistry`, com 28 ferramentas, usado pelo chat e pelo MCP;
 - chat local determinístico e modo DeepSeek opcional;
 - leituras de documento, seleção, contexto, objetos, medidas, dependências,
   parâmetros editáveis e imagem da vista;
@@ -19,6 +19,11 @@ Os marcos M0 a M4 estão implementados. O corte funcional atual oferece:
 - planos de uma ou várias mutações com confirmação visual, validação e rollback;
 - MCP com ferramentas, receitas, prompts e recursos derivados dos mesmos serviços;
 - nenhum caminho para executar Python, macro, shell ou texto gerado como código.
+
+O M5 registra pedidos, entendimento da IA, planos, argumentos validados, risco,
+aprovação, resultado, duração, validações e transações reais do FreeCAD. O
+histórico local versionado aplica redaction antes de gravar, fica fora do Git e
+pode ser consultado ou exportado com confirmação pelo mesmo registro do chat e MCP.
 
 As features derivadas por furo, padrão, pad, booleana, filete e chanfro guardam
 links para os objetos de origem e são reversíveis. Nesta fase elas são resultados
@@ -161,8 +166,9 @@ O benchmark offline não usa rede, chave ou FreeCAD:
 .\scripts\benchmark_agent.ps1 -Strategy selector
 ```
 
-No corpus mecânico M4, o seletor recupera 30/30 ferramentas esperadas, envia em
-média 2,97 das 26 ferramentas e economiza 88,3% dos bytes de schemas.
+No corpus mecânico M4, o seletor recupera 30/30 ferramentas esperadas. No corpus
+geral, envia em média 2,83 das 28 ferramentas e economiza 91,8% dos bytes de
+schemas.
 
 ## Segurança
 
@@ -182,5 +188,7 @@ média 2,97 das 26 ferramentas e economiza 88,3% dos bytes de schemas.
 - [Visão do produto](docs/product-vision.md)
 - [Marcos e transferência](docs/milestones.md)
 - [Plano de otimização do agente](docs/ai-agent-optimization-plan.md)
+- [Contrato e armazenamento de auditoria](docs/audit.md)
 
-O próximo marco planejado é M5: histórico e auditoria local sem segredos.
+O próximo marco planejado é M6: validação de fabricação e exportações CAD
+controladas.

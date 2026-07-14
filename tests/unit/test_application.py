@@ -39,9 +39,15 @@ class FakeCadAdapter:
         return {"undone": True}
 
 
-def test_application_connects_every_shared_tool_to_one_adapter() -> None:
+def test_application_connects_cad_tools_while_runtime_owns_audit_handlers() -> None:
     registry = build_cad_tool_registry(FakeCadAdapter())
-    assert all(registry.has_handler(spec.name) for spec in registry.list_specs())
+    runtime_tools = {"cad.get_audit_history", "cad.export_audit_history"}
+    assert all(
+        registry.has_handler(spec.name)
+        for spec in registry.list_specs()
+        if spec.name not in runtime_tools
+    )
+    assert all(not registry.has_handler(name) for name in runtime_tools)
     result = registry.execute(
         "cad.create_box",
         {"length": 1, "width": 2, "height": 3, "name": "TestBox"},

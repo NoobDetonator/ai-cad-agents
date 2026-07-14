@@ -318,6 +318,9 @@ FreeCAD, transforma o perfil fechado em sólido, corta um furo opcional e conser
 o perfil como fonte. A operação inteira permanece em uma transação e pode ser
 desfeita sem expor macro ou execução genérica de Python.
 
+O M5 acrescenta as duas ferramentas de consulta e exportação de auditoria, levando
+o catálogo compartilhado a 28 sem mover regras de histórico para o adaptador CAD.
+
 ## Credenciais de provedor
 
 CredentialStore mantém identificadores de provedor separados das chaves e usa
@@ -416,8 +419,35 @@ submissão passa pelo mesmo caminho de plano composto. Recursos visuais só leem
 capturas previamente produzidas pela ferramenta registrada; o template MCP não
 aceita caminhos de arquivo.
 
+## Auditoria local do M5
+
+`aicad.audit` define o núcleo do M5 sem importar FreeCAD, Qt, MCP ou SDK
+de provedor. `AuditActionRecord` versiona uma ação e suas revisões; registra o
+pedido isolado, entendimento, plano, chamadas validadas, risco, autorização,
+resultado, duração, validações e referências de transação.
+
+`AuditStore` grava um arquivo JSON por ação na pasta de dados do usuário, fora do
+Git. A escrita é atômica, recusa links simbólicos, limita o tamanho e aplica
+retenção por idade, sessões e ações. Toda gravação e exportação passa pelo mesmo
+redaction recursivo; segredos, tokens, credenciais Bearer, binários e caminhos de
+usuário são removidos antes de chegar ao disco.
+
+`AuditService` é compartilhado pela sessão gráfica. Chat local, leituras e planos
+da IA, `BridgeDispatcher` e `PlanService` registram o ciclo pendente, autorizado e
+terminal antes de devolver o resultado. As ferramentas
+`cad.get_audit_history` e `cad.export_audit_history` estão no mesmo
+`ToolRegistry`; a exportação tem risco `export`, exige confirmação e nunca recebe
+aprovação automática do modo rápido.
+
+Um contexto neutro de transação leva `action_id` e `call_id` até o adaptador. O
+`FreeCadAdapter` inclui um `transaction_id` na transação real, marca commit ou
+abort e relaciona o undo de compensação à transação original. Assim o núcleo de
+produto continua testável sem FreeCAD e o adaptador permanece a única camada que
+conhece sua API. O formato e as decisões de retenção estão detalhados em
+`docs/audit.md`.
+
 ## Próxima etapa técnica
 
-M3.1 a M3.6 e M4.1 a M4.3 foram concluídos. A próxima etapa é M5: criar histórico
-e auditoria local versionados, com retenção explícita e redaction de segredos,
-sem persistir a conversa completa por padrão.
+M3.1 a M3.6, M4.1 a M4.3 e M5 foram concluídos. A próxima etapa é M6: validação
+de fabricação e exportações CAD controladas, mantendo o mesmo registro e trilha
+de auditoria.

@@ -10,6 +10,8 @@ import time
 from typing import Any
 from uuid import UUID
 
+from aicad.audit.models import AuditSource
+from aicad.audit.service import AuditService
 from aicad.bridge.protocol import (
     BridgeError,
     BridgeErrorCode,
@@ -34,6 +36,7 @@ class _DispatchEntry:
     response: BridgeResponse | None = None
     event: Event = field(default_factory=Event)
     executing: bool = False
+    audit_action_id: UUID | None = None
 
 
 class BridgeDispatcher:
@@ -43,6 +46,7 @@ class BridgeDispatcher:
         self,
         registry: ToolRegistry,
         *,
+        audit_service: AuditService | None = None,
         on_confirmation_requested: Callable[[BridgeRequest], None] | None = None,
         request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         max_tracked_requests: int = DEFAULT_MAX_TRACKED_REQUESTS,
@@ -63,6 +67,7 @@ class BridgeDispatcher:
             raise ValueError("The dispatcher request limit must be a positive integer.")
 
         self._registry = registry
+        self._audit_service = audit_service
         self._on_confirmation_requested = on_confirmation_requested or (lambda _: None)
         self._request_timeout = float(request_timeout)
         self._max_tracked_requests = max_tracked_requests
@@ -143,6 +148,22 @@ class BridgeDispatcher:
                     risk=risk,
                     deadline=now + self._request_timeout,
                     response=response,
+                    audit_action_id=(
+                        self._audit_service.begin_tool(
+                            self._registry,
+                            request.tool_name,
+                            request.arguments,
+                            source=AuditSource.MCP,
+                            original_request=(
+                                f"MCP request: {request.tool_name}"
+                            ),
+                            intention=f"Executar requisição MCP {request.tool_name}.",
+                            call_id=f"mcp-{request.request_id}",
+                            action_id=request.request_id,
+                        )
+                        if self._audit_service is not None
+                        else None
+                    ),
                 )
                 self._entries[request.request_id] = entry
                 self._queue.append(request.request_id)
@@ -176,6 +197,7 @@ class BridgeDispatcher:
 
         self._ensure_owner_thread()
         request_to_execute: BridgeRequest | None = None
+        audit_action_id: UUID | None = None
         confirmation_to_show: BridgeRequest | None = None
 
         with self._lock:
@@ -190,6 +212,7 @@ class BridgeDispatcher:
                 if entry.risk is ToolRisk.READ:
                     entry.executing = True
                     request_to_execute = entry.request
+                    audit_action_id = entry.audit_action_id
                     break
                 self._active_confirmation = request_id
                 confirmation_to_show = entry.request
@@ -199,6 +222,14 @@ class BridgeDispatcher:
             try:
                 self._on_confirmation_requested(confirmation_to_show)
             except Exception:
+                if self._audit_service is not None:
+                    entry = self._entries.get(confirmation_to_show.request_id)
+                    if entry is not None and entry.audit_action_id is not None:
+                        self._audit_service.cancel(
+                            entry.audit_action_id,
+                            source="system",
+                            error_code="confirmation_unavailable",
+                        )
                 self._finish_with_error(
                     confirmation_to_show.request_id,
                     BridgeResponseStatus.FAILED,
@@ -210,10 +241,16 @@ class BridgeDispatcher:
         if request_to_execute is None:
             return False
         try:
-            result = self._registry.execute(
-                request_to_execute.tool_name,
-                request_to_execute.arguments,
-            )
+            if self._audit_service is not None and audit_action_id is not None:
+                result = self._audit_service.execute_tool(
+                    audit_action_id,
+                    self._registry,
+                )
+            else:
+                result = self._registry.execute(
+                    request_to_execute.tool_name,
+                    request_to_execute.arguments,
+                )
             response = BridgeResponse(
                 request_id=request_to_execute.request_id,
                 status=BridgeResponseStatus.COMPLETED,
@@ -234,6 +271,7 @@ class BridgeDispatcher:
         request_id: UUID,
         *,
         approved: bool,
+        automatic: bool = False,
     ) -> BridgeResponse:
         """Resolve and optionally execute the active mutation on the GUI thread."""
 
@@ -259,6 +297,12 @@ class BridgeDispatcher:
                 self._active_confirmation = None
                 return entry.response
             if not approved:
+                if self._audit_service is not None and entry.audit_action_id is not None:
+                    self._audit_service.cancel(
+                        entry.audit_action_id,
+                        source="ui",
+                        denied=True,
+                    )
                 response = self._error_response(
                     request_id,
                     BridgeResponseStatus.CANCELLED,
@@ -271,13 +315,25 @@ class BridgeDispatcher:
                 return response
             entry.executing = True
             request = entry.request
+            audit_action_id = entry.audit_action_id
 
         try:
-            result = self._registry.execute(
-                request.tool_name,
-                request.arguments,
-                confirmed=True,
-            )
+            if self._audit_service is not None and audit_action_id is not None:
+                self._audit_service.approve(
+                    audit_action_id,
+                    automatic=automatic,
+                    source="quick_test" if automatic else "ui",
+                )
+                result = self._audit_service.execute_tool(
+                    audit_action_id,
+                    self._registry,
+                )
+            else:
+                result = self._registry.execute(
+                    request.tool_name,
+                    request.arguments,
+                    confirmed=True,
+                )
             response = BridgeResponse(
                 request_id=request_id,
                 status=BridgeResponseStatus.COMPLETED,
@@ -317,6 +373,11 @@ class BridgeDispatcher:
                 )
                 entry.executing = False
                 entry.event.set()
+                self._cancel_audit(
+                    entry,
+                    source="system",
+                    error_code="gui_unavailable",
+                )
 
     def _finish(self, request_id: UUID, response: BridgeResponse) -> None:
         with self._lock:
@@ -362,6 +423,11 @@ class BridgeDispatcher:
         )
         entry.executing = False
         entry.event.set()
+        self._cancel_audit(
+            entry,
+            source="system",
+            error_code="timeout",
+        )
         if self._active_confirmation == entry.request.request_id:
             self._active_confirmation = None
 
@@ -377,6 +443,20 @@ class BridgeDispatcher:
     def _ensure_owner_thread(self) -> None:
         if get_ident() != self._owner_thread_id:
             raise RuntimeError("The bridge dispatcher must run on its owner thread.")
+
+    def _cancel_audit(
+        self,
+        entry: _DispatchEntry,
+        *,
+        source: str,
+        error_code: str,
+    ) -> None:
+        if self._audit_service is not None and entry.audit_action_id is not None:
+            self._audit_service.cancel(
+                entry.audit_action_id,
+                source=source,
+                error_code=error_code,
+            )
 
     @staticmethod
     def _fingerprint(request: BridgeRequest) -> str:

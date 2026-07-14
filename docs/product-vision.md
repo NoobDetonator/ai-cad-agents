@@ -22,12 +22,12 @@ Peças mecânicas para impressão 3D e fabricação leve:
 6. Aplicar transações, recalcular e validar.
 7. Confirmar o resultado ou reverter toda a unidade aprovada.
 
-## Estado atual — M4 concluído
+## Estado atual — M5 concluído
 
 O Workbench **AI CAD** abre um painel funcional dentro do FreeCAD. O modo local
 entende comandos fechados; o modo DeepSeek opcional interpreta linguagem natural,
 seleciona ferramentas PT/EN e pode executar leituras em um loop limitado. Ambos,
-assim como o MCP, usam o mesmo `ToolRegistry` com 26 ferramentas.
+assim como o MCP, usam o mesmo `ToolRegistry` com 28 ferramentas.
 
 O produto já consegue:
 
@@ -44,6 +44,8 @@ O produto já consegue:
 - construir placa de fixação, flange e pad retangular por receitas confiáveis;
 - aprovar uma mutação ou um plano de duas a oito operações e desfazê-lo;
 - projetar o mesmo catálogo, receitas, prompts e capturas pela ponte MCP segura.
+- registrar e exportar localmente o histórico redigido de ações, planos,
+  aprovações, resultados, validações, commits, aborts e undos.
 
 Todas as mutações são chamadas estruturadas, confirmadas, transacionais,
 recalculadas e validadas. Texto do modelo nunca vira Python, macro ou shell. A
@@ -62,8 +64,8 @@ de origem e são reversíveis, porém ainda são BReps controlados: não formam 
 edição. O sketch retangular não é totalmente constrangido, e ainda faltam loft,
 sweep, revolução, superfícies, chapas, assemblies, desenhos técnicos, CAM e FEM.
 
-Também ainda faltam auditoria persistente, validações de fabricação e exportação
-STEP/STL. Esses itens pertencem aos próximos marcos.
+Ainda faltam validações de fabricação e exportação STEP/STL. Esses itens pertencem
+ao M6.
 
 ## Diferenciais pretendidos
 
@@ -77,5 +79,7 @@ STEP/STL. Esses itens pertencem aos próximos marcos.
 
 ## Direção seguinte
 
-M5 adicionará histórico e auditoria local versionados. Depois, M6 cobre validação
-de fabricação e exportações controladas, e M7 simplifica instalação e uso diário.
+O M5 concluiu o histórico e a auditoria local versionados, com redaction, retenção,
+integração de chat/IA/MCP, identidade das transações do FreeCAD e exportação JSON
+confirmada. O M6 cobre validação de fabricação e exportações CAD controladas, e o
+M7 simplifica instalação e uso diário.

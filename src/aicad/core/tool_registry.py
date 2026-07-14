@@ -179,6 +179,9 @@ class ToolRegistry:
                     raise ToolInputError(
                         f"{argument_name} must be one of the allowed values."
                     )
+            elif expected_type == "boolean":
+                if not isinstance(value, bool):
+                    raise ToolInputError(f"{argument_name} must be a boolean.")
             else:
                 raise RuntimeError(
                     f"Unsupported argument type for {spec.name}: {expected_type}"
@@ -462,6 +465,74 @@ def build_default_registry() -> ToolRegistry:
                 "Undo the last CAD transaction.",
             ),
             canonical_order=300,
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="cad.get_audit_history",
+            description=(
+                "Read a bounded summary of this session's redacted local audit "
+                "history."
+            ),
+            risk=ToolRisk.READ,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100,
+                    },
+                },
+                "additionalProperties": False,
+            },
+            family="history",
+            aliases=(
+                "histórico",
+                "historico",
+                "auditoria",
+                "audit history",
+            ),
+            tags=("ações", "planos", "aprovações", "actions", "audit"),
+            examples=(
+                "Mostre o histórico auditável desta sessão.",
+                "Show recent audited CAD actions.",
+            ),
+            canonical_order=310,
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="cad.export_audit_history",
+            description=(
+                "Export this session's redacted audit history to one explicit "
+                "absolute JSON destination without silent overwrite."
+            ),
+            risk=ToolRisk.EXPORT,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "destination": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024,
+                    },
+                    "overwrite": {"type": "boolean"},
+                },
+                "required": ["destination"],
+                "additionalProperties": False,
+            },
+            family="history",
+            aliases=(
+                "exportar histórico",
+                "exportar historico",
+                "export audit history",
+            ),
+            tags=("auditoria", "json", "arquivo", "audit", "export"),
+            examples=(
+                "Exporte o histórico para um arquivo JSON escolhido por mim.",
+            ),
+            canonical_order=320,
         )
     )
     from aicad.core.mechanical_tools import mechanical_tool_specs

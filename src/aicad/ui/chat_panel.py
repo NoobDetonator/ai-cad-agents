@@ -6,7 +6,9 @@ import os
 from queue import Empty, Queue
 from threading import Event, Thread
 from typing import Any
+from uuid import UUID
 
+from aicad.audit.models import AuditActionStatus, AuditSource
 from aicad.bridge.protocol import (
     BridgeRequest,
     BridgeResponse,
@@ -42,7 +44,7 @@ from aicad.orchestration.credentials import (
     CredentialStore,
     CredentialStoreError,
 )
-from aicad.runtime import get_plan_service, get_tool_registry
+from aicad.runtime import get_audit_service, get_plan_service, get_tool_registry
 from aicad.ui.bridge_controller import GuiBridgeController, get_or_start_gui_bridge
 
 
@@ -54,6 +56,8 @@ class _GuiReadRequest:
     name: str
     arguments: dict[str, Any]
     cancellation: AgentTurnCancellation
+    original_request: str
+    parent_action_id: UUID
     completed: Event = field(default_factory=Event)
     result: Any = None
     error: Exception | None = None
@@ -141,9 +145,11 @@ def show_chat_panel() -> None:
     confirmation.hide()
 
     registry = get_tool_registry()
+    audit_service = get_audit_service()
     pending: list[
         ChatCommand | BridgeRequest | ValidatedPlan | CompositeValidatedPlan
     ] = []
+    pending_audit_action: list[UUID] = []
     remote_confirmation_queue: list[BridgeRequest | CompositeValidatedPlan] = []
     bridge_controller: list[GuiBridgeController] = []
     credential_store = CredentialStore()
@@ -271,10 +277,14 @@ def show_chat_panel() -> None:
             | CompositeValidatedPlan
             | None
         ),
+        audit_action_id: UUID | None = None,
     ) -> None:
         pending.clear()
+        pending_audit_action.clear()
         if command is not None:
             pending.append(command)
+        if audit_action_id is not None:
+            pending_audit_action.append(audit_action_id)
         waiting = command is not None
         confirmation.setVisible(waiting)
         inputs_enabled = not waiting and not ai_busy[0]
@@ -282,12 +292,27 @@ def show_chat_panel() -> None:
         send.setEnabled(inputs_enabled)
         use_deepseek.setEnabled(inputs_enabled)
         quick_test_mode.setEnabled(not waiting and not ai_busy[0])
-        if waiting and quick_test_mode.isChecked():
+        if (
+            waiting
+            and quick_test_mode.isChecked()
+            and supports_quick_approval(command)
+        ):
             append_assistant(
                 "<b>Modo de teste rápido:</b> operação aprovada "
                 "automaticamente nesta sessão."
             )
             QtCore.QTimer.singleShot(0, confirm_pending)
+
+    def supports_quick_approval(operation: object | None) -> bool:
+        if isinstance(operation, (ChatCommand, BridgeRequest)):
+            if operation.tool_name is None:
+                return False
+            return registry.get_spec(operation.tool_name).risk is ToolRisk.MODIFY
+        if isinstance(operation, ValidatedPlan):
+            return operation.call.risk is ToolRisk.MODIFY
+        if isinstance(operation, CompositeValidatedPlan):
+            return all(call.risk is ToolRisk.MODIFY for call in operation.calls)
+        return False
 
     def set_ai_busy(busy: bool) -> None:
         ai_busy[0] = busy
@@ -364,17 +389,40 @@ def show_chat_panel() -> None:
         )
         append_assistant(f"Solicitação MCP não executada: {escape(message)}")
 
-    def execute(command: ChatCommand, confirmed: bool = False) -> None:
+    def execute(
+        command: ChatCommand,
+        *,
+        confirmed: bool = False,
+        audit_action_id: UUID | None = None,
+        original_request: str | None = None,
+        source: AuditSource = AuditSource.LOCAL_CHAT,
+        assumptions: tuple[str, ...] = (),
+    ) -> bool:
         try:
-            result = registry.execute(
+            action_id = audit_action_id or audit_service.begin_tool(
+                registry,
                 command.tool_name,
                 command.arguments,
-                confirmed=confirmed,
+                source=source,
+                original_request=original_request,
+                intention=command.message,
+                assumptions=assumptions,
             )
+            if confirmed and audit_action_id is None:
+                audit_service.approve(
+                    action_id,
+                    automatic=quick_test_mode.isChecked(),
+                    source=(
+                        "quick_test" if quick_test_mode.isChecked() else "ui"
+                    ),
+                )
+            result = audit_service.execute_tool(action_id, registry)
             append_assistant(format_tool_result(command.tool_name, result))
             refresh_view(command.tool_name)
+            return True
         except (KeyError, PermissionError, RuntimeError, ValueError) as exc:
             append_assistant(f"Operação não executada: {escape(str(exc))}")
+            return False
 
     def describe_ai_plan(plan: OrchestrationPlan) -> str:
         sections = [
@@ -430,9 +478,28 @@ def show_chat_panel() -> None:
         )
 
     def request_deepseek_plan(text: str) -> None:
+        turn_action_id: UUID | None = None
         try:
-            document_context = read_work_context()
+            turn_action_id = audit_service.begin_turn(
+                source=AuditSource.AI_CHAT,
+                original_request=text,
+            )
+            document_context = audit_service.run_tool(
+                registry,
+                "cad.get_context_snapshot",
+                {"detail_level": "work", "max_objects": 25, "cursor": 0},
+                source=AuditSource.AI_CHAT,
+                original_request=text,
+                intention="Preparar o contexto versionado para a IA.",
+                parent_action_id=turn_action_id,
+            )
         except (KeyError, PermissionError, RuntimeError, ValueError):
+            if turn_action_id is not None:
+                audit_service.finish_turn(
+                    turn_action_id,
+                    status=AuditActionStatus.FAILED,
+                    error_code="context_unavailable",
+                )
             append_assistant(
                 "Não foi possível preparar o contexto do documento para a DeepSeek."
             )
@@ -447,10 +514,10 @@ def show_chat_panel() -> None:
             try:
                 api_key = credential_store.get_api_key("deepseek")
             except CredentialStoreError:
-                ai_results.put(("vault_error", None))
+                ai_results.put(("vault_error", turn_action_id))
                 return
             if api_key is None:
-                ai_results.put(("missing_key", None))
+                ai_results.put(("missing_key", turn_action_id))
                 return
             provider = None
             try:
@@ -463,7 +530,12 @@ def show_chat_panel() -> None:
                 controller = AgentTurnController(
                     registry,
                     orchestrator,
-                    read_executor=execute_ai_read_on_gui,
+                    read_executor=lambda name, arguments: execute_ai_read_on_gui(
+                        name,
+                        arguments,
+                        text,
+                        turn_action_id,
+                    ),
                     memory=session_memory,
                 )
                 turn = controller.run(
@@ -473,12 +545,14 @@ def show_chat_panel() -> None:
                     progress=ai_progress.put,
                 )
             except Exception:
-                ai_results.put(("provider_error", None))
+                ai_results.put(("provider_error", turn_action_id))
                 return
             finally:
                 if provider is not None:
                     provider.close()
-            ai_results.put(("turn", (turn, document_context)))
+            ai_results.put(
+                ("turn", (turn, document_context, text, turn_action_id))
+            )
 
         Thread(
             target=worker,
@@ -489,11 +563,19 @@ def show_chat_panel() -> None:
     def execute_ai_read_on_gui(
         name: str,
         arguments: dict[str, Any],
+        original_request: str,
+        parent_action_id: UUID,
     ) -> Any:
         if not active_ai_cancellation:
             raise AgentTurnCancelledError("The AI turn is no longer active.")
         cancellation = active_ai_cancellation[0]
-        request = _GuiReadRequest(name, dict(arguments), cancellation)
+        request = _GuiReadRequest(
+            name,
+            dict(arguments),
+            cancellation,
+            original_request,
+            parent_action_id,
+        )
         ai_read_requests.put(request)
         while not request.completed.wait(0.05):
             cancellation.raise_if_cancelled()
@@ -510,7 +592,15 @@ def show_chat_panel() -> None:
                 return
             try:
                 request.cancellation.raise_if_cancelled()
-                request.result = registry.execute(request.name, request.arguments)
+                request.result = audit_service.run_tool(
+                    registry,
+                    request.name,
+                    request.arguments,
+                    source=AuditSource.AI_CHAT,
+                    original_request=request.original_request,
+                    intention=f"Executar leitura solicitada pela IA: {request.name}.",
+                    parent_action_id=request.parent_action_id,
+                )
             except Exception as exc:
                 request.error = exc
             finally:
@@ -543,23 +633,52 @@ def show_chat_panel() -> None:
         active_ai_cancellation.clear()
         set_ai_busy(False)
         if result_kind == "missing_key":
+            if isinstance(payload, UUID):
+                audit_service.finish_turn(
+                    payload,
+                    status=AuditActionStatus.FAILED,
+                    error_code="missing_credentials",
+                )
             credential_configured[0] = False
             append_assistant("Configure a chave DeepSeek antes de usar o modo de IA.")
             refresh_security_status()
             show_next_remote_confirmation()
             return
         if result_kind == "vault_error":
+            if isinstance(payload, UUID):
+                audit_service.finish_turn(
+                    payload,
+                    status=AuditActionStatus.FAILED,
+                    error_code="credential_store_unavailable",
+                )
             credential_vault_available[0] = False
             append_assistant("O cofre de credenciais não pôde ser consultado.")
+            refresh_security_status()
+            show_next_remote_confirmation()
+            return
+        if result_kind == "provider_error":
+            if isinstance(payload, UUID):
+                audit_service.finish_turn(
+                    payload,
+                    status=AuditActionStatus.FAILED,
+                    error_code="provider_error",
+                )
+            credential_configured[0] = True
+            append_assistant(
+                "A DeepSeek não respondeu com um plano válido. "
+                "Tente novamente em alguns instantes."
+            )
             refresh_security_status()
             show_next_remote_confirmation()
             return
         if (
             result_kind != "turn"
             or not isinstance(payload, tuple)
-            or len(payload) != 2
+            or len(payload) != 4
             or not isinstance(payload[0], AgentTurnResult)
             or not isinstance(payload[1], dict)
+            or not isinstance(payload[2], str)
+            or not isinstance(payload[3], UUID)
         ):
             credential_configured[0] = True
             append_assistant(
@@ -569,15 +688,25 @@ def show_chat_panel() -> None:
             refresh_security_status()
             show_next_remote_confirmation()
             return
-        turn_result, base_context = payload
+        turn_result, base_context, original_request, turn_action_id = payload
         credential_configured[0] = True
         credential_vault_available[0] = True
         refresh_security_status()
         if turn_result.status is AgentTurnStatus.CANCELLED:
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.CANCELLED,
+                error_code="cancelled",
+            )
             append_assistant("Consulta cancelada sem alterar o documento.")
             show_next_remote_confirmation()
             return
         if turn_result.status is AgentTurnStatus.AWAITING_SELECTION:
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.COMPLETED,
+                result={"status": "awaiting_selection"},
+            )
             append_assistant(
                 "Selecione exatamente um objeto no FreeCAD e envie a instrução "
                 "novamente. Nenhuma alteração foi feita."
@@ -586,14 +715,80 @@ def show_chat_panel() -> None:
             return
         plan = turn_result.final_plan
         if plan is None:
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.FAILED,
+                error_code="invalid_plan",
+            )
             append_assistant("A consulta terminou sem um plano utilizável.")
             show_next_remote_confirmation()
             return
         append_assistant(describe_ai_plan(plan))
         if not plan.tool_calls:
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.COMPLETED,
+                intention=plan.intention,
+                assumptions=tuple(plan.assumptions),
+                result={"status": "answered", "tool_calls": 0},
+            )
             show_next_remote_confirmation()
             return
         call = plan.tool_calls[0]
+        if call.risk is ToolRisk.EXPORT:
+            if len(plan.tool_calls) != 1:
+                audit_service.finish_turn(
+                    turn_action_id,
+                    status=AuditActionStatus.FAILED,
+                    intention=plan.intention,
+                    assumptions=tuple(plan.assumptions),
+                    error_code="unsupported_export_plan",
+                )
+                append_assistant(
+                    "A exportação auditável deve ser uma ação isolada e confirmada."
+                )
+                show_next_remote_confirmation()
+                return
+            command = ChatCommand(
+                message=plan.intention + " Plano: " + "; ".join(plan.steps),
+                tool_name=call.name,
+                arguments=dict(call.arguments),
+            )
+            try:
+                audit_action_id = audit_service.begin_tool(
+                    registry,
+                    call.name,
+                    call.arguments,
+                    source=AuditSource.AI_CHAT,
+                    original_request=original_request,
+                    intention=command.message,
+                    assumptions=tuple(plan.assumptions),
+                    call_id=call.call_id,
+                    parent_action_id=turn_action_id,
+                )
+            except (KeyError, PermissionError, RuntimeError, ValueError) as exc:
+                audit_service.finish_turn(
+                    turn_action_id,
+                    status=AuditActionStatus.FAILED,
+                    intention=plan.intention,
+                    assumptions=tuple(plan.assumptions),
+                    error_code="export_prepare_failed",
+                )
+                append_assistant(
+                    "A exportação proposta não pôde ser preparada: "
+                    + escape(str(exc))
+                )
+                show_next_remote_confirmation()
+                return
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.COMPLETED,
+                intention=plan.intention,
+                assumptions=tuple(plan.assumptions),
+                result={"status": "awaiting_export_approval", "tool_calls": 1},
+            )
+            set_pending(command, audit_action_id)
+            return
         if call.risk is not ToolRisk.READ:
             try:
                 base_state = DocumentStateToken.model_validate(
@@ -608,24 +803,91 @@ def show_chat_panel() -> None:
                         registry,
                     )
             except (KeyError, RuntimeError, ValueError):
+                audit_service.finish_turn(
+                    turn_action_id,
+                    status=AuditActionStatus.FAILED,
+                    intention=plan.intention,
+                    assumptions=tuple(plan.assumptions),
+                    error_code="plan_freeze_failed",
+                )
                 append_assistant(
                     "A mutação proposta não pôde ser congelada com segurança."
                 )
                 show_next_remote_confirmation()
                 return
-            if isinstance(validated_plan, CompositeValidatedPlan):
-                plan_service.submit(validated_plan)
-                append_assistant(describe_composite_plan(validated_plan))
-            else:
-                append_assistant(describe_validated_plan(validated_plan))
-            set_pending(validated_plan)
+            try:
+                if isinstance(validated_plan, CompositeValidatedPlan):
+                    plan_service.submit(
+                        validated_plan,
+                        audit_source=AuditSource.AI_CHAT,
+                        original_request=original_request,
+                        parent_action_id=turn_action_id,
+                    )
+                    append_assistant(describe_composite_plan(validated_plan))
+                    audit_action_id = None
+                else:
+                    audit_action_id = audit_service.begin_plan(
+                        validated_plan,
+                        registry,
+                        source=AuditSource.AI_CHAT,
+                        original_request=original_request,
+                        parent_action_id=turn_action_id,
+                    )
+                    append_assistant(describe_validated_plan(validated_plan))
+            except (KeyError, PermissionError, RuntimeError, ValueError) as exc:
+                audit_service.finish_turn(
+                    turn_action_id,
+                    status=AuditActionStatus.FAILED,
+                    intention=plan.intention,
+                    assumptions=tuple(plan.assumptions),
+                    error_code="plan_audit_failed",
+                )
+                append_assistant(
+                    "O plano não pôde ser registrado para aprovação: "
+                    + escape(str(exc))
+                )
+                show_next_remote_confirmation()
+                return
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.COMPLETED,
+                intention=plan.intention,
+                assumptions=tuple(plan.assumptions),
+                result={
+                    "status": "awaiting_plan_approval",
+                    "plan_id": str(validated_plan.plan_id),
+                    "tool_calls": len(plan.tool_calls),
+                },
+            )
+            set_pending(validated_plan, audit_action_id)
             return
         command = ChatCommand(
             message="Operação proposta pela DeepSeek.",
             tool_name=call.name,
             arguments=dict(call.arguments),
         )
-        execute(command)
+        read_completed = execute(
+            command,
+            original_request=original_request,
+            source=AuditSource.AI_CHAT,
+            assumptions=tuple(plan.assumptions),
+        )
+        if read_completed:
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.COMPLETED,
+                intention=plan.intention,
+                assumptions=tuple(plan.assumptions),
+                result={"status": "read_completed", "tool_calls": 1},
+            )
+        else:
+            audit_service.finish_turn(
+                turn_action_id,
+                status=AuditActionStatus.FAILED,
+                intention=plan.intention,
+                assumptions=tuple(plan.assumptions),
+                error_code="read_failed",
+            )
         show_next_remote_confirmation()
 
     def submit() -> None:
@@ -643,24 +905,66 @@ def show_chat_panel() -> None:
             return
         spec = registry.get_spec(command.tool_name)
         if spec.risk is ToolRisk.READ:
-            execute(command)
+            execute(command, original_request=text)
             return
-        set_pending(command)
+        try:
+            audit_action_id = audit_service.begin_tool(
+                registry,
+                command.tool_name,
+                command.arguments,
+                source=AuditSource.LOCAL_CHAT,
+                original_request=text,
+                intention=command.message,
+            )
+        except (KeyError, PermissionError, RuntimeError, ValueError) as exc:
+            append_assistant(f"Operação não preparada: {escape(str(exc))}")
+            return
+        set_pending(command, audit_action_id)
 
     def confirm_pending() -> None:
         if not pending:
             return
         operation = pending[0]
+        audit_action_id = (
+            pending_audit_action[0] if pending_audit_action else None
+        )
+        automatic = quick_test_mode.isChecked() and supports_quick_approval(operation)
         set_pending(None)
         if isinstance(operation, ChatCommand):
-            execute(operation, confirmed=True)
+            if audit_action_id is None:
+                append_assistant("A operação perdeu seu vínculo de auditoria.")
+            else:
+                audit_service.approve(
+                    audit_action_id,
+                    automatic=automatic,
+                    source="quick_test" if automatic else "ui",
+                )
+                execute(
+                    operation,
+                    confirmed=True,
+                    audit_action_id=audit_action_id,
+                )
         elif isinstance(operation, ValidatedPlan):
             try:
                 grant = ApprovalGrant.issue(operation)
+                audit_service.approve_plan(
+                    operation.plan_id,
+                    automatic=automatic,
+                    source="quick_test" if automatic else "ui",
+                    grant_id=grant.grant_id,
+                )
                 result = SingleMutationPlanExecutor(
                     registry,
                     read_work_context,
-                ).execute(operation, grant)
+                ).execute(
+                    operation,
+                    grant,
+                    call_scope=lambda call_id: audit_service.plan_call_scope(
+                        operation.plan_id,
+                        call_id,
+                    ),
+                )
+                audit_service.finish_plan_success(operation.plan_id, result)
                 append_assistant(
                     format_tool_result(operation.call.name, result.tool_result)
                 )
@@ -670,6 +974,11 @@ def show_chat_panel() -> None:
                 )
                 refresh_view(operation.call.name)
             except (PlanApprovalError, PlanExecutionError, RuntimeError, ValueError) as exc:
+                audit_service.finish_plan_failure(
+                    operation.plan_id,
+                    status=AuditActionStatus.FAILED,
+                    error_code="execution_failed",
+                )
                 append_assistant(
                     "Plano não executado: " + escape(str(exc))
                 )
@@ -694,6 +1003,7 @@ def show_chat_panel() -> None:
                         operation.plan_id,
                         approved=True,
                         on_progress=show_composite_progress,
+                        automatic=automatic,
                     )
                     if snapshot.status is CompositePlanStatus.COMPLETED:
                         for call in operation.calls:
@@ -713,6 +1023,8 @@ def show_chat_panel() -> None:
                         grant,
                         CompositePlanExecutor(registry, read_work_context),
                         on_progress=show_composite_progress,
+                        approval_automatic=automatic,
+                        approval_source="quick_test" if automatic else "ui",
                     )
                     for call, tool_result in zip(
                         operation.calls,
@@ -732,6 +1044,7 @@ def show_chat_panel() -> None:
             response = bridge_controller[0].resolve_confirmation(
                 operation.request_id,
                 approved=True,
+                automatic=automatic,
             )
             show_bridge_response(operation, response)
         else:
@@ -742,10 +1055,24 @@ def show_chat_panel() -> None:
         if not pending:
             return
         operation = pending[0]
+        audit_action_id = (
+            pending_audit_action[0] if pending_audit_action else None
+        )
         set_pending(None)
         if isinstance(operation, ChatCommand):
+            if audit_action_id is not None:
+                audit_service.cancel(
+                    audit_action_id,
+                    source="ui",
+                    denied=True,
+                )
             append_assistant("Operação cancelada; o documento não foi alterado.")
         elif isinstance(operation, ValidatedPlan):
+            audit_service.cancel_plan(
+                operation.plan_id,
+                source="ui",
+                denied=True,
+            )
             append_assistant(
                 "Plano imutável cancelado; nenhuma autorização foi emitida e o "
                 "documento não foi alterado."
@@ -758,7 +1085,11 @@ def show_chat_panel() -> None:
                     approved=False,
                 )
             else:
-                plan_service.cancel(operation.plan_id)
+                plan_service.cancel(
+                    operation.plan_id,
+                    audit_source="ui",
+                    denied=True,
+                )
             append_assistant(
                 "Plano composto cancelado; nenhuma etapa foi executada."
             )
@@ -780,7 +1111,7 @@ def show_chat_panel() -> None:
                 "da IA e do MCP serão aprovadas automaticamente nesta sessão; "
                 "transações, validação e undo permanecem obrigatórios."
             )
-            if pending:
+            if pending and supports_quick_approval(pending[0]):
                 QtCore.QTimer.singleShot(0, confirm_pending)
         else:
             append_assistant(

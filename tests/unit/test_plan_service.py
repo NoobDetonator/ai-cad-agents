@@ -6,6 +6,13 @@ from uuid import UUID
 
 import pytest
 
+from aicad.audit import (
+    AuditActionKind,
+    AuditActionStatus,
+    AuditApprovalDecision,
+    AuditService,
+    AuditStore,
+)
 from aicad.core.context import DocumentStateToken
 from aicad.core.tool_registry import build_default_registry
 from aicad.orchestration import OrchestrationPlan, PlannedToolCall
@@ -218,3 +225,36 @@ def test_all_calls_are_prevalidated_before_any_handler_runs() -> None:
         CompositeValidatedPlan.build(invalid, token, registry)
 
     assert cad.calls == []
+
+
+def test_plan_service_persists_the_complete_audited_plan_lifecycle(tmp_path) -> None:
+    cad = FakeCad()
+    registry = registry_for(cad)
+    plan = frozen(cad, registry)
+    audit = AuditService(AuditStore(tmp_path / "audit"), session_id=SESSION)
+    service = PlanService(audit_service=audit, registry=registry)
+
+    service.submit(
+        plan,
+        audit_source="ai_chat",
+        original_request="Crie uma base e um pino.",
+    )
+    result = service.execute(
+        plan.plan_id,
+        CompositeApprovalGrant.issue(plan, now=10.0),
+        CompositePlanExecutor(registry, cad.context, clock=lambda: 11.0),
+        approval_automatic=True,
+        approval_source="quick_test",
+    )
+
+    records = audit.store.list_records(SESSION)
+    assert len(records) == 1
+    record = records[0]
+    assert record.kind is AuditActionKind.PLAN
+    assert record.status is AuditActionStatus.COMPLETED
+    assert record.original_request == "Crie uma base e um pino."
+    assert record.plan.plan_id == plan.plan_id
+    assert record.plan.base_state_token == plan.base_state_token.model_dump(mode="json")
+    assert [call.call_id for call in record.tool_calls] == ["box-1", "cylinder-1"]
+    assert record.approval.decision is AuditApprovalDecision.APPROVED_AUTOMATIC
+    assert record.result["results"] == list(result.results)

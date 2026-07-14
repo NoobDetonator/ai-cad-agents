@@ -171,7 +171,7 @@ flowchart LR
 | M2 — Ponte MCP–GUI | Concluído | Comunicação local segura e execução na thread Qt |
 | M3 — Orquestrador de IA | Concluído | Contexto, seleção, loop seguro e planos reversíveis via chat/MCP |
 | M4 — Modelagem mecânica básica | Concluído | 18 capacidades mecânicas, receitas, seleção e visão |
-| M5 — Histórico e auditoria | Planejado | Registro persistente de planos, confirmações e resultados |
+| M5 — Histórico e auditoria | Concluído | Ações, planos, aprovações, transações e exportação auditáveis |
 | M6 — Validação e exportação | Planejado | Regras de fabricação e exportações controladas |
 | M7 — Empacotamento e experiência | Planejado | Instalação, atualização e uso diário mais simples |
 
@@ -473,7 +473,47 @@ falha, não apenas de sucesso. Critério atendido.
 
 ## 11. M5 — Histórico e auditoria
 
-Entregas planejadas:
+### M5.1 — contrato, redaction e armazenamento — concluído
+
+- `aicad.audit` define o contrato `1.0` sem importar FreeCAD, Qt ou provedor;
+- cada ação possui sessão, ID, revisão, origem, intenção, suposições, plano,
+  chamadas validadas, risco, autorização, resultado, duração e validações;
+- o contrato já comporta o vínculo entre chamada e transação do FreeCAD;
+- redaction recursivo remove chaves/tokens, credenciais Bearer, valores secretos,
+  binários e caminhos pessoais antes de gravar ou exportar;
+- arquivos por ação são escritos atomicamente na pasta local de dados do usuário,
+  fora do Git, e links simbólicos são recusados;
+- a retenção padrão é 90 dias, 50 sessões e 1.000 ações por sessão;
+- a exportação exige destino explícito, não sobrescreve silenciosamente e aplica
+  redaction novamente;
+- testes independentes do FreeCAD cobrem contrato, limites, ciclo de vida,
+  persistência, retenção e exportação.
+
+### M5.2 — integração dos fluxos e transações — concluído
+
+- uma instância de `AuditService` define o ID da sessão gráfica e é compartilhada
+  pelo chat, IA, ponte MCP e serviço de planos;
+- leituras, mutações, exportações, planos simples e compostos persistem pedido,
+  intenção, suposições, chamadas validadas, risco, autorização e resultado;
+- confirmação manual, modo rápido, recusa, cancelamento, timeout e falha recebem
+  estados auditáveis explícitos;
+- cada chamada de plano recebe um escopo de transação e o rollback composto grava
+  os undos na ordem de compensação;
+- o adaptador inclui o ID auditável no título da transação real e marca commit,
+  abort ou undo sem tornar o núcleo dependente do FreeCAD.
+
+### M5.3 — consulta, exportação e aceite — concluído
+
+- `cad.get_audit_history` e `cad.export_audit_history` pertencem ao mesmo
+  `ToolRegistry` do chat e MCP, levando o catálogo a 28 ferramentas;
+- o chat local entende `histórico` e `exportar histórico <destino>`;
+- a exportação usa risco `export`, destino absoluto, proteção contra sobrescrita,
+  redaction e confirmação visual; o modo rápido não a aprova automaticamente;
+- o ID da sessão da ponte e o ID da sessão de auditoria são o mesmo;
+- testes unitários cobrem serviço, plano, MCP, redaction, armazenamento, retenção,
+  transações e exportação; o smoke gráfico verifica o fluxo no FreeCAD real.
+
+Entregas concluídas:
 
 - ID de sessão e ID por ação;
 - texto do usuário, suposições e plano;
@@ -486,6 +526,14 @@ Entregas planejadas:
 
 O histórico deve ser útil para explicar e reproduzir decisões, mas não deve
 capturar credenciais ou dados desnecessários.
+
+### Critério de aceite de M5
+
+Para cada ação aceita pela interface ou pelo MCP é possível responder: o que foi
+pedido, o que a IA entendeu, qual plano e argumentos foram validados, qual risco e
+autorização se aplicaram, quais validações rodaram e quais transações realmente
+foram confirmadas, abortadas ou desfeitas. O bundle exportado contém a versão do
+schema e não contém chaves ou caminhos pessoais. Critério atendido.
 
 ## 12. M6 — Validação e exportação
 
@@ -629,13 +677,14 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 - Chamadas MCP ao documento dependem de uma sessão gráfica do FreeCAD ativa.
 - `cad.validate_document` recalcula, embora seja classificado como leitura por não
   alterar intencionalmente a geometria.
-- `undo` atua sobre a última transação disponível; uma evolução futura deve
-  registrar e apresentar claramente a origem da transação.
+- `undo` atua sobre a última transação disponível; transações iniciadas fora dos
+  fluxos auditados aparecem como não rastreadas, sem inventar uma origem.
 - A suíte gráfica depende de uma sessão Windows capaz de abrir GUI.
 - Assinaturas geométricas reduzem o risco de índice topológico instável, mas podem
   ficar ambíguas quando duas arestas são geometricamente idênticas; nesse caso a
   operação falha e exige referência mais específica.
-- Não há persistência de conversas ou auditoria estruturada ainda.
+- A auditoria persiste ações estruturadas, não a conversa completa; isso é uma
+  decisão de minimização de dados, não uma memória conversacional durável.
 
 ## 17. Decisões técnicas
 
@@ -651,11 +700,10 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 ### Pendentes
 
 1. Política de aprovação para leituras potencialmente caras.
-2. Persistência e retenção do histórico de auditoria.
-3. Política para troca futura entre provedores.
-4. Evolução das referências geométricas para faces e cadeias mais complexas.
-5. Estratégia de recomputação paramétrica para features derivadas.
-6. Formato de distribuição do Workbench para usuários não desenvolvedores.
+2. Política para troca futura entre provedores.
+3. Evolução das referências geométricas para faces e cadeias mais complexas.
+4. Estratégia de recomputação paramétrica para features derivadas.
+5. Formato de distribuição do Workbench para usuários não desenvolvedores.
 
 As escolhas pendentes devem ser registradas antes de se tornarem dependências
 difíceis de reverter.
@@ -673,13 +721,14 @@ os arquivos da pasta docs, com atenção especial a docs/milestones.md e
 docs/ai-agent-optimization-plan.md. Verifique o Git, preserve mudanças existentes
 e execute scripts/testar.ps1 para confirmar a base.
 
-Use como baseline o commit que contém a conclusão do M4 ou um posterior. Na árvore
-atual, M0 a M4 estão concluídos: Workbench e painel, ToolRegistry compartilhado
-com 26 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
+Use como baseline o commit que contém a conclusão do M5 ou um posterior. Na árvore
+atual, M0 a M5 estão concluídos: Workbench e painel, ToolRegistry compartilhado
+com 28 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
 compostos, rollback, leituras mecânicas, edição, placa, furos/padrões, sketch/pad,
 booleanas, filete/chanfro, três receitas, seleção aguardada e captura visual já
-funcionam e estão testados. O próximo marco é M5 — histórico e auditoria. Defina
-primeiro contrato, redaction, retenção e armazenamento local fora do Git.
+funcionam e estão testados. Histórico local versionado registra pedidos, planos,
+aprovações, resultados e transações com redaction e exportação confirmada. O
+próximo marco é M6 — validação de fabricação e exportações CAD controladas.
 
 Mantenha o FreeCAD como adaptador, não crie execução arbitrária de Python, não
 salve credenciais no projeto e faça toda mutação de forma transacional, validada

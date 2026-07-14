@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import json
 import os
 import sys
 import traceback
@@ -29,7 +30,7 @@ from aicad.orchestration.plan_service import (
     CompositePlanStatus,
     CompositeValidatedPlan,
 )
-from aicad.runtime import get_tool_registry
+from aicad.runtime import get_audit_service, get_tool_registry
 
 
 import FreeCAD as App
@@ -103,6 +104,7 @@ def inspect() -> None:
         assert quick_test_mode.isChecked() is False
         assert cancel_ai.isVisible() is False
         session = default_session_store().load()
+        assert session.session_id == get_audit_service().session_id
         bridge_client = TcpBridgeClient(session.endpoint)
         summary_request = BridgeRequest(
             request_id=uuid4(),
@@ -409,6 +411,34 @@ def inspect() -> None:
         apply_button.click()
         QtWidgets.QApplication.processEvents()
         assert len(App.ActiveDocument.Objects) == 0
+
+        prompt.setPlainText("histórico")
+        send.click()
+        wait_for_ui(lambda: "Histórico auditável" in history.toPlainText())
+
+        audit_export = project_root / ".runtime" / f"gui-audit-{uuid4().hex}.json"
+        prompt.setPlainText(f'exportar histórico "{audit_export}"')
+        send.click()
+        wait_for_ui(apply_button.isVisible)
+        assert not audit_export.exists()
+        apply_button.click()
+        wait_for_ui(audit_export.is_file)
+        audit_bundle = json.loads(audit_export.read_text(encoding="utf-8"))
+        assert audit_bundle["schema_version"] == "1.0"
+        assert audit_bundle["session_id"] == str(session.session_id)
+        assert any(record["source"] == "mcp" for record in audit_bundle["records"])
+        assert any(
+            record["approval"]["decision"] == "approved_automatic"
+            for record in audit_bundle["records"]
+        )
+        transactions = [
+            transaction
+            for record in audit_bundle["records"]
+            for transaction in record["transactions"]
+        ]
+        assert any(item["outcome"] == "committed" for item in transactions)
+        assert any(item["outcome"] == "undone" for item in transactions)
+        audit_export.unlink()
         App.closeDocument(App.ActiveDocument.Name)
         result_path.write_text("FREECAD_GUI_SMOKE_OK", encoding="utf-8")
         QtWidgets.QApplication.exit(0)

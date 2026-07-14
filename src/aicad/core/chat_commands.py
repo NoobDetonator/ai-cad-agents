@@ -21,6 +21,11 @@ HELP_TEXT = (
     "• <code>placa 100 x 60 x 8 nome Base</code> — prepara uma placa em mm<br>"
     "• <code>desfazer</code> — prepara a reversão da última transação"
 )
+HELP_TEXT += (
+    "<br>• <code>histórico</code> — mostra as ações auditadas desta sessão"
+    "<br>• <code>exportar histórico C:\\caminho\\auditoria.json</code> — "
+    "prepara uma exportação confirmada"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +100,20 @@ def parse_chat_command(text: str) -> ChatCommand:
         return ChatCommand(
             "Plano: desfazer a última transação CAD confirmada.",
             "cad.undo",
+        )
+
+    if command in {"historico", "historico de auditoria", "auditoria"}:
+        return ChatCommand(
+            "Vou ler o histórico auditável desta sessão.",
+            "cad.get_audit_history",
+            {"limit": 20},
+        )
+    if command.startswith("exportar historico "):
+        destination = cleaned.split(maxsplit=2)[2].strip().strip('"')
+        return ChatCommand(
+            "Plano: exportar o histórico auditável da sessão após confirmação.",
+            "cad.export_audit_history",
+            {"destination": destination, "overwrite": False},
         )
 
     object_read = _OBJECT_READ_PATTERN.fullmatch(cleaned)
@@ -297,4 +316,25 @@ def format_tool_result(tool_name: str, result: Any) -> str:
         if result["undone"]:
             return "A última transação CAD foi desfeita e o documento foi recalculado."
         return "Não há uma transação CAD disponível para desfazer."
+    if tool_name == "cad.get_audit_history":
+        actions = result["actions"]
+        if not actions:
+            return "Ainda não há ações concluídas no histórico desta sessão."
+        lines = []
+        for action in reversed(actions[-10:]):
+            tools = ", ".join(action["tool_names"]) or action["kind"]
+            lines.append(
+                f"• <code>{escape(str(tools))}</code>: "
+                f"{escape(str(action['status']))} "
+                f"({escape(str(action['approval']))})"
+            )
+        return (
+            f"Histórico auditável: {result['count']} ações nesta consulta.<br>"
+            + "<br>".join(lines)
+        )
+    if tool_name == "cad.export_audit_history":
+        return (
+            f"Histórico exportado com {result['record_count']} registros para "
+            f"<code>{escape(str(result['destination']))}</code>."
+        )
     return "Ferramenta concluída."
