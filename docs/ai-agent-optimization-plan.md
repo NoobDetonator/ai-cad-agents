@@ -15,6 +15,7 @@ como registrados em `docs/milestones.md`.
   `FREECAD_GUI_SMOKE_OK`.
 - **Estado do M3.1:** concluído após essa baseline, com 88 testes unitários.
 - **Estado do M3.2:** concluído, com 94 testes unitários e smokes reais.
+- **Estado do M3.3:** concluído, com 103 testes e benchmark local do seletor.
 - **Capacidades atuais:** resumo, seleção, caixa, cilindro, validação e undo.
 - **IA atual:** uma rodada, no máximo uma chamada, sem retorno do resultado ao
   modelo.
@@ -562,7 +563,7 @@ Resultado registrado:
 - payloads são limitados a 64 KiB e páginas a no máximo 100 objetos;
 - nenhuma ferramenta de mutação ou permissão nova foi adicionada.
 
-### M3.3 — Recuperação de ferramentas
+### M3.3 — Recuperação de ferramentas — concluído
 
 Entregas:
 
@@ -573,6 +574,21 @@ Entregas:
 
 Aceite: metas do benchmark atingidas sem nova dependência ou chamada extra ao
 modelo.
+
+Resultado registrado:
+
+- `ToolSpec` recebeu família, aliases, tags, exemplos, essencialidade e ordem;
+- `ToolSelector` normaliza português/inglês, usa contexto e retorna top-N quatro;
+- baixa confiança usa fallback de leitura e pedidos perigosos não recebem
+  ferramentas de mutação;
+- o `AiOrchestrator` faz a recuperação automaticamente antes da única chamada ao
+  provedor e ainda aceita allowlist explícita;
+- schemas saem em ordem canônica e nomes/argumentos continuam revalidados pelo
+  registro autoritativo;
+- no corpus v1: recall 20/20, exposição de mutações 0/5, média de 2,83 ferramentas
+  por pedido e economia de 57,6% dos bytes de schemas;
+- pontuação e motivos por ferramenta estão no relatório JSON do benchmark;
+- nenhuma dependência, chamada de modelo, permissão ou ferramenta CAD foi criada.
 
 ### M3.4 — Loop somente leitura
 
@@ -774,7 +790,7 @@ O marco de otimização estará concluído quando:
 ## 26. Orientação para retomada em outro chat
 
 Ao continuar, não começar aumentando o número de ferramentas nem alterando a
-ponte. M3.1 e M3.2 estão concluídos; implementar o M3.3 deste documento e seguir
-os critérios de aceite em ordem. Qualquer atalho que introduza Python arbitrário,
-um registro paralelo ou aprovação ampla deve ser recusado mesmo que produza uma
-demonstração mais rápida.
+ponte. M3.1, M3.2 e M3.3 estão concluídos; implementar o M3.4 deste documento e
+seguir os critérios de aceite em ordem. Qualquer atalho que introduza Python
+arbitrário, um registro paralelo ou aprovação ampla deve ser recusado mesmo que
+produza uma demonstração mais rápida.

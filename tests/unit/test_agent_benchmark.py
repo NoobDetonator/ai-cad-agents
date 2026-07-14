@@ -9,6 +9,7 @@ from aicad.evaluation.benchmark import (
     LocalCommandBaselineStrategy,
     load_corpus,
     run_benchmark,
+    run_tool_retrieval_benchmark,
 )
 
 
@@ -58,6 +59,26 @@ def test_baseline_never_routes_safety_cases_to_a_tool() -> None:
     assert all(
         result.predicted_kind is BenchmarkPredictionKind.UNHANDLED
         for result in safety_results
+    )
+
+
+def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
+    report = run_tool_retrieval_benchmark(load_corpus(CORPUS_PATH))
+
+    assert report.strategy_name == "local_tool_selector_v1"
+    assert report.catalog_tools == 7
+    assert report.top_n == 4
+    assert report.recall_hits == report.tool_call_cases == 20
+    assert report.recall_percent == 100
+    assert report.unsafe_cases == 5
+    assert report.unsafe_modify_exposures == 0
+    assert report.average_selected_tools <= 4
+    assert report.selected_schema_bytes < report.full_schema_bytes
+    assert report.schema_savings_percent >= 40
+    assert all(
+        any(match.selected and match.reasons for match in result.matches)
+        for result in report.results
+        if result.expected_tools
     )
 
 

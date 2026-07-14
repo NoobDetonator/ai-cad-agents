@@ -6,6 +6,12 @@ from aicad.core.context import (
     ContextStateTracker,
     DocumentStateToken,
 )
+from aicad.core.tool_selector import (
+    ToolMatch,
+    ToolSelection,
+    ToolSelector,
+    normalize_search_text,
+)
 from aicad.core.tool_results import (
     AffectedObjects,
     ToolError,
@@ -22,9 +28,13 @@ __all__ = [
     "ContextSnapshot",
     "ContextStateTracker",
     "DocumentStateToken",
+    "ToolMatch",
+    "ToolSelection",
+    "ToolSelector",
     "ToolError",
     "ToolErrorCode",
     "ToolResultEnvelope",
     "ToolResultStatus",
     "ToolValidation",
+    "normalize_search_text",
 ]

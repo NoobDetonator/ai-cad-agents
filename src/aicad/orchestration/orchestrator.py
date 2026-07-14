@@ -6,6 +6,7 @@ import json
 
 from pydantic import JsonValue, ValidationError
 
+from aicad.core.tool_selector import ToolSelector
 from aicad.core.tool_registry import ToolInputError, ToolRegistry, ToolRisk
 from aicad.orchestration.models import (
     OrchestrationPlan,
@@ -76,10 +77,12 @@ class AiOrchestrator:
         provider: AiProvider,
         *,
         limits: OrchestrationLimits | None = None,
+        tool_selector: ToolSelector | None = None,
     ) -> None:
         self._registry = registry
         self._provider = provider
         self._limits = limits or OrchestrationLimits()
+        self._tool_selector = tool_selector or ToolSelector(registry)
 
     def create_plan(
         self,
@@ -90,7 +93,11 @@ class AiOrchestrator:
     ) -> OrchestrationPlan:
         cleaned_message = self._validate_user_message(user_message)
         checked_context = self._validate_context(context)
-        definitions = self._select_tool_definitions(allowed_tool_names)
+        definitions = self._select_tool_definitions(
+            cleaned_message,
+            checked_context,
+            allowed_tool_names,
+        )
         request = ProviderRequest(
             instructions=DEFAULT_PROVIDER_INSTRUCTIONS,
             user_message=cleaned_message,
@@ -196,11 +203,16 @@ class AiOrchestrator:
 
     def _select_tool_definitions(
         self,
+        user_message: str,
+        context: Mapping[str, JsonValue],
         allowed_tool_names: Sequence[str] | None,
     ) -> tuple[ProviderToolDefinition, ...]:
         specs_by_name = {spec.name: spec for spec in self._registry.list_specs()}
         if allowed_tool_names is None:
-            names = tuple(specs_by_name)
+            names = self._tool_selector.select(
+                user_message,
+                context=context,
+            ).tool_names
         else:
             if isinstance(allowed_tool_names, (str, bytes)):
                 raise OrchestrationInputError("Allowed tool names must be a sequence.")

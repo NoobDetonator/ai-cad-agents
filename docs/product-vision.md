@@ -56,6 +56,12 @@ DeepSeek e pelo MCP por meio da mesma ferramenta de leitura. Uma alteração man
 relevante muda o token; isso prepara a futura recusa de planos obsoletos sem
 liberar nenhuma nova mutação.
 
+O M3.3 também está concluído. A DeepSeek recebe apenas o subconjunto localmente
+relevante do `ToolRegistry`, limitado a quatro ferramentas e ordenado de forma
+estável. O seletor obteve recall 20/20 e reduziu 57,6% dos schemas no corpus v1;
+pedidos perigosos receberam somente leituras. Isso melhora velocidade e foco sem
+delegar seleção a outra chamada de IA nem criar permissão nova.
+
 ## Diferenciais pretendidos
 
 - operação local e privada;

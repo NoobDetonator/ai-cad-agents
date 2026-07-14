@@ -11,11 +11,17 @@ from aicad.core.tool_registry import (
 
 
 def test_default_registry_has_unique_tools() -> None:
-    names = [spec.name for spec in build_default_registry().list_specs()]
+    specs = build_default_registry().list_specs()
+    names = [spec.name for spec in specs]
     assert len(names) == len(set(names))
+    assert len({spec.canonical_order for spec in specs}) == len(specs)
     assert "cad.create_box" in names
     assert "cad.create_cylinder" in names
     assert "cad.get_context_snapshot" in names
+    assert all(spec.aliases and spec.tags and spec.examples for spec in specs)
+    assert [spec.name for spec in specs if spec.essential] == [
+        "cad.get_context_snapshot"
+    ]
 
 
 def test_registry_executes_connected_handler() -> None:

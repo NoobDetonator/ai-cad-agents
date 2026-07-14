@@ -156,6 +156,27 @@ ao MCP pela ponte autenticada. O modo DeepSeek usa essa leitura no lugar do resu
 simples, ainda com uma única rodada e uma única ferramenta proposta. Nenhuma
 permissão de mutação foi ampliada.
 
+## Recuperação local de ferramentas
+
+O M3.3 adiciona metadados opcionais ao `ToolSpec`: família, aliases, tags,
+exemplos, essencialidade e ordem canônica. Esses campos continuam independentes
+de FreeCAD e são a fonte única para `ToolSelector`; não existe catálogo paralelo.
+
+Antes da chamada DeepSeek, o seletor:
+
+1. normaliza caixa e acentos em português e inglês;
+2. pontua nome, aliases, tags, família, descrição e exemplos;
+3. considera referências relativas e a presença de seleção no snapshot;
+4. mantém a leitura de contexto essencial e retorna no máximo quatro ferramentas;
+5. reorganiza o subconjunto pela ordem canônica, estabilizando o prefixo enviado;
+6. usa somente o catálogo de leitura em baixa confiança ou pedido inseguro.
+
+Pontuações e motivos ficam disponíveis para o benchmark, mas não autorizam
+execução. O provedor só pode chamar nomes do subconjunto recebido e cada argumento
+continua revalidado contra o schema original do `ToolRegistry`. No corpus v1, o
+seletor obteve recall 20/20, exposição de mutações 0/5 nos casos perigosos e
+economia de 57,6% dos bytes de schemas, sem dependência ou chamada de IA extra.
+
 ## Credenciais de provedor
 
 CredentialStore mantém identificadores de provedor separados das chaves e usa
@@ -173,12 +194,13 @@ externa depende da opção visível e de um novo envio do usuário.
 ## Fluxo do modo DeepSeek
 
 1. A thread Qt lê um snapshot limitado e versionado pelo ToolRegistry.
-2. Um worker recupera a chave do cofre e chama o adaptador DeepSeek.
-3. AiOrchestrator revalida ferramenta, argumentos, risco e limites sem executar.
-4. O timer Qt recebe somente o plano validado e o apresenta com dados escapados.
-5. Leituras são executadas na thread Qt pelo registro compartilhado.
-6. Mutações entram no mesmo estado pendente do chat e exigem confirmação visual.
-7. A execução confirmada segue para o FreeCadAdapter transacional e reversível.
+2. O seletor local escolhe até quatro ferramentas e fixa a ordem canônica.
+3. Um worker recupera a chave do cofre e chama o adaptador DeepSeek.
+4. AiOrchestrator revalida ferramenta, argumentos, risco e limites sem executar.
+5. O timer Qt recebe somente o plano validado e o apresenta com dados escapados.
+6. Leituras são executadas na thread Qt pelo registro compartilhado.
+7. Mutações entram no mesmo estado pendente do chat e exigem confirmação visual.
+8. A execução confirmada segue para o FreeCadAdapter transacional e reversível.
 
 A fila de confirmações MCP não é substituída por uma resposta de IA. Enquanto
 uma consulta externa está em andamento, pedidos remotos aguardam; depois dela,
@@ -228,8 +250,8 @@ clique do usuário. Repetir a request com o mesmo ID consulta o resultado.
 
 ## Próxima etapa técnica
 
-M3.1 e M3.2 foram concluídos. Seguir o M3.3 em
-`docs/ai-agent-optimization-plan.md`: enriquecer metadados de `ToolSpec` e criar o
-seletor local PT/EN com top-N e ordenação canônica. Depois entra o loop iterativo
-somente leitura. Mutações com planos imutáveis e planos compostos continuam
-bloqueadas até essas bases passarem nos critérios de aceite.
+M3.1, M3.2 e M3.3 foram concluídos. Seguir o M3.4 em
+`docs/ai-agent-optimization-plan.md`: criar o loop iterativo somente leitura com
+orçamento, cancelamento, memória de sessão e retorno estruturado de resultados ao
+provedor. Mutações com planos imutáveis e planos compostos continuam bloqueadas
+até essas bases passarem nos critérios de aceite.

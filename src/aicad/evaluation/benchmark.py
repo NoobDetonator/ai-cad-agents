@@ -20,6 +20,8 @@ from pydantic import (
 )
 
 from aicad.core.chat_commands import parse_chat_command
+from aicad.core.tool_registry import ToolRegistry, ToolRisk, build_default_registry
+from aicad.core.tool_selector import ToolSelector
 
 
 BENCHMARK_CORPUS_VERSION = "1.0"
@@ -152,6 +154,49 @@ class BenchmarkReport(BaseModel):
     results: tuple[BenchmarkCaseResult, ...]
 
 
+class ToolRetrievalMatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str
+    score: int = Field(ge=0)
+    reasons: tuple[str, ...]
+    selected: bool
+
+
+class ToolRetrievalCaseResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    case_id: CaseId
+    expected_tools: tuple[str, ...]
+    selected_tools: tuple[str, ...]
+    recall_hit: bool
+    safety_filtered: bool
+    unsafe_modify_exposed: bool
+    selected_schema_bytes: int = Field(ge=0)
+    matches: tuple[ToolRetrievalMatch, ...]
+
+
+class ToolRetrievalReport(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    corpus_version: str
+    strategy_name: str
+    total_cases: int = Field(ge=0)
+    catalog_tools: int = Field(ge=0)
+    top_n: int = Field(ge=1)
+    tool_call_cases: int = Field(ge=0)
+    recall_hits: int = Field(ge=0)
+    recall_percent: float = Field(ge=0, le=100)
+    unsafe_cases: int = Field(ge=0)
+    unsafe_modify_exposures: int = Field(ge=0)
+    average_selected_tools: float = Field(ge=0)
+    full_schema_bytes: int = Field(ge=0)
+    selected_schema_bytes: int = Field(ge=0)
+    schema_savings_percent: float = Field(ge=0, le=100)
+    total_duration_ms: float = Field(ge=0)
+    results: tuple[ToolRetrievalCaseResult, ...]
+
+
 class BenchmarkStrategy(Protocol):
     name: str
 
@@ -273,6 +318,126 @@ def run_benchmark(
     )
 
 
+def _tool_schema_bytes(registry: ToolRegistry, names: Sequence[str]) -> int:
+    payload = [
+        {
+            "name": spec.name,
+            "description": spec.description,
+            "risk": spec.risk.value,
+            "input_schema": spec.input_schema,
+        }
+        for spec in (registry.get_spec(name) for name in names)
+    ]
+    return len(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    )
+
+
+def run_tool_retrieval_benchmark(
+    corpus: BenchmarkCorpus,
+    registry: ToolRegistry | None = None,
+    *,
+    top_n: int = 4,
+    clock: Callable[[], float] = perf_counter,
+) -> ToolRetrievalReport:
+    checked_registry = registry or build_default_registry()
+    selector = ToolSelector(checked_registry, default_top_n=top_n)
+    catalog_names = tuple(spec.name for spec in checked_registry.list_specs())
+    full_case_bytes = _tool_schema_bytes(checked_registry, catalog_names)
+    started = clock()
+    results: list[ToolRetrievalCaseResult] = []
+
+    for case in corpus.cases:
+        case_started = clock()
+        selection = selector.select(case.user_message)
+        case_finished = clock()
+        if case_finished < case_started:
+            raise RuntimeError("The benchmark monotonic clock moved backwards.")
+        selected_names = selection.tool_names
+        expected = set(case.expected_tools)
+        recall_hit = bool(expected) and expected <= set(selected_names)
+        unsafe_modify_exposed = (
+            case.expected_outcome is BenchmarkExpectedOutcome.REJECTION
+            and any(
+                checked_registry.get_spec(name).risk is not ToolRisk.READ
+                for name in selected_names
+            )
+        )
+        results.append(
+            ToolRetrievalCaseResult(
+                case_id=case.case_id,
+                expected_tools=case.expected_tools,
+                selected_tools=selected_names,
+                recall_hit=recall_hit,
+                safety_filtered=selection.safety_filtered,
+                unsafe_modify_exposed=unsafe_modify_exposed,
+                selected_schema_bytes=_tool_schema_bytes(
+                    checked_registry,
+                    selected_names,
+                ),
+                matches=tuple(
+                    ToolRetrievalMatch(
+                        name=match.name,
+                        score=match.score,
+                        reasons=match.reasons,
+                        selected=match.name in selected_names,
+                    )
+                    for match in selection.matches
+                ),
+            )
+        )
+
+    finished = clock()
+    if finished < started:
+        raise RuntimeError("The benchmark monotonic clock moved backwards.")
+    tool_results = [result for result in results if result.expected_tools]
+    unsafe_results = [
+        result
+        for result, case in zip(results, corpus.cases, strict=True)
+        if case.expected_outcome is BenchmarkExpectedOutcome.REJECTION
+    ]
+    selected_schema_bytes = sum(result.selected_schema_bytes for result in results)
+    full_schema_bytes = full_case_bytes * len(results)
+    recall_hits = sum(result.recall_hit for result in tool_results)
+    recall_percent = 100 * recall_hits / len(tool_results) if tool_results else 100.0
+    savings_percent = (
+        100 * (1 - selected_schema_bytes / full_schema_bytes)
+        if full_schema_bytes
+        else 0.0
+    )
+    average_selected = (
+        sum(len(result.selected_tools) for result in results) / len(results)
+        if results
+        else 0.0
+    )
+    return ToolRetrievalReport(
+        corpus_version=corpus.corpus_version,
+        strategy_name="local_tool_selector_v1",
+        total_cases=len(results),
+        catalog_tools=len(catalog_names),
+        top_n=min(top_n, len(catalog_names)),
+        tool_call_cases=len(tool_results),
+        recall_hits=recall_hits,
+        recall_percent=recall_percent,
+        unsafe_cases=len(unsafe_results),
+        unsafe_modify_exposures=sum(
+            result.unsafe_modify_exposed for result in unsafe_results
+        ),
+        average_selected_tools=average_selected,
+        full_schema_bytes=full_schema_bytes,
+        selected_schema_bytes=selected_schema_bytes,
+        schema_savings_percent=savings_percent,
+        total_duration_ms=(finished - started) * 1000,
+        results=tuple(results),
+    )
+
+
 def render_markdown(report: BenchmarkReport) -> str:
     lines = [
         f"# Agent benchmark — {report.strategy_name}",
@@ -297,14 +462,55 @@ def render_markdown(report: BenchmarkReport) -> str:
     return "\n".join(lines)
 
 
+def render_tool_retrieval_markdown(report: ToolRetrievalReport) -> str:
+    return "\n".join(
+        (
+            f"# Tool retrieval benchmark — {report.strategy_name}",
+            "",
+            f"- Corpus: `{report.corpus_version}` ({report.total_cases} casos)",
+            f"- Catálogo: {report.catalog_tools} ferramentas; top-N: {report.top_n}",
+            (
+                "- Recall das ferramentas esperadas: "
+                f"{report.recall_hits}/{report.tool_call_cases} "
+                f"({report.recall_percent:.1f}%)"
+            ),
+            (
+                "- Exposição de mutações em pedidos inseguros: "
+                f"{report.unsafe_modify_exposures}/{report.unsafe_cases}"
+            ),
+            (
+                "- Ferramentas selecionadas por pedido: "
+                f"{report.average_selected_tools:.2f}"
+            ),
+            (
+                "- Economia de schemas: "
+                f"{report.schema_savings_percent:.1f}% "
+                f"({report.selected_schema_bytes}/{report.full_schema_bytes} bytes)"
+            ),
+            f"- Tempo local total: {report.total_duration_ms:.3f} ms",
+        )
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Run the offline AI CAD benchmark.")
     parser.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS_PATH)
     parser.add_argument("--format", choices=("json", "markdown"), default="markdown")
+    parser.add_argument(
+        "--strategy",
+        choices=("baseline", "selector"),
+        default="baseline",
+    )
     arguments = parser.parse_args(argv)
-    report = run_benchmark(load_corpus(arguments.corpus), LocalCommandBaselineStrategy())
+    corpus = load_corpus(arguments.corpus)
+    if arguments.strategy == "selector":
+        report = run_tool_retrieval_benchmark(corpus)
+    else:
+        report = run_benchmark(corpus, LocalCommandBaselineStrategy())
     if arguments.format == "json":
         print(report.model_dump_json(indent=2))
+    elif isinstance(report, ToolRetrievalReport):
+        print(render_tool_retrieval_markdown(report))
     else:
         print(render_markdown(report))
 

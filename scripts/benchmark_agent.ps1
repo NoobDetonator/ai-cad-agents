@@ -2,6 +2,8 @@
 param(
     [ValidateSet("markdown", "json")]
     [string]$Format = "markdown",
+    [ValidateSet("baseline", "selector")]
+    [string]$Strategy = "baseline",
     [string]$Corpus
 )
 
@@ -18,7 +20,11 @@ $PreviousOutputEncoding = [Console]::OutputEncoding
 $env:PYTHONUTF8 = "1"
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
-$PythonArguments = @("-m", "aicad.evaluation.benchmark", "--format", $Format)
+$PythonArguments = @(
+    "-m", "aicad.evaluation.benchmark",
+    "--format", $Format,
+    "--strategy", $Strategy
+)
 if ($Corpus) {
     $PythonArguments += @("--corpus", $Corpus)
 }

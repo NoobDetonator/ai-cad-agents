@@ -20,6 +20,12 @@ class ToolSpec:
     description: str
     risk: ToolRisk
     input_schema: dict[str, Any]
+    family: str = "general"
+    aliases: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    examples: tuple[str, ...] = ()
+    essential: bool = False
+    canonical_order: int = 1000
 
 
 class ToolInputError(ValueError):
@@ -191,6 +197,29 @@ def build_default_registry() -> ToolRegistry:
             description="Read the active CAD document and its object tree.",
             risk=ToolRisk.READ,
             input_schema=empty_object,
+            family="context",
+            aliases=(
+                "resumo",
+                "resumo do documento",
+                "document summary",
+                "object tree",
+            ),
+            tags=(
+                "documento",
+                "modelo",
+                "objetos",
+                "existe",
+                "atualmente",
+                "document",
+                "model",
+                "objects",
+                "exists",
+            ),
+            examples=(
+                "O que existe atualmente neste modelo?",
+                "Show the document object tree.",
+            ),
+            canonical_order=10,
         )
     )
     registry.register(
@@ -199,6 +228,27 @@ def build_default_registry() -> ToolRegistry:
             description="Read the objects, faces and edges selected by the user.",
             risk=ToolRisk.READ,
             input_schema=empty_object,
+            family="context",
+            aliases=(
+                "seleção",
+                "seleção atual",
+                "selected objects",
+                "current selection",
+            ),
+            tags=(
+                "selecionado",
+                "selecionados",
+                "faces",
+                "arestas",
+                "selected",
+                "selection",
+                "edges",
+            ),
+            examples=(
+                "Quais objetos e faces eu selecionei?",
+                "Which edges are selected?",
+            ),
+            canonical_order=20,
         )
     )
     registry.register(
@@ -228,6 +278,30 @@ def build_default_registry() -> ToolRegistry:
                 },
                 "additionalProperties": False,
             },
+            family="context",
+            aliases=(
+                "contexto",
+                "contexto atual",
+                "estado atual",
+                "current context",
+                "recent objects",
+            ),
+            tags=(
+                "recente",
+                "último",
+                "ultima",
+                "ele",
+                "essas",
+                "context",
+                "recent",
+                "current",
+            ),
+            examples=(
+                "Leia o estado atual e os objetos recentes.",
+                "Use the current selection and recent object.",
+            ),
+            essential=True,
+            canonical_order=30,
         )
     )
     registry.register(
@@ -251,6 +325,30 @@ def build_default_registry() -> ToolRegistry:
                 "required": ["length", "width", "height"],
                 "additionalProperties": False,
             },
+            family="primitive",
+            aliases=(
+                "caixa",
+                "bloco retangular",
+                "cubo",
+                "box",
+                "rectangular block",
+                "cube",
+            ),
+            tags=(
+                "comprimento",
+                "largura",
+                "altura",
+                "length",
+                "width",
+                "height",
+                "criar",
+                "create",
+            ),
+            examples=(
+                "Crie uma caixa 10 x 20 x 30.",
+                "Create a box with length, width and height.",
+            ),
+            canonical_order=100,
         )
     )
     registry.register(
@@ -277,6 +375,31 @@ def build_default_registry() -> ToolRegistry:
                 "required": ["diameter", "height"],
                 "additionalProperties": False,
             },
+            family="primitive",
+            aliases=(
+                "cilindro",
+                "eixo vertical",
+                "pino",
+                "cylinder",
+                "vertical shaft",
+                "pin",
+            ),
+            tags=(
+                "diâmetro",
+                "diametro",
+                "raio",
+                "altura",
+                "diameter",
+                "radius",
+                "height",
+                "criar",
+                "create",
+            ),
+            examples=(
+                "Modele um eixo vertical de 16 mm de diâmetro.",
+                "Create a cylinder with diameter and height.",
+            ),
+            canonical_order=110,
         )
     )
     registry.register(
@@ -285,6 +408,28 @@ def build_default_registry() -> ToolRegistry:
             description="Recompute and report document and shape errors.",
             risk=ToolRisk.READ,
             input_schema=empty_object,
+            family="validation",
+            aliases=(
+                "validar",
+                "verificar documento",
+                "validate document",
+                "check model",
+            ),
+            tags=(
+                "erros",
+                "inválido",
+                "invalido",
+                "formas",
+                "recalcular",
+                "errors",
+                "invalid",
+                "recompute",
+            ),
+            examples=(
+                "Confira se há formas inválidas ou erros no modelo.",
+                "Validate and recompute the document.",
+            ),
+            canonical_order=200,
         )
     )
     registry.register(
@@ -293,6 +438,29 @@ def build_default_registry() -> ToolRegistry:
             description="Undo the last committed CAD transaction.",
             risk=ToolRisk.MODIFY,
             input_schema=empty_object,
+            family="history",
+            aliases=(
+                "desfazer",
+                "reverter",
+                "voltar alteração",
+                "undo",
+                "revert",
+                "rollback",
+            ),
+            tags=(
+                "última",
+                "ultima",
+                "alteração",
+                "alteracao",
+                "volte",
+                "last",
+                "change",
+            ),
+            examples=(
+                "Volte a última alteração que fizemos na peça.",
+                "Undo the last CAD transaction.",
+            ),
+            canonical_order=300,
         )
     )
     return registry

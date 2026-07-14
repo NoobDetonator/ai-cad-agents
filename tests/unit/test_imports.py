@@ -8,4 +8,5 @@ def test_freecad_facing_modules_import_without_freecad_installed() -> None:
     import_module("aicad.orchestration")
     import_module("aicad.core.tool_results")
     import_module("aicad.core.context")
+    import_module("aicad.core.tool_selector")
     import_module("aicad.evaluation.benchmark")

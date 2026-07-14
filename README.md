@@ -20,6 +20,8 @@ O primeiro protótipo usa o FreeCAD como motor de modelagem, visualização e do
 - Benchmark offline v1 com 30 pedidos em português e baseline reproduzível.
 - Contexto L0/L1 versionado com documento, seleção, objetos recentes e paginação.
 - Mudanças manuais relevantes alteram o token de estado e invalidam contexto antigo.
+- Seletor local PT/EN envia somente ferramentas relevantes em ordem estável à IA.
+- Benchmark do seletor: recall 20/20 e economia de 57,6% dos schemas no corpus v1.
 - Testes unitários, teste transacional no FreeCADCmd e fluxo MCP gráfico automatizado.
 - Instalação reproduzível e isolada para Windows.
 
@@ -91,8 +93,10 @@ o status mostra apenas o estado da credencial, nunca seu conteúdo.
 
 O modo começa desligado. Marcar a opção não faz uma chamada por si só, mas cada
 envio feito enquanto ela estiver marcada transmite o texto e um snapshot limitado
-e versionado do documento ativo para https://api.deepseek.com/chat/completions. O adaptador
-usa **deepseek-v4-flash** e uma rodada com no máximo uma chamada de ferramenta.
+e versionado do documento ativo para https://api.deepseek.com/chat/completions. Um
+seletor local escolhe até quatro ferramentas relevantes antes do envio, sem outra
+chamada ao modelo. O adaptador usa **deepseek-v4-flash** e uma rodada com no máximo
+uma chamada de ferramenta.
 
 Respostas de leitura podem usar o ToolRegistry imediatamente. Operações
 **modify**, como criar uma caixa, um cilindro ou desfazer, mostram intenção,
@@ -120,6 +124,17 @@ ferramenta são exatas, os 10 pedidos sem ferramenta são bloqueados com seguran
 e ainda não há esclarecimento ou rejeição explicativa. Esses números são a régua
 para contexto e seleção de ferramentas nas próximas etapas.
 
+Para medir a recuperação local usada pelo modo DeepSeek:
+
+```powershell
+.\scripts\benchmark_agent.ps1 -Strategy selector
+```
+
+No corpus v1, o seletor recupera a ferramenta esperada em 20/20 pedidos, não
+expõe mutações nos cinco pedidos perigosos, envia em média 2,83 das sete
+ferramentas e reduz em 57,6% os bytes de schemas. A medição é local e não acessa
+rede, chave ou FreeCAD.
+
 ## Segurança
 
 Chaves de API nunca são salvas no repositório. O painel grava e remove a
@@ -135,6 +150,12 @@ confirmação visual.
 `cad.get_context_snapshot` está no mesmo registro usado pelo chat e pelo MCP.
 Ela é somente leitura, limita objetos, suporta paginação e não expõe token da
 ponte, segredo ou caminho local.
+
+O seletor não cria permissões nem executa ferramentas. Ele apenas reduz o catálogo
+que a IA enxerga; nomes e argumentos retornados continuam sendo revalidados pelo
+`ToolRegistry`. Pedidos reconhecidos como tentativa de Python arbitrário, comando
+do sistema, macro, remoção de arquivos ou desvio de confirmação recebem somente
+ferramentas de leitura.
 
 ## Arquitetura
 
