@@ -52,6 +52,8 @@ Estas regras têm precedência sobre conveniências de implementação:
 - O lançador preserva corretamente caminhos do Windows que contêm espaços.
 - O painel inicia no modo local; a DeepSeek só participa quando a opção visível
   é marcada pelo usuário.
+- `scripts/iniciar_rapido.ps1` inicia uma sessão de desenvolvimento com aprovação
+  automática visível; `scripts/iniciar.ps1` mantém confirmação manual.
 
 ### Chat local determinístico
 
@@ -605,6 +607,7 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 - criar teste de reversibilidade;
 - não adicionar execução genérica de Python;
 - não solicitar chave antes da etapa de provedor.
+- usar o modo rápido somente em documentos descartáveis de desenvolvimento;
 
 ### Antes de concluir
 

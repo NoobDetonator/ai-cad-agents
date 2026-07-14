@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from html import escape
+import os
 from queue import Empty, Queue
 from threading import Event, Thread
 from typing import Any
@@ -96,6 +97,17 @@ def show_chat_panel() -> None:
     use_deepseek.setObjectName("AICadUseDeepSeek")
     use_deepseek.setChecked(False)
 
+    quick_test_mode = QtWidgets.QCheckBox(
+        "Modo de teste rápido (confirmação automática)",
+        container,
+    )
+    quick_test_mode.setObjectName("AICadQuickTestMode")
+    quick_test_mode.setToolTip(
+        "Aprova automaticamente mutações nesta sessão de desenvolvimento. "
+        "Transações, validação e undo continuam ativos."
+    )
+    quick_test_mode.setChecked(os.environ.get("AICAD_QUICK_TEST_MODE") == "1")
+
     history = QtWidgets.QTextBrowser(container)
     history.setObjectName("AICadHistory")
     history.setHtml(
@@ -160,6 +172,8 @@ def show_chat_panel() -> None:
                 else "ponte MCP indisponível"
             ),
         ]
+        if quick_test_mode.isChecked():
+            parts.append("TESTE RÁPIDO: confirmação automática")
         if not credential_vault_available[0]:
             parts.append("cofre de credenciais indisponível")
         elif credential_configured[0] is True:
@@ -267,6 +281,13 @@ def show_chat_panel() -> None:
         prompt.setEnabled(inputs_enabled)
         send.setEnabled(inputs_enabled)
         use_deepseek.setEnabled(inputs_enabled)
+        quick_test_mode.setEnabled(not waiting and not ai_busy[0])
+        if waiting and quick_test_mode.isChecked():
+            append_assistant(
+                "<b>Modo de teste rápido:</b> operação aprovada "
+                "automaticamente nesta sessão."
+            )
+            QtCore.QTimer.singleShot(0, confirm_pending)
 
     def set_ai_busy(busy: bool) -> None:
         ai_busy[0] = busy
@@ -276,6 +297,7 @@ def show_chat_panel() -> None:
         prompt.setEnabled(inputs_enabled)
         send.setEnabled(inputs_enabled)
         use_deepseek.setEnabled(inputs_enabled)
+        quick_test_mode.setEnabled(not busy and not pending)
         cancel_ai_button.setVisible(busy)
         cancel_ai_button.setEnabled(busy)
         refresh_security_status()
@@ -750,7 +772,28 @@ def show_chat_panel() -> None:
             append_assistant("Solicitação MCP cancelada sem alterar o documento.")
         show_next_remote_confirmation()
 
+    def toggle_quick_test_mode(enabled: bool) -> None:
+        refresh_security_status()
+        if enabled:
+            append_assistant(
+                "<b>Atenção:</b> modo de teste rápido ativado. Mutações locais, "
+                "da IA e do MCP serão aprovadas automaticamente nesta sessão; "
+                "transações, validação e undo permanecem obrigatórios."
+            )
+            if pending:
+                QtCore.QTimer.singleShot(0, confirm_pending)
+        else:
+            append_assistant(
+                "Modo de teste rápido desativado; confirmações visuais restauradas."
+            )
+
     refresh_security_status()
+    if quick_test_mode.isChecked():
+        append_assistant(
+            "<b>Atenção:</b> esta sessão iniciou em modo de teste rápido. "
+            "Mutações serão aprovadas automaticamente e continuarão "
+            "transacionais, validadas e reversíveis."
+        )
     try:
         controller = get_or_start_gui_bridge(
             queue_bridge_confirmation,
@@ -774,9 +817,11 @@ def show_chat_panel() -> None:
     configure_api_key.clicked.connect(configure_deepseek_api_key)
     remove_api_key.clicked.connect(remove_deepseek_api_key)
     use_deepseek.toggled.connect(refresh_security_status)
+    quick_test_mode.toggled.connect(toggle_quick_test_mode)
     layout.addWidget(status)
     layout.addWidget(credential_actions)
     layout.addWidget(use_deepseek)
+    layout.addWidget(quick_test_mode)
     layout.addWidget(history, 1)
     layout.addWidget(prompt)
     layout.addWidget(send)

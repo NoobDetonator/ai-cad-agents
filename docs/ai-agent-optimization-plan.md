@@ -25,6 +25,8 @@ como registrados em `docs/milestones.md`.
   planos compostos, seleção aguardada e captura visual.
 - **Extensão pós-M4:** engrenagem reta involuta exposta por ferramenta segura que
   reutiliza o gerador oficial já instalado no FreeCAD.
+- **Fluxo de desenvolvimento:** lançador rápido com aprovação automática visível,
+  limitada à sessão e sem atalho ao registro, transação ou rollback.
 - **IA atual:** até quatro rodadas, leituras retornam ao modelo e mutações encerram
   a descoberta sem execução automática.
 

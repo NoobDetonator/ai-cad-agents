@@ -366,6 +366,19 @@ uma única operação pendente volta a controlar os botões de confirmar e cance
 Não existe ferramenta de Python genérico e o parser não possui caminho para
 avaliar código.
 
+## Modo de teste rápido
+
+`scripts/iniciar_rapido.ps1` define `AICAD_QUICK_TEST_MODE=1` somente no processo
+filho do FreeCAD. O painel mostra uma caixa marcada e um aviso permanente no
+status. Quando uma mutação local, um plano da IA ou uma solicitação MCP entra na
+fila normal de confirmação, um timer Qt aciona o mesmo `confirm_pending` que o
+botão usaria.
+
+Esse modo não chama handlers diretamente, não altera o risco da ferramenta e não
+pode ser ativado pelo texto do modelo. `ApprovalGrant`, validação de estado,
+transação, pós-condição e rollback continuam no caminho. O lançador normal e a
+suíte automatizada forçam o modo desligado. A preferência não é persistida.
+
 ## Contrato de mutação
 
 Todas as mutações geométricas usam a mesma rotina transacional do adaptador:

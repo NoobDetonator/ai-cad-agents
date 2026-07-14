@@ -42,6 +42,18 @@ Abra o projeto com:
 
 O Workbench **AI CAD** aparecerá na lista e abrirá o painel à direita.
 
+Para desenvolvimento repetitivo, abra pelo lançador rápido:
+
+```powershell
+.\scripts\iniciar_rapido.ps1
+```
+
+Nesse lançador, **Modo de teste rápido** começa marcado e confirma automaticamente
+mutações locais, da IA e do MCP. O estado fica visível no painel e pode ser
+desmarcado a qualquer momento. O modo vale somente para a sessão; schemas,
+transações, validação, pós-condições e undo continuam obrigatórios. O lançador
+normal permanece com confirmação visual.
+
 ## Chat local
 
 O modo local não usa provedor. Exemplos:
@@ -157,6 +169,8 @@ média 2,97 das 26 ferramentas e economiza 88,3% dos bytes de schemas.
 - Chat e MCP passam pelo mesmo `ToolRegistry` e pelo mesmo adaptador.
 - O MCP usa TCP loopback autenticado e transfere execução para a thread Qt.
 - Toda mutação de IA ou MCP exige confirmação explícita.
+- A única exceção é o modo de desenvolvimento iniciado explicitamente por
+  `iniciar_rapido.ps1`; ele emite aprovações automáticas somente naquela sessão.
 - Não existe ferramenta de Python arbitrário, macro ou shell.
 - Chaves permanecem no cofre do Windows.
 - `.runtime`, `.tools`, `.downloads`, `.venv`, capturas, CAD gerado e segredos

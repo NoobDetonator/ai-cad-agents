@@ -49,6 +49,10 @@ Todas as mutações são chamadas estruturadas, confirmadas, transacionais,
 recalculadas e validadas. Texto do modelo nunca vira Python, macro ou shell. A
 chave DeepSeek só é solicitada para uso real e fica no cofre do Windows.
 
+Durante desenvolvimento, um lançador separado oferece confirmação automática
+visível e limitada à sessão para acelerar testes. Ele preserva toda a validação e
+reversibilidade e não muda o padrão seguro do lançador normal.
+
 ## Limites honestos do corte atual
 
 O M4 cobre modelagem mecânica básica de forma demonstrável, mas ainda não promete

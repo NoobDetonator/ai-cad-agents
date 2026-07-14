@@ -81,6 +81,10 @@ def inspect() -> None:
         remove_key = dock.findChild(QtWidgets.QPushButton, "AICadRemoveApiKey")
         cancel_ai = dock.findChild(QtWidgets.QPushButton, "AICadCancelAi")
         use_deepseek = dock.findChild(QtWidgets.QCheckBox, "AICadUseDeepSeek")
+        quick_test_mode = dock.findChild(
+            QtWidgets.QCheckBox,
+            "AICadQuickTestMode",
+        )
         assert all(
             widget is not None
             for widget in (
@@ -92,9 +96,11 @@ def inspect() -> None:
                 remove_key,
                 cancel_ai,
                 use_deepseek,
+                quick_test_mode,
             )
         )
         assert use_deepseek.isChecked() is False
+        assert quick_test_mode.isChecked() is False
         assert cancel_ai.isVisible() is False
         session = default_session_store().load()
         bridge_client = TcpBridgeClient(session.endpoint)
@@ -198,6 +204,19 @@ def inspect() -> None:
         wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 0)
         assert "foi desfeita" in history.toPlainText()
 
+        quick_test_mode.setChecked(True)
+        prompt.setPlainText("placa 25 x 15 x 3 nome QuickLocalPlate")
+        send.click()
+        wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 1)
+        assert App.ActiveDocument.Objects[0].Label == "QuickLocalPlate"
+        assert "aprovada automaticamente" in history.toPlainText()
+        quick_test_mode.setChecked(False)
+        prompt.setPlainText("desfazer")
+        send.click()
+        wait_for_ui(apply_button.isVisible)
+        apply_button.click()
+        wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 0)
+
         mcp_box_request = BridgeRequest(
             request_id=uuid4(),
             tool_name="cad.create_box",
@@ -230,6 +249,32 @@ def inspect() -> None:
         send.click()
         QtWidgets.QApplication.processEvents()
         assert apply_button.isVisible()
+        apply_button.click()
+        wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 0)
+
+        quick_test_mode.setChecked(True)
+        quick_mcp_request = BridgeRequest(
+            request_id=uuid4(),
+            tool_name="cad.create_cylinder",
+            arguments={
+                "diameter": 6,
+                "height": 4,
+                "name": "QuickMcpCylinder",
+            },
+            source="mcp",
+        )
+        quick_pending = run_bridge_request(bridge_client, quick_mcp_request)
+        assert quick_pending.status is BridgeResponseStatus.PENDING_CONFIRMATION
+        wait_for_ui(
+            lambda: len(App.ActiveDocument.Objects) == 1
+            and App.ActiveDocument.Objects[0].Label == "QuickMcpCylinder"
+        )
+        quick_completed = run_bridge_request(bridge_client, quick_mcp_request)
+        assert quick_completed.status is BridgeResponseStatus.COMPLETED
+        quick_test_mode.setChecked(False)
+        prompt.setPlainText("desfazer")
+        send.click()
+        wait_for_ui(apply_button.isVisible)
         apply_button.click()
         wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 0)
 
