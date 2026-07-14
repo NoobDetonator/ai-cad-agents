@@ -158,7 +158,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
     return (
         _spec(
             "cad.get_object_details",
-            "Read bounded properties, placement, shape and stable edge references.",
+            "Read one object's properties, placement, shape summary and the stable "
+            "edge_reference values required by cad.fillet_edges and "
+            "cad.chamfer_edges.",
             ToolRisk.READ,
             _object_schema({"object": REFERENCE}, ("object",)),
             family="context",
@@ -170,7 +172,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.measure_object",
-            "Measure bounds, center, volume, area and principal dimensions.",
+            "Measure one object in millimeters: bounding box, center, volume, "
+            "area and principal dimensions. Use it to verify results after "
+            "a mutation.",
             ToolRisk.READ,
             _object_schema({"object": REFERENCE}, ("object",)),
             family="measurement",
@@ -182,7 +186,7 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.get_dependencies",
-            "Inspect upstream and downstream document relationships.",
+            "Inspect which objects one object depends on and which objects use it.",
             ToolRisk.READ,
             _object_schema({"object": REFERENCE}, ("object",)),
             family="context",
@@ -194,7 +198,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.resolve_object",
-            "Resolve an internal name, label, alias or current GUI selection.",
+            "Resolve a name or label to one object. An empty reference resolves "
+            "the current GUI selection and may return awaiting_selection; "
+            "ask the user to select exactly one object in FreeCAD.",
             ToolRisk.READ,
             _object_schema({"reference": REFERENCE}, ()),
             family="context",
@@ -206,7 +212,8 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.get_editable_parameters",
-            "List safe editable numeric parameters and their current values.",
+            "List the numeric parameters accepted by cad.set_parameter for one "
+            "object, with current values in millimeters or degrees.",
             ToolRisk.READ,
             _object_schema({"object": REFERENCE}, ("object",)),
             family="context",
@@ -218,7 +225,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.capture_view",
-            "Capture the active 3D view into the bounded local visual cache.",
+            "Capture the active 3D view as PNG. The result contains a capture_id "
+            "and a resource_uri (aicad://view/{capture_id}) to fetch the "
+            "image as an MCP resource.",
             ToolRisk.READ,
             _object_schema(
                 {
@@ -236,7 +245,8 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.rename_object",
-            "Rename one explicitly resolved object in a reversible transaction.",
+            "Rename one object. The new name must start with a letter and use "
+            "only letters, digits, underscore or hyphen.",
             ToolRisk.MODIFY,
             _object_schema({"object": REFERENCE, "name": NAME}, ("object", "name")),
             family="edit",
@@ -248,7 +258,8 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.set_parameter",
-            "Set one allowlisted numeric parameter and validate the resulting shape.",
+            "Set one numeric parameter listed by cad.get_editable_parameters "
+            "(millimeters or degrees) and validate the resulting shape.",
             ToolRisk.MODIFY,
             _object_schema(
                 {"object": REFERENCE, "parameter": REFERENCE, "value": NUMBER},
@@ -263,7 +274,10 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.transform_object",
-            "Move and rotate an object with explicit millimeter and degree values.",
+            "Set an object's ABSOLUTE placement: x/y/z in millimeters replace "
+            "the position (omitted axes keep their value); any of roll/pitch/"
+            "yaw in degrees replaces the whole rotation. Values are not "
+            "relative deltas; read the current placement first.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -286,7 +300,8 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_plate",
-            "Create a parametric rectangular plate in one reversible transaction.",
+            "Create a rectangular plate at the global origin: length along X, "
+            "width along Y, thickness along Z, in millimeters.",
             ToolRisk.MODIFY,
             _object_schema(
                 {"length": POSITIVE, "width": POSITIVE, "thickness": POSITIVE, "name": NAME},
@@ -301,7 +316,10 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_through_hole",
-            "Cut one explicit through hole from a solid and retain its source link.",
+            "Cut one vertical through hole (along Z, through the full solid) at "
+            "GLOBAL document coordinates x, y in millimeters. Diameter in "
+            "millimeters. The result is a new derived object linked to the "
+            "source.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -322,7 +340,10 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_rectangular_hole_pattern",
-            "Cut a bounded rectangular grid of through holes from one solid.",
+            "Cut a grid of vertical through holes: the first hole is at GLOBAL "
+            "coordinates origin_x, origin_y and the grid extends by "
+            "spacing_x along +X per column and spacing_y along +Y per row, "
+            "all in millimeters. Maximum 64 holes.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -356,7 +377,10 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_circular_hole_pattern",
-            "Cut a bounded circular pattern of through holes from one solid.",
+            "Cut vertical through holes equally spaced on a circle CENTERED ON "
+            "THE OBJECT'S bounding-box center, with pitch_diameter in "
+            "millimeters and start_angle in degrees from the +X axis. "
+            "Maximum 64 holes.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -378,7 +402,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_rectangular_sketch",
-            "Create a closed rectangular sketch on the XY plane.",
+            "Create a closed rectangular sketch on the global XY plane with one "
+            "corner at the origin, spanning width along X and height along "
+            "Y in millimeters. The sketch is closed but not constrained.",
             ToolRisk.MODIFY,
             _object_schema({"width": POSITIVE, "height": POSITIVE, "name": NAME}, ("width", "height")),
             family="sketch",
@@ -390,7 +416,8 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.pad_sketch",
-            "Pad one explicit closed rectangular sketch into a validated solid.",
+            "Extrude one closed sketch along +Z by length millimeters into a "
+            "validated solid linked to the sketch.",
             ToolRisk.MODIFY,
             _object_schema({"sketch": REFERENCE, "length": POSITIVE, "name": NAME}, ("sketch", "length")),
             family="feature",
@@ -402,7 +429,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.boolean_operation",
-            "Apply fuse, cut or common to two explicit solid operands.",
+            "Combine two solids into a new derived object: fuse is union, cut is "
+            "left minus right, common is intersection. Source objects are "
+            "kept and linked.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -422,7 +451,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.fillet_edges",
-            "Fillet one edge selected by a stable geometric reference.",
+            "Round one edge with radius in millimeters. Obtain edge_reference "
+            "from cad.get_object_details; ambiguous or stale references "
+            "fail instead of guessing.",
             ToolRisk.MODIFY,
             _object_schema(
                 {"object": REFERENCE, "radius": POSITIVE, "edge_reference": REFERENCE, "name": NAME},
@@ -437,7 +468,9 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.chamfer_edges",
-            "Chamfer one edge selected by a stable geometric reference.",
+            "Bevel one edge with size in millimeters. Obtain edge_reference "
+            "from cad.get_object_details; ambiguous or stale references "
+            "fail instead of guessing.",
             ToolRisk.MODIFY,
             _object_schema(
                 {"object": REFERENCE, "size": POSITIVE, "edge_reference": REFERENCE, "name": NAME},
@@ -452,7 +485,11 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_spur_gear",
-            "Create a solid external involute spur gear with an optional bore.",
+            "Create an external involute spur gear centered at the global "
+            "origin, extruded along +Z by thickness millimeters. Pitch "
+            "diameter = module * teeth (mm); mesh two gears by spacing "
+            "their centers at the sum of pitch radii. bore_diameter 0 "
+            "means solid; pressure_angle is in degrees.",
             ToolRisk.MODIFY,
             _object_schema(
                 {

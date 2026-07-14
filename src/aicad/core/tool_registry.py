@@ -260,7 +260,9 @@ def build_default_registry() -> ToolRegistry:
             name="cad.get_context_snapshot",
             description=(
                 "Read a bounded, versioned snapshot of the active document, "
-                "selection and recently changed objects."
+                "selection and recently changed objects. Call it first: its "
+                "state_token is required to detect external changes and to "
+                "submit plans."
             ),
             risk=ToolRisk.READ,
             input_schema={
@@ -311,7 +313,10 @@ def build_default_registry() -> ToolRegistry:
     registry.register(
         ToolSpec(
             name="cad.create_box",
-            description="Create a parametric box in a reversible transaction.",
+            description=(
+                "Create a parametric box at the global origin: length along "
+                "X, width along Y, height along Z, in millimeters."
+            ),
             risk=ToolRisk.MODIFY,
             input_schema={
                 "type": "object",
@@ -359,9 +364,9 @@ def build_default_registry() -> ToolRegistry:
         ToolSpec(
             name="cad.create_cylinder",
             description=(
-                "Create a vertical parametric cylinder from its diameter and "
-                "height in millimeters, aligned with the Z axis, in a "
-                "reversible transaction."
+                "Create a vertical parametric cylinder based at the global "
+                "origin, aligned with the Z axis, from its diameter and "
+                "height in millimeters."
             ),
             risk=ToolRisk.MODIFY,
             input_schema={

@@ -616,15 +616,21 @@ Entregue:
   furada); falta apenas exercitar a perna final de exportação STL/STEP na
   mesma sessão de agente.
 
+- revisão das descrições das 30 ferramentas do ponto de vista do agente
+  externo: unidades explícitas (mm/graus), sistema de coordenadas global,
+  posicionamento na origem, semântica ABSOLUTA de `cad.transform_object`,
+  centro do padrão circular no bounding box do objeto, origem/direção da
+  grade retangular, de onde obter `edge_reference` e como engrenar duas
+  engrenagens pela soma dos raios primitivos; o benchmark do seletor manteve
+  recall 30/30 após a mudança;
+- docstrings do servidor MCP orientam o agente: catálogo primeiro, leituras
+  por `execute_cad_read_tool`, mutações por `request_cad_tool` com polling
+  pelo mesmo `request_id`, aviso ao usuário para decidir no painel e
+  preferência por `submit_cad_plan` com rollback compensatório.
+
 Pendente:
 
-1. Revisão das descrições, exemplos e mensagens de erro de todas as
-   ferramentas do ponto de vista de um agente externo: o texto da spec é a
-   única documentação que o agente vê.
-2. Mensagens de `pending_confirmation` e de erro da ponte orientam o agente
-   sobre o que dizer ao usuário (ex.: "aguarde a confirmação no painel do
-   FreeCAD").
-3. Fechar a perna de exportação do teste de ponta a ponta: o agente externo
+1. Fechar a perna de exportação do teste de ponta a ponta: o agente externo
    já modelou uma montagem real com confirmações no painel; falta o mesmo
    fluxo terminar em um STL/STEP no disco solicitado pelo usuário.
 

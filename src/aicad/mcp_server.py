@@ -39,7 +39,12 @@ def health() -> dict[str, str]:
 
 @mcp.tool()
 def available_cad_tools() -> list[dict[str, object]]:
-    """List the deterministic CAD tools from the shared runtime registry."""
+    """List the CAD tool catalog: names, schemas, risk and usage examples.
+
+    Call this first. Tools with risk "read" run immediately through
+    execute_cad_read_tool; tools with risk "modify" or "export" go through
+    request_cad_tool and wait for the user's visual confirmation in FreeCAD.
+    """
     return [asdict(spec) for spec in tool_registry.list_specs()]
 
 
@@ -81,7 +86,14 @@ def request_cad_tool(
     arguments: dict[str, object],
     request_id: str | None = None,
 ) -> dict[str, object]:
-    """Request any registered CAD tool through the authenticated GUI bridge."""
+    """Request any registered CAD tool through the authenticated GUI bridge.
+
+    Mutations and exports return status "pending_confirmation": tell the
+    user to approve or reject the operation in the FreeCAD panel, then poll
+    by repeating this call with the SAME request_id until the status is
+    terminal (completed, rejected, failed or expired). Requests expire if
+    the user does not decide in time.
+    """
 
     request = _build_bridge_request(name, arguments, request_id)
     return _send_bridge_request(request).model_dump(mode="json")
@@ -89,7 +101,12 @@ def request_cad_tool(
 
 @mcp.tool()
 def execute_cad_read_tool(name: str, arguments: dict[str, object]) -> object:
-    """Execute a read-only CAD tool through the active FreeCAD GUI bridge."""
+    """Execute a risk "read" CAD tool immediately, without confirmation.
+
+    Requires the FreeCAD GUI open with the AI CAD workbench active. Start
+    with cad.get_context_snapshot to learn the document state, then read
+    details and measures before proposing mutations.
+    """
     spec = tool_registry.get_spec(name)
     if spec.risk is not ToolRisk.READ:
         raise PermissionError(
@@ -116,7 +133,13 @@ def submit_cad_plan(
     plan_id: str | None = None,
     request_id: str | None = None,
 ) -> dict[str, object]:
-    """Freeze and submit a 2-8 step mutation plan for one visual approval."""
+    """Freeze and submit a 2-8 step mutation plan for one visual approval.
+
+    Prefer this over sequential request_cad_tool calls: the user approves
+    the whole plan once in the FreeCAD panel, each step is transactional,
+    and a mid-plan failure triggers a verified compensating rollback. Track
+    progress with get_cad_plan_status using the returned plan_id.
+    """
 
     if not 2 <= len(calls) <= 8:
         raise ValueError("A CAD plan requires between two and eight calls.")
