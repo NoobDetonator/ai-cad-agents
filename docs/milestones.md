@@ -198,7 +198,7 @@ flowchart LR
 | M4 — Modelagem mecânica básica | Concluído | 18 capacidades mecânicas, receitas, seleção e visão |
 | M5 — Histórico e auditoria | Concluído | Ações, planos, aprovações, transações e exportação auditáveis |
 | M6 — MCP como produto | Em andamento | Exportação STL/STEP, validação básica e integração documentada com Claude Code, Codex e Cursor |
-| M7 — Cobertura de modelagem | Planejado | Sketch constrangido, revolução, sweep, loft, receitas novas e feedback visual pós-mutação |
+| M7 — Cobertura de modelagem | Em andamento | Documentos, revolução, loft, helicoidal, rosca, furos com rebaixo/escareado, sweep, sketch constrangido e receitas novas |
 | M8 — Lançamento público | Planejado | Instalação simples, docs de usuário, demo gravada e repositório público |
 
 ## 6. M0 — Fundação — concluído
@@ -702,18 +702,44 @@ Entregue (catálogo com 39 ferramentas):
   antes do FreeCAD; smoke M7 real cobre sucesso, falha de perfil no eixo e
   reversibilidade.
 
-### M7.3 — Próximas capacidades
+### M7.3 — Furos recessados, sweep, sketch constrangido e receitas — concluído
+
+Entregue (catálogo com 43 ferramentas):
+
+- `cad.create_counterbore_hole`: furo passante com rebaixo cilíndrico plano na
+  face superior, para parafuso allen; recusa rebaixo mais fundo que o sólido e
+  diâmetro de rebaixo menor ou igual ao do furo;
+- `cad.create_countersunk_hole`: furo passante com escareamento cônico na face
+  superior, para cabeça chata; ângulo total de 60° a 120° (padrão 90°) e
+  profundidade derivada da geometria;
+- `cad.create_sweep_path`: trajetória aberta de 2 a 16 pontos `x,y,z` com arcos
+  tangentes opcionais nos cantos (`corner_radius`); os arcos são calculados sem
+  FreeCAD e testados offline;
+- `cad.sweep_sketch`: varre um perfil fechado ao longo de uma trajetória via
+  `makePipeShell`, orientando o perfil pelo primeiro segmento; bom para tubos
+  e dutos;
+- `cad.create_rectangular_sketch` e `cad.create_circular_sketch` agora aplicam
+  restrições geométricas e dimensionais e retornam `fully_constrained`, fechando
+  a limitação conhecida do sketch não constrangido;
+- receitas `stepped_shaft` (eixo escalonado de dois degraus) e `flat_pulley`
+  (polia plana com flanges e furo de eixo), com prompts `model_stepped_shaft` e
+  `model_flat_pulley`; a polia usa 8 chamadas, no limite do plano composto;
+- o adaptador FreeCAD foi dividido por domínio em `src/aicad/adapters/freecad/`
+  (base, context, edits, sketches, features, sweeps, mechanical, documents,
+  export); `freecad_adapter.py` passa a compor os mixins, e o caminho de import
+  público permanece `aicad.adapters.freecad_adapter`;
+- corpus M4 cresce para 38 casos (recall 38/38) e o smoke M7 real cobre rebaixo,
+  escareado (com volumes conferidos por fórmula), sketch constrangido, trajetória
+  em L e sweep de tubo com undo.
+
+### M7.4 — Próximas capacidades
 
 Ordem sugerida, por valor para o nicho:
 
-1. furos com rebaixo e escareado (parafusos reais);
-2. fase de dentes na engrenagem (alinhamento de engrenamento sem transform
+1. fase de dentes na engrenagem (alinhamento de engrenamento sem transform
    manual);
-3. sweep controlado (depende de uma ferramenta de trajetória: linha/arco);
-4. rosca interna (furo roscado);
-5. sketch retangular totalmente constrangido (fecha limitação conhecida);
-6. novas receitas sobre as capacidades acima (ex.: polia, eixo escalonado);
-7. espelhamento e padrão linear/polar de features.
+2. rosca interna (furo roscado);
+3. espelhamento e padrão linear/polar de features.
 
 Critério de aceite: o corpus de benchmark cresce junto com o catálogo e o
 seletor mantém recall; cada ferramenta nova tem teste de falha e de undo, não

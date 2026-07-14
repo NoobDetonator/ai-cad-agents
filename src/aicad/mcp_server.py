@@ -320,6 +320,20 @@ def model_rectangular_pad_prompt() -> str:
     return _recipe_prompt("rectangular_pad")
 
 
+@mcp.prompt(name="model_stepped_shaft")
+def model_stepped_shaft_prompt() -> str:
+    """Guide an agent through the trusted stepped shaft recipe."""
+
+    return _recipe_prompt("stepped_shaft")
+
+
+@mcp.prompt(name="model_flat_pulley")
+def model_flat_pulley_prompt() -> str:
+    """Guide an agent through the trusted flat pulley recipe."""
+
+    return _recipe_prompt("flat_pulley")
+
+
 def main() -> None:
     mcp.run()
 

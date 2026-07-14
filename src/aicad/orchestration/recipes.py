@@ -56,6 +56,31 @@ class RectangularPadParameters(_RecipeParameters):
     result_name: str = Field(default="RectangularPad", pattern=r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 
 
+class SteppedShaftParameters(_RecipeParameters):
+    first_diameter: float = Field(gt=0, le=10000)
+    first_length: float = Field(gt=0, le=10000)
+    second_diameter: float = Field(gt=0, le=10000)
+    second_length: float = Field(gt=0, le=10000)
+    result_name: str = Field(default="SteppedShaft", pattern=r"^[A-Za-z][A-Za-z0-9_-]{0,47}$")
+
+
+class FlatPulleyParameters(_RecipeParameters):
+    flange_diameter: float = Field(gt=0, le=10000)
+    flange_thickness: float = Field(gt=0, le=1000)
+    body_diameter: float = Field(gt=0, le=10000)
+    body_width: float = Field(gt=0, le=10000)
+    bore_diameter: float = Field(gt=0, le=1000)
+    result_name: str = Field(default="Pulley", pattern=r"^[A-Za-z][A-Za-z0-9_-]{0,47}$")
+
+    @model_validator(mode="after")
+    def validate_layout(self) -> FlatPulleyParameters:
+        if self.body_diameter >= self.flange_diameter:
+            raise ValueError("The pulley body must be smaller than the flanges.")
+        if self.bore_diameter >= self.body_diameter:
+            raise ValueError("The bore does not fit inside the pulley body.")
+        return self
+
+
 RecipeCompiler = Callable[[BaseModel], tuple[tuple[str, dict[str, JsonValue]], ...]]
 
 
@@ -154,6 +179,117 @@ def _rectangular_pad(parameters: BaseModel):
     )
 
 
+def _stepped_shaft(parameters: BaseModel):
+    checked = SteppedShaftParameters.model_validate(parameters)
+    first_name = f"{checked.result_name}StepA"
+    second_name = f"{checked.result_name}StepB"
+    return (
+        (
+            "cad.create_cylinder",
+            {
+                "diameter": checked.first_diameter,
+                "height": checked.first_length,
+                "name": first_name,
+            },
+        ),
+        (
+            "cad.create_cylinder",
+            {
+                "diameter": checked.second_diameter,
+                "height": checked.second_length,
+                "name": second_name,
+            },
+        ),
+        (
+            "cad.transform_object",
+            {"object": second_name, "z": checked.first_length},
+        ),
+        (
+            "cad.boolean_operation",
+            {
+                "left": first_name,
+                "right": second_name,
+                "operation": "fuse",
+                "name": checked.result_name,
+            },
+        ),
+    )
+
+
+def _flat_pulley(parameters: BaseModel):
+    checked = FlatPulleyParameters.model_validate(parameters)
+    flange_a = f"{checked.result_name}FlangeA"
+    body = f"{checked.result_name}Body"
+    flange_b = f"{checked.result_name}FlangeB"
+    half = f"{checked.result_name}Half"
+    blank = f"{checked.result_name}Blank"
+    return (
+        (
+            "cad.create_cylinder",
+            {
+                "diameter": checked.flange_diameter,
+                "height": checked.flange_thickness,
+                "name": flange_a,
+            },
+        ),
+        (
+            "cad.create_cylinder",
+            {
+                "diameter": checked.body_diameter,
+                "height": checked.body_width,
+                "name": body,
+            },
+        ),
+        (
+            "cad.transform_object",
+            {"object": body, "z": checked.flange_thickness},
+        ),
+        (
+            "cad.create_cylinder",
+            {
+                "diameter": checked.flange_diameter,
+                "height": checked.flange_thickness,
+                "name": flange_b,
+            },
+        ),
+        (
+            "cad.transform_object",
+            {
+                "object": flange_b,
+                "z": checked.flange_thickness + checked.body_width,
+            },
+        ),
+        (
+            "cad.boolean_operation",
+            {
+                "left": flange_a,
+                "right": body,
+                "operation": "fuse",
+                "name": half,
+            },
+        ),
+        (
+            "cad.boolean_operation",
+            {
+                "left": half,
+                "right": flange_b,
+                "operation": "fuse",
+                "name": blank,
+            },
+        ),
+        (
+            "cad.create_through_hole",
+            {
+                "object": blank,
+                "diameter": checked.bore_diameter,
+                "x": 0,
+                "y": 0,
+                "name": checked.result_name,
+            },
+        ),
+    )
+
+
 _RECIPES = (
     RecipeDefinition(
         recipe_id="mounting_plate",
@@ -178,6 +314,36 @@ _RECIPES = (
         steps=("Criar o sketch retangular.", "Extrudar o perfil pelo comprimento."),
         parameter_model=RectangularPadParameters,
         compiler=_rectangular_pad,
+    ),
+    RecipeDefinition(
+        recipe_id="stepped_shaft",
+        title="Eixo escalonado de dois degraus",
+        description="Cria dois cilindros coaxiais empilhados e os funde em um eixo.",
+        steps=(
+            "Criar o primeiro degrau do eixo.",
+            "Criar o segundo degrau do eixo.",
+            "Empilhar o segundo degrau sobre o primeiro.",
+            "Fundir os dois degraus em um eixo único.",
+        ),
+        parameter_model=SteppedShaftParameters,
+        compiler=_stepped_shaft,
+    ),
+    RecipeDefinition(
+        recipe_id="flat_pulley",
+        title="Polia plana com flanges",
+        description=(
+            "Cria o corpo e duas flanges coaxiais, funde tudo e fura o eixo "
+            "central."
+        ),
+        steps=(
+            "Criar a flange inferior.",
+            "Criar e posicionar o corpo da polia.",
+            "Criar e posicionar a flange superior.",
+            "Fundir flanges e corpo.",
+            "Furar o eixo central.",
+        ),
+        parameter_model=FlatPulleyParameters,
+        compiler=_flat_pulley,
     ),
 )
 

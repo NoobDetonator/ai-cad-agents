@@ -19,13 +19,16 @@ chat local e um modo DeepSeek standalone opcional, ambos em manutenção.
 Os marcos M0 a M5 estão implementados. O corte funcional atual oferece:
 
 - Workbench **AI CAD** e painel lateral testados no FreeCAD 1.1.1;
-- um único `ToolRegistry`, com 39 ferramentas, usado pelo chat e pelo MCP;
+- um único `ToolRegistry`, com 43 ferramentas, usado pelo chat e pelo MCP;
 - chat local determinístico e modo DeepSeek opcional;
 - leituras de documento, seleção, contexto, objetos, medidas, dependências,
   parâmetros editáveis e imagem da vista;
-- criação e edição de primitivas, placas, furos, padrões, sketch retangular, pad,
-  booleanas, filetes e chanfros;
-- três receitas confiáveis: placa de fixação, flange e pad retangular;
+- criação e edição de primitivas, placas, furos, padrões, furos com rebaixo e
+  escareado, sketch retangular e circular constrangidos, pad, booleanas, filetes
+  e chanfros;
+- trajetórias linha/arco e varredura de perfil (sweep) ao longo delas;
+- cinco receitas confiáveis: placa de fixação, flange, pad retangular, eixo
+  escalonado e polia plana;
 - planos de uma ou várias mutações com confirmação visual, validação e rollback;
 - MCP com ferramentas, receitas, prompts e recursos derivados dos mesmos serviços;
 - nenhum caminho para executar Python, macro, shell ou texto gerado como código.
@@ -131,6 +134,12 @@ Documentos e modelagem avançada (M7):
   destino `.FCStd` explícito no primeiro salvamento;
 - `cad.create_circular_sketch`, `cad.revolve_sketch` e `cad.loft_sketches`
   cobrem peças torneadas e transições entre perfis;
+- `cad.create_counterbore_hole` e `cad.create_countersunk_hole` abrem furos
+  com rebaixo cilíndrico (parafuso allen) e escareado cônico (cabeça chata);
+- `cad.create_sweep_path` cria trajetórias abertas de linhas e arcos e
+  `cad.sweep_sketch` varre um perfil fechado ao longo delas (tubos, dutos);
+- `cad.create_rectangular_sketch` e `cad.create_circular_sketch` agora geram
+  sketches totalmente constrangidos;
 - `cad.create_helical_gear` gera engrenagem helicoidal com o perfil involuto
   oficial e torção controlada;
 - `cad.create_external_thread` gera rosca externa estilo ISO 60° para
@@ -153,7 +162,9 @@ O `RecipeCatalog` compila parâmetros tipados somente para chamadas registradas:
 
 - `mounting_plate`: placa e padrão retangular de furos;
 - `flange`: cilindro e padrão circular de furos;
-- `rectangular_pad`: sketch retangular e pad.
+- `rectangular_pad`: sketch retangular e pad;
+- `stepped_shaft`: dois cilindros coaxiais empilhados e fundidos num eixo;
+- `flat_pulley`: corpo e duas flanges fundidos, com furo de eixo.
 
 O MCP publica o catálogo com `available_cad_tools` e `available_cad_recipes`.
 `submit_cad_recipe` cria um plano revisável; `submit_cad_plan`,
@@ -164,7 +175,8 @@ Também são publicados:
 
 - recurso `aicad://recipes`;
 - recurso PNG `aicad://view/{capture_id}`;
-- prompts `model_mounting_plate`, `model_flange` e `model_rectangular_pad`.
+- prompts `model_mounting_plate`, `model_flange`, `model_rectangular_pad`,
+  `model_stepped_shaft` e `model_flat_pulley`.
 
 Capturas são feitas somente sob demanda, limitadas a PNG de 8 MiB, guardadas no
 cache local do usuário e identificadas por ID opaco. Caminhos locais não chegam
@@ -196,8 +208,8 @@ O benchmark offline não usa rede, chave ou FreeCAD:
 .\scripts\benchmark_agent.ps1 -Strategy selector
 ```
 
-No corpus mecânico M4, o seletor recupera 30/30 ferramentas esperadas. No corpus
-geral, envia um subconjunto pequeno das 39 ferramentas e economiza 91,8% dos bytes de
+No corpus mecânico M4, o seletor recupera 38/38 ferramentas esperadas. No corpus
+geral, envia um subconjunto pequeno das 43 ferramentas e economiza 95,5% dos bytes de
 schemas.
 
 ## Segurança

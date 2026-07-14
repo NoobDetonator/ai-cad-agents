@@ -181,6 +181,123 @@ try:
     undone = registry.execute("cad.undo", confirmed=True)
     assert undone["undone"] is True
     assert fingerprint() == before_thread
+
+    # --- M7.3: counterbore, countersink, sweep and constrained sketches ---
+
+    registry.execute(
+        "cad.create_plate",
+        {"length": 40, "width": 40, "thickness": 10, "name": "PlacaRebaixo"},
+        confirmed=True,
+    )
+    counterbore = registry.execute(
+        "cad.create_counterbore_hole",
+        {
+            "object": "PlacaRebaixo",
+            "diameter": 6,
+            "x": 20,
+            "y": 20,
+            "counterbore_diameter": 11,
+            "counterbore_depth": 4,
+            "name": "FuroRebaixo",
+        },
+        confirmed=True,
+    )
+    assert counterbore["counterbore_depth_mm"] == 4
+    expected_counterbore = (
+        40 * 40 * 10
+        - math.pi * 3**2 * 10
+        - math.pi * (5.5**2 - 3**2) * 4
+    )
+    measured = registry.execute("cad.measure_object", {"object": "FuroRebaixo"})
+    assert (
+        abs(measured["volume_mm3"] - expected_counterbore) / expected_counterbore
+        < 0.01
+    )
+
+    before_too_deep = fingerprint()
+    too_deep_refused = False
+    try:
+        registry.execute(
+            "cad.create_counterbore_hole",
+            {
+                "object": "FuroRebaixo",
+                "diameter": 6,
+                "x": 10,
+                "y": 10,
+                "counterbore_diameter": 11,
+                "counterbore_depth": 12,
+                "name": "RebaixoInvalido",
+            },
+            confirmed=True,
+        )
+    except ValueError:
+        too_deep_refused = True
+    assert too_deep_refused
+    assert fingerprint() == before_too_deep
+
+    registry.execute(
+        "cad.create_plate",
+        {"length": 40, "width": 40, "thickness": 10, "name": "PlacaEscareada"},
+        confirmed=True,
+    )
+    countersunk = registry.execute(
+        "cad.create_countersunk_hole",
+        {
+            "object": "PlacaEscareada",
+            "diameter": 6,
+            "x": 20,
+            "y": 20,
+            "countersink_diameter": 12,
+            "name": "FuroEscareado",
+        },
+        confirmed=True,
+    )
+    assert abs(countersunk["countersink_depth_mm"] - 3) < 1e-9
+    expected_countersunk = 40 * 40 * 10 - math.pi * 3**2 * 10 - 36 * math.pi
+    measured = registry.execute("cad.measure_object", {"object": "FuroEscareado"})
+    assert (
+        abs(measured["volume_mm3"] - expected_countersunk) / expected_countersunk
+        < 0.01
+    )
+
+    rectangle = registry.execute(
+        "cad.create_rectangular_sketch",
+        {"width": 30, "height": 20, "name": "PerfilConstrangido"},
+        confirmed=True,
+    )
+    assert rectangle["closed"] is True
+    assert rectangle["fully_constrained"] is True
+
+    profile = registry.execute(
+        "cad.create_circular_sketch",
+        {"diameter": 10, "name": "PerfilTubo"},
+        confirmed=True,
+    )
+    assert profile["fully_constrained"] is True
+    path = registry.execute(
+        "cad.create_sweep_path",
+        {
+            "points": ["0,0,0", "0,0,30", "30,0,30"],
+            "corner_radius": 10,
+            "name": "TrajetoriaL",
+        },
+        confirmed=True,
+    )
+    expected_length = 20 + 20 + math.pi * 10 / 2
+    assert abs(path["length_mm"] - expected_length) < 0.01
+
+    before_tube = fingerprint()
+    swept = registry.execute(
+        "cad.sweep_sketch",
+        {"profile": "PerfilTubo", "path": "TrajetoriaL", "name": "TuboL"},
+        confirmed=True,
+    )
+    expected_tube = math.pi * 5**2 * expected_length
+    assert abs(swept["volume_mm3"] - expected_tube) / expected_tube < 0.02
+    assert registry.execute("cad.validate_document")["valid"] is True
+    undone = registry.execute("cad.undo", confirmed=True)
+    assert undone["undone"] is True
+    assert fingerprint() == before_tube
 finally:
     for document_name in list(App.listDocuments()):
         App.closeDocument(document_name)

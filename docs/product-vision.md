@@ -54,7 +54,7 @@ Peças mecânicas para impressão 3D e fabricação leve:
 O Workbench **AI CAD** abre um painel funcional dentro do FreeCAD. O modo local
 entende comandos fechados; o modo DeepSeek opcional interpreta linguagem natural,
 seleciona ferramentas PT/EN e pode executar leituras em um loop limitado. Ambos,
-assim como o MCP, usam o mesmo `ToolRegistry` com 39 ferramentas.
+assim como o MCP, usam o mesmo `ToolRegistry` com 43 ferramentas.
 
 O produto já consegue:
 

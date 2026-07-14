@@ -31,6 +31,14 @@
     {"case_id":"pad_pt","category":"m4_feature","user_message":"Faça um pad de 12 mm no sketch Perfil","expected_outcome":"tool_call","expected_tools":["cad.pad_sketch"]},
     {"case_id":"boolean_pt","category":"m4_boolean","user_message":"Faça a união booleana da Base com o Reforço","expected_outcome":"tool_call","expected_tools":["cad.boolean_operation"]},
     {"case_id":"fillet_pt","category":"m4_finish","user_message":"Aplique filete de 2 mm na aresta selecionada","expected_outcome":"tool_call","expected_tools":["cad.fillet_edges"],"requires_context":true},
-    {"case_id":"chamfer_pt","category":"m4_finish","user_message":"Faça um chanfro de 1 mm nesta aresta","expected_outcome":"tool_call","expected_tools":["cad.chamfer_edges"],"requires_context":true}
+    {"case_id":"chamfer_pt","category":"m4_finish","user_message":"Faça um chanfro de 1 mm nesta aresta","expected_outcome":"tool_call","expected_tools":["cad.chamfer_edges"],"requires_context":true},
+    {"case_id":"counterbore_pt","category":"m7_feature","user_message":"Faça um furo com rebaixo para parafuso allen M6 na placa","expected_outcome":"tool_call","expected_tools":["cad.create_counterbore_hole"]},
+    {"case_id":"counterbore_en","category":"m7_feature","user_message":"Cut a counterbore hole for a socket head cap screw","expected_outcome":"tool_call","expected_tools":["cad.create_counterbore_hole"]},
+    {"case_id":"countersink_pt","category":"m7_feature","user_message":"Faça um furo escareado para parafuso de cabeça chata","expected_outcome":"tool_call","expected_tools":["cad.create_countersunk_hole"]},
+    {"case_id":"countersink_en","category":"m7_feature","user_message":"Cut a countersunk hole with a 90 degree angle","expected_outcome":"tool_call","expected_tools":["cad.create_countersunk_hole"]},
+    {"case_id":"sweep_path_pt","category":"m7_sketch","user_message":"Crie uma trajetória em L com cantos arredondados de 10 mm","expected_outcome":"tool_call","expected_tools":["cad.create_sweep_path"]},
+    {"case_id":"sweep_path_en","category":"m7_sketch","user_message":"Create a sweep path through the points 0,0,0 and 0,0,40","expected_outcome":"tool_call","expected_tools":["cad.create_sweep_path"]},
+    {"case_id":"sweep_pt","category":"m7_feature","user_message":"Varra o perfil circular ao longo da trajetória para fazer um tubo","expected_outcome":"tool_call","expected_tools":["cad.sweep_sketch"]},
+    {"case_id":"sweep_en","category":"m7_feature","user_message":"Sweep the profile along the path to make a curved tube","expected_outcome":"tool_call","expected_tools":["cad.sweep_sketch"]}
   ]
 }

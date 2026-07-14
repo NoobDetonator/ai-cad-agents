@@ -73,6 +73,28 @@ class CadAdapter(Protocol):
 
     def create_circular_hole_pattern(self, **arguments: Any) -> dict[str, Any]: ...
 
+    def create_counterbore_hole(
+        self,
+        object: str,
+        diameter: float,
+        x: float,
+        y: float,
+        counterbore_diameter: float,
+        counterbore_depth: float,
+        name: str = "AICounterboreHole",
+    ) -> dict[str, Any]: ...
+
+    def create_countersunk_hole(
+        self,
+        object: str,
+        diameter: float,
+        x: float,
+        y: float,
+        countersink_diameter: float,
+        countersink_angle: float = 90,
+        name: str = "AICountersunkHole",
+    ) -> dict[str, Any]: ...
+
     def create_rectangular_sketch(
         self, width: float, height: float, name: str = "AIRectangleSketch"
     ) -> dict[str, Any]: ...
@@ -110,6 +132,20 @@ class CadAdapter(Protocol):
         sketches: list[str],
         ruled: bool = False,
         name: str = "AILoft",
+    ) -> dict[str, Any]: ...
+
+    def create_sweep_path(
+        self,
+        points: list[str],
+        corner_radius: float = 0,
+        name: str = "AISweepPath",
+    ) -> dict[str, Any]: ...
+
+    def sweep_sketch(
+        self,
+        profile: str,
+        path: str,
+        name: str = "AISweep",
     ) -> dict[str, Any]: ...
 
     def create_helical_gear(
@@ -199,6 +235,8 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.create_through_hole": "create_through_hole",
         "cad.create_rectangular_hole_pattern": "create_rectangular_hole_pattern",
         "cad.create_circular_hole_pattern": "create_circular_hole_pattern",
+        "cad.create_counterbore_hole": "create_counterbore_hole",
+        "cad.create_countersunk_hole": "create_countersunk_hole",
         "cad.create_rectangular_sketch": "create_rectangular_sketch",
         "cad.pad_sketch": "pad_sketch",
         "cad.boolean_operation": "boolean_operation",
@@ -208,6 +246,8 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.create_circular_sketch": "create_circular_sketch",
         "cad.revolve_sketch": "revolve_sketch",
         "cad.loft_sketches": "loft_sketches",
+        "cad.create_sweep_path": "create_sweep_path",
+        "cad.sweep_sketch": "sweep_sketch",
         "cad.create_helical_gear": "create_helical_gear",
         "cad.create_external_thread": "create_external_thread",
         "cad.validate_document": "validate_document",

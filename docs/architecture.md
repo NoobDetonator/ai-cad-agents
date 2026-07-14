@@ -353,7 +353,7 @@ uma única operação pendente volta a controlar os botões de confirmar e cance
 
 ## Regra de dependência
 
-`aicad.core` não importa FreeCAD ou Qt. A UI, o MCP e os provedores dependem do núcleo. Somente `aicad.adapters.freecad_adapter` conversa diretamente com o FreeCAD.
+`aicad.core` não importa FreeCAD ou Qt. A UI, o MCP e os provedores dependem do núcleo. Somente o pacote `aicad.adapters.freecad` conversa diretamente com o FreeCAD: `freecad_adapter.py` expõe o `FreeCadAdapter` compondo mixins por domínio (base, context, edits, sketches, features, sweeps, mechanical, documents, export), e o caminho de import público continua `aicad.adapters.freecad_adapter`.
 
 ## Fluxo atual do chat
 
