@@ -199,8 +199,17 @@ schemas.
 - `.runtime`, `.tools`, `.downloads`, `.venv`, capturas, CAD gerado e segredos
   permanecem fora do Git.
 
+## Conectar um agente externo
+
+O repositório traz um `.mcp.json` pronto: abrindo o Claude Code nesta pasta,
+o servidor `ai-cad` é oferecido automaticamente. Com o FreeCAD aberto por
+`.\scripts\iniciar.ps1`, o agente lê o documento, propõe planos que você
+confirma no painel e exporta STL/STEP. O passo a passo para Claude Code,
+Codex e Cursor está em [docs/mcp-integration.md](docs/mcp-integration.md).
+
 ## Documentação
 
+- [Integração MCP com agentes externos](docs/mcp-integration.md)
 - [Arquitetura](docs/architecture.md)
 - [Visão do produto](docs/product-vision.md)
 - [Marcos e transferência](docs/milestones.md)

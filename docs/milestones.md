@@ -593,18 +593,30 @@ Pendente no M6.1:
 2. prévia do artefato antes de exportar;
 3. exportação de vários objetos ou do documento inteiro em um arquivo.
 
-### M6.2 — Integração com agentes externos
+### M6.2 — Integração com agentes externos — em andamento
 
-1. Guia de configuração passo a passo para Claude Code (`.mcp.json`), Codex e
-   Cursor, testado de verdade em pelo menos um deles.
-2. Revisão das descrições, exemplos e mensagens de erro de todas as
+Entregue:
+
+- `.mcp.json` na raiz do repositório: o Claude Code aberto na pasta oferece o
+  servidor `ai-cad` automaticamente, sem caminho absoluto;
+- `docs/mcp-integration.md` com configuração para Claude Code, Codex e
+  Cursor, o fluxo de trabalho recomendado ao agente (descobrir → ler →
+  plano confirmado → verificar → exportar) e solução de problemas;
+- handshake verificado com um cliente MCP real por stdio: inicialização,
+  9 ferramentas MCP, catálogo com 30 ferramentas CAD (incluindo
+  `cad.export_stl`/`cad.export_step`) e 3 receitas listadas.
+
+Pendente:
+
+1. Revisão das descrições, exemplos e mensagens de erro de todas as
    ferramentas do ponto de vista de um agente externo: o texto da spec é a
    única documentação que o agente vê.
-3. Mensagens de `pending_confirmation` e de erro da ponte orientam o agente
+2. Mensagens de `pending_confirmation` e de erro da ponte orientam o agente
    sobre o que dizer ao usuário (ex.: "aguarde a confirmação no painel do
    FreeCAD").
-4. Roteiro de teste manual: agente externo modela uma peça do nicho (placa
-   furada ou flange) do zero até o STL, com confirmações no painel.
+3. Roteiro de teste manual cumprido: agente externo modela uma peça do nicho
+   (placa furada ou flange) do zero até o STL, com confirmações no painel e
+   FreeCAD aberto.
 
 ### M6.3 — Feedback para o agente
 

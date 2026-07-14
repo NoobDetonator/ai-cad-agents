@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ai-cad": {
+      "command": ".venv\\Scripts\\aicad-mcp.exe",
+      "args": []
+    }
+  }
+}
