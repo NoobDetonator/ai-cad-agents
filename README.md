@@ -1,8 +1,18 @@
 # AI CAD Workbench
 
-Workbench seguro para controlar o FreeCAD por chat interno, agentes de IA e MCP.
-O FreeCAD é o motor CAD; contratos, política de risco, receitas e orquestração
-permanecem independentes dele.
+Servidor MCP seguro que dá a agentes de IA — Claude Code, Codex, Cursor e
+qualquer cliente MCP — ferramentas estruturadas, validadas e reversíveis para
+modelar peças reais no FreeCAD. O FreeCAD é o motor CAD; contratos, política de
+risco, receitas e orquestração permanecem independentes dele.
+
+Diferente dos MCPs de CAD que executam Python arbitrário dentro do aplicativo,
+aqui não existe caminho para executar código gerado: o agente chama ferramentas
+pequenas com schema, cada mutação é transacional, confirmada visualmente pelo
+usuário, auditada e reversível.
+
+O produto principal é o MCP; a IA vem do agente que o usuário já usa. O painel
+dentro do FreeCAD funciona como superfície de confirmação e inclui um modo de
+chat local e um modo DeepSeek standalone opcional, ambos em manutenção.
 
 ## Estado atual
 
@@ -190,5 +200,19 @@ schemas.
 - [Plano de otimização do agente](docs/ai-agent-optimization-plan.md)
 - [Contrato e armazenamento de auditoria](docs/audit.md)
 
-O próximo marco planejado é M6: validação de fabricação e exportações CAD
-controladas.
+## Roteiro
+
+Estratégia vigente: **MCP primeiro** (decisão de 14/07/2026, detalhada em
+`docs/milestones.md` e `docs/product-vision.md`).
+
+- **M6 — MCP como produto**: exportação STL/STEP controlada, guia de
+  integração testado com Claude Code/Codex/Cursor e feedback visual para o
+  agente. Fecha o fluxo "pedido em linguagem natural → arquivo fabricável".
+- **M7 — Cobertura de modelagem**: sketch constrangido, revolução, sweep,
+  loft, furos com rebaixo e novas receitas.
+- **M8 — Lançamento público**: instalação simples, docs de usuário, demo
+  gravada e abertura do repositório.
+
+A IA embutida (modo DeepSeek, seletor e loop) está em modo manutenção: segue
+funcionando e testada, mas as horas novas vão para o MCP. Não haverá suporte
+multi-provedor interno — o usuário escolhe o modelo ao escolher o agente.

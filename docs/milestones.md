@@ -9,6 +9,30 @@ O detalhamento mais recente do M3 e da execução do M4 está em
 versionado, seleção de ferramentas, loop controlado, aprovação por plano e
 rollback composto sem alterar as regras ou os marcos já concluídos.
 
+## Decisão estratégica de 14 de julho de 2026 — MCP primeiro
+
+O produto principal é o **servidor MCP consumido por agentes externos**
+(Claude Code, Codex, Cursor e qualquer cliente MCP). O agente externo é a IA;
+o usuário escolhe a plataforma ao escolher o agente. Consequências para os
+marcos:
+
+1. **Não será construído suporte multi-provedor interno.** A decisão pendente
+   "política para troca futura entre provedores" está resolvida: o provedor é
+   trazido pelo agente externo. O contrato neutro `AiProvider` permanece como
+   está para o modo standalone.
+2. **A IA embutida (DeepSeek, `ToolSelector`, `AgentTurnController`) entra em
+   modo manutenção.** Continua funcionando, testada e coberta pela suíte, mas
+   não recebe novas funcionalidades. Bugs são corrigidos; features não são
+   adicionadas.
+3. **O painel evolui como superfície de aprovação e visualização** das ações
+   solicitadas pelo agente externo, não como chat concorrente.
+4. **Horas novas vão para a superfície que o agente toca:** exportação,
+   ferramentas de modelagem, feedback visual e documentação de integração.
+
+Os marcos M6, M7 e M8 abaixo refletem essa decisão. Nada dos marcos M0–M5 é
+descartado: registro, ponte, transações, planos, auditoria e receitas são
+exatamente a infraestrutura que o produto MCP usa.
+
 ## 1. Snapshot da transferência
 
 - **Data:** 14 de julho de 2026.
@@ -172,8 +196,9 @@ flowchart LR
 | M3 — Orquestrador de IA | Concluído | Contexto, seleção, loop seguro e planos reversíveis via chat/MCP |
 | M4 — Modelagem mecânica básica | Concluído | 18 capacidades mecânicas, receitas, seleção e visão |
 | M5 — Histórico e auditoria | Concluído | Ações, planos, aprovações, transações e exportação auditáveis |
-| M6 — Validação e exportação | Planejado | Regras de fabricação e exportações controladas |
-| M7 — Empacotamento e experiência | Planejado | Instalação, atualização e uso diário mais simples |
+| M6 — MCP como produto | Planejado | Exportação STL/STEP, validação básica e integração documentada com Claude Code, Codex e Cursor |
+| M7 — Cobertura de modelagem | Planejado | Sketch constrangido, revolução, sweep, loft, receitas novas e feedback visual pós-mutação |
+| M8 — Lançamento público | Planejado | Instalação simples, docs de usuário, demo gravada e repositório público |
 
 ## 6. M0 — Fundação — concluído
 
@@ -535,13 +560,20 @@ autorização se aplicaram, quais validações rodaram e quais transações real
 foram confirmadas, abortadas ou desfeitas. O bundle exportado contém a versão do
 schema e não contém chaves ou caminhos pessoais. Critério atendido.
 
-## 12. M6 — Validação e exportação
+## 12. M6 — MCP como produto
 
-Ordem sugerida:
+Objetivo: um usuário com Claude Code, Codex ou Cursor consegue, seguindo a
+documentação, conectar o agente ao FreeCAD e ir de um pedido em linguagem
+natural até um arquivo STL/STEP no disco — com confirmação visual em cada
+mutação.
 
-1. validação dimensional e de forma;
+### M6.1 — Exportação controlada
+
+A exportação fecha o fluxo de valor e por isso vem primeiro:
+
+1. validação dimensional e de forma antes de exportar;
 2. checagens configuráveis para impressão 3D;
-3. prévia do arquivo a exportar;
+3. prévia do artefato a exportar;
 4. exportação STL;
 5. exportação STEP;
 6. confirmação explícita de destino e sobrescrita;
@@ -549,20 +581,70 @@ Ordem sugerida:
 8. testes com diretórios temporários.
 
 Ferramentas de exportação usam risco `export`, não escrevem fora do destino
-escolhido e nunca sobrescrevem silenciosamente.
+escolhido e nunca sobrescrevem silenciosamente. O fluxo de confirmação é o
+mesmo já usado pelo histórico (`cad.export_audit_history`).
 
-## 13. M7 — Empacotamento e experiência
+### M6.2 — Integração com agentes externos
 
-Itens planejados:
+1. Guia de configuração passo a passo para Claude Code (`.mcp.json`), Codex e
+   Cursor, testado de verdade em pelo menos um deles.
+2. Revisão das descrições, exemplos e mensagens de erro de todas as
+   ferramentas do ponto de vista de um agente externo: o texto da spec é a
+   única documentação que o agente vê.
+3. Mensagens de `pending_confirmation` e de erro da ponte orientam o agente
+   sobre o que dizer ao usuário (ex.: "aguarde a confirmação no painel do
+   FreeCAD").
+4. Roteiro de teste manual: agente externo modela uma peça do nicho (placa
+   furada ou flange) do zero até o STL, com confirmações no painel.
+
+### M6.3 — Feedback para o agente
+
+1. Resultado de plano concluído pode incluir captura da vista e medidas dos
+   objetos afetados, para o agente verificar o que fez sem nova rodada.
+2. `cad.capture_view` e `cad.measure_object` documentados como o loop padrão
+   de autocorreção do agente.
+
+### Critério de aceite de M6
+
+Com o FreeCAD aberto e o guia de integração em mãos, um agente externo real
+(não simulado) modela uma peça do nicho e exporta STL/STEP válido, com toda
+mutação confirmada no painel, auditada e reversível. A suíte cobre exportação
+com falha, sobrescrita negada e destino inválido.
+
+## 13. M7 — Cobertura de modelagem
+
+Objetivo: ampliar o que um agente consegue modelar sozinho. Cada capacidade
+segue a regra de sempre — uma ferramenta por vez, com schema, validação,
+transação, undo e testes dentro e fora do FreeCAD.
+
+Ordem sugerida, por valor para o nicho:
+
+1. sketch retangular totalmente constrangido (fecha limitação conhecida);
+2. sketch com círculos, arcos e slots constrangidos;
+3. revolução de sketch (eixos, polias, tampas torneadas);
+4. furos com rebaixo e escareado (parafusos reais);
+5. sweep e loft controlados;
+6. novas receitas sobre as capacidades acima (ex.: caixa com tampa, suporte em
+   L, polia);
+7. espelhamento e padrão linear/polar de features.
+
+Critério de aceite: o corpus de benchmark cresce junto com o catálogo e o
+seletor mantém recall; cada ferramenta nova tem teste de falha e de undo, não
+apenas de sucesso.
+
+## 13a. M8 — Lançamento público
+
+Itens planejados (herdados do antigo M7, agora com foco em adoção):
 
 - instalação do Workbench sem caminho manual;
 - diagnóstico de versão do FreeCAD e dependências;
 - atualização segura e reversível;
-- mensagens de erro em português claro;
-- preferências de tema, painel e provedor;
-- documentação para usuário final;
+- mensagens de erro em português e inglês claros;
+- documentação para usuário final (PT e EN — o público MCP é global);
+- demo gravada: agente externo modelando uma peça do zero até o STL;
 - testes em instalação limpa;
-- estratégia de release e versão.
+- estratégia de release e versão;
+- tornar o repositório público e divulgar no fórum FreeCAD e r/FreeCAD.
 
 Não empacotar FreeCAD novamente sem necessidade. Separar claramente o código do
 Workbench dos artefatos grandes de desenvolvimento.
@@ -697,13 +779,23 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 3. **Limite de thread:** o transporte não acessa FreeCAD. O controlador da GUI
    enfileira toda execução para a thread principal do Qt.
 
+### Definidas na decisão MCP primeiro (14 de julho de 2026)
+
+1. **Provedores de IA:** não haverá suporte multi-provedor interno. O agente
+   externo (Claude Code, Codex, Cursor) traz o modelo; o modo DeepSeek
+   permanece como standalone opcional em manutenção.
+2. **Papel do painel:** superfície de aprovação e visualização das ações do
+   agente externo, não chat concorrente.
+
 ### Pendentes
 
 1. Política de aprovação para leituras potencialmente caras.
-2. Política para troca futura entre provedores.
-3. Evolução das referências geométricas para faces e cadeias mais complexas.
-4. Estratégia de recomputação paramétrica para features derivadas.
-5. Formato de distribuição do Workbench para usuários não desenvolvedores.
+2. Evolução das referências geométricas para faces e cadeias mais complexas.
+3. Estratégia de recomputação paramétrica para features derivadas.
+4. Formato de distribuição do Workbench para usuários não desenvolvedores.
+5. Idioma padrão das descrições de ferramenta expostas ao MCP (PT hoje;
+   avaliar EN ou bilíngue antes do lançamento público, pois agentes e usuários
+   MCP são majoritariamente anglófonos).
 
 As escolhas pendentes devem ser registradas antes de se tornarem dependências
 difíceis de reverter.
@@ -727,8 +819,14 @@ com 28 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
 compostos, rollback, leituras mecânicas, edição, placa, furos/padrões, sketch/pad,
 booleanas, filete/chanfro, três receitas, seleção aguardada e captura visual já
 funcionam e estão testados. Histórico local versionado registra pedidos, planos,
-aprovações, resultados e transações com redaction e exportação confirmada. O
-próximo marco é M6 — validação de fabricação e exportações CAD controladas.
+aprovações, resultados e transações com redaction e exportação confirmada.
+
+Estratégia vigente: MCP primeiro. O produto principal é o servidor MCP usado
+por agentes externos (Claude Code, Codex, Cursor); a IA embutida (DeepSeek,
+seletor, loop) está em modo manutenção e não recebe novas funcionalidades; não
+implemente suporte multi-provedor interno. O próximo marco é M6 — MCP como
+produto: exportação STL/STEP controlada, guia de integração com agentes
+externos e feedback visual/mensurável para o agente.
 
 Mantenha o FreeCAD como adaptador, não crie execução arbitrária de Python, não
 salve credenciais no projeto e faça toda mutação de forma transacional, validada

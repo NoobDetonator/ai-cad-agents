@@ -1,7 +1,34 @@
 # Visão do produto
 
-Um ambiente CAD paramétrico local, auditável e independente de provedor,
-controlável por conversa e por agentes externos.
+Um servidor MCP seguro que dá a agentes de IA externos — Claude Code, Codex,
+Cursor e qualquer cliente MCP — ferramentas estruturadas, validadas e
+reversíveis para modelar peças reais no FreeCAD.
+
+## Estratégia: MCP primeiro
+
+Decisão de 14 de julho de 2026. O produto principal é o servidor MCP; o
+cérebro vem do agente externo que o usuário já usa e já paga. Consequências:
+
+1. **O agente externo é a IA.** Não construiremos suporte multi-provedor
+   interno (OpenAI, Anthropic, Gemini etc.). O usuário escolhe a plataforma ao
+   escolher o agente — Claude Code usa Claude, Codex usa OpenAI, Cursor usa o
+   modelo configurado nele. Zero chaves de API para nós gerenciarmos.
+2. **A IA embutida entra em modo manutenção.** O modo DeepSeek, o
+   `ToolSelector` e o `AgentTurnController` continuam funcionando e testados,
+   mas não recebem novas funcionalidades. Permanecem como modo standalone
+   opcional para quem não usa um agente externo.
+3. **O painel vira superfície de aprovação.** Sua função principal passa a ser
+   mostrar o que o agente externo quer fazer, exibir o plano, colher a
+   confirmação humana e apresentar o resultado — não conversar.
+4. **Cada hora nova vai para a ponta que o agente toca:** mais ferramentas de
+   modelagem, exportação de arquivos, feedback visual e documentação de
+   integração.
+
+O diferencial contra os MCPs de CAD existentes é estrutural: eles executam
+Python arbitrário dentro do FreeCAD; nós expomos ferramentas pequenas com
+schema, validação, transação, confirmação humana, rollback e auditoria. Um
+agente que chama `cad.create_through_hole` com argumentos validados acerta
+muito mais do que um que escreve um script `Part` de 40 linhas no escuro.
 
 ## Primeiro nicho
 
@@ -69,17 +96,30 @@ ao M6.
 
 ## Diferenciais pretendidos
 
+- ferramentas estruturadas em vez de execução de código gerado — a diferença
+  entre demo e ferramenta confiável;
+- confirmação humana, transações e rollback como argumento de venda para
+  agentes autônomos;
 - operação local, privada e explicável;
-- mesma capacidade no chat e via MCP;
-- ferramentas pequenas que a IA escolhe com pouco contexto;
+- mesma capacidade no painel e via MCP, por um único `ToolRegistry`;
+- ferramentas pequenas que o agente escolhe com pouco contexto;
 - receitas reutilizáveis no lugar de código gerado;
-- modelos cada vez mais paramétricos e editáveis;
+- feedback visual e mensurável para o agente se autocorrigir;
 - histórico completo das decisões sem guardar segredos;
 - validação antes de exportar ou fabricar.
 
 ## Direção seguinte
 
-O M5 concluiu o histórico e a auditoria local versionados, com redaction, retenção,
-integração de chat/IA/MCP, identidade das transações do FreeCAD e exportação JSON
-confirmada. O M6 cobre validação de fabricação e exportações CAD controladas, e o
-M7 simplifica instalação e uso diário.
+O M5 concluiu o histórico e a auditoria local versionados. Daqui em diante o
+roteiro segue a estratégia MCP primeiro:
+
+- **M6 — MCP como produto**: exportação STL/STEP controlada fecha o fluxo
+  "pedido em linguagem natural → arquivo fabricável"; documentação e
+  configuração de integração para Claude Code, Codex e Cursor; descrições de
+  ferramenta otimizadas para agentes externos.
+- **M7 — Cobertura de modelagem**: sketch constrangido, revolução, sweep,
+  loft, mais receitas e feedback visual pós-mutação, ampliando o que um agente
+  consegue modelar sozinho.
+- **M8 — Lançamento público**: instalação simples, documentação de usuário
+  final, demonstração gravada e abertura do repositório com divulgação na
+  comunidade FreeCAD.

@@ -1,5 +1,6 @@
 # AI CAD Workbench — orientações do repositório
 
+- O produto principal é o servidor MCP consumido por agentes externos (Claude Code, Codex, Cursor). A IA embutida (DeepSeek, seletor, loop) está em modo manutenção: corrija bugs, não adicione features nem suporte multi-provedor interno.
 - Mantenha o FreeCAD como adaptador; regras de produto e schemas não devem depender dele.
 - Chat interno e MCP devem chamar o mesmo `ToolRegistry`.
 - Toda mutação CAD deve ser transacional, validada e reversível.
