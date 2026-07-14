@@ -603,7 +603,7 @@ Entregue:
   Cursor, o fluxo de trabalho recomendado ao agente (descobrir → ler →
   plano confirmado → verificar → exportar) e solução de problemas;
 - handshake verificado com um cliente MCP real por stdio: inicialização,
-  9 ferramentas MCP, catálogo com 34 ferramentas CAD (incluindo
+  9 ferramentas MCP, catálogo com 39 ferramentas CAD (incluindo
   `cad.export_stl`/`cad.export_step`) e 3 receitas listadas;
 - **teste de ponta a ponta com agente externo real executado em 14 de julho
   de 2026**: uma sessão do Claude Code conectada pelo `.mcp.json` modelou um
@@ -678,20 +678,42 @@ documento sem nome. Entregue (catálogo com 34 ferramentas):
   novo, recusa de duplicata e de sobrescrita, integrado ao `testar.ps1` com o
   marcador `FREECAD_M7_SMOKE_OK`.
 
-### M7.2 — Próximas capacidades
+### M7.2 — Revolução, loft, helicoidal e rosca — concluído
+
+Entregue (catálogo com 39 ferramentas):
+
+- suporte a argumentos `array` de strings no validador central, com limites
+  de itens e de tamanho;
+- `cad.create_circular_sketch`: círculo fechado no plano XY centrado na
+  origem, posicionável com `cad.transform_object`;
+- `cad.revolve_sketch`: revolução de sketch fechado ao redor do eixo X ou Y
+  global por até 360°, com recusa explícita de perfil que cruza o eixo; o
+  smoke confere o volume do torus contra a fórmula analítica com 2% de
+  tolerância;
+- `cad.loft_sketches`: loft sólido de 2 a 8 sketches na ordem dada, com
+  opção `ruled`; o smoke confere o tronco de cone contra a fórmula exata;
+- `cad.create_helical_gear`: perfil involuto oficial com torção por seções
+  loftadas a cada ≤5° (sinal do ângulo define a mão da hélice; engrenar com
+  sinais opostos); propriedades registradas no objeto;
+- `cad.create_external_thread`: rosca externa estilo ISO 60° (núcleo +
+  cordão varrido por hélice via PipeShell), limitada a 64 voltas, pensada
+  para impressão 3D; o smoke confere volume acima do núcleo e undo;
+- testes unitários offline para schemas, limites e validações do adaptador
+  antes do FreeCAD; smoke M7 real cobre sucesso, falha de perfil no eixo e
+  reversibilidade.
+
+### M7.3 — Próximas capacidades
 
 Ordem sugerida, por valor para o nicho:
 
-1. sketch circular (destrava revolução e loft úteis de imediato);
-2. revolução de sketch (eixos, polias, tampas torneadas);
-3. loft entre sketches (requer suporte a lista de referências no validador);
-4. engrenagem helicoidal (perfil involuto oficial com torção controlada);
-5. rosca externa (hélice + perfil triangular varrido);
-6. furos com rebaixo e escareado (parafusos reais);
-7. sweep controlado (depende de uma ferramenta de trajetória: linha/arco);
-8. sketch retangular totalmente constrangido (fecha limitação conhecida);
-9. novas receitas sobre as capacidades acima (ex.: polia, eixo escalonado);
-10. espelhamento e padrão linear/polar de features.
+1. furos com rebaixo e escareado (parafusos reais);
+2. fase de dentes na engrenagem (alinhamento de engrenamento sem transform
+   manual);
+3. sweep controlado (depende de uma ferramenta de trajetória: linha/arco);
+4. rosca interna (furo roscado);
+5. sketch retangular totalmente constrangido (fecha limitação conhecida);
+6. novas receitas sobre as capacidades acima (ex.: polia, eixo escalonado);
+7. espelhamento e padrão linear/polar de features.
 
 Critério de aceite: o corpus de benchmark cresce junto com o catálogo e o
 seletor mantém recall; cada ferramenta nova tem teste de falha e de undo, não
@@ -880,7 +902,7 @@ e execute scripts/testar.ps1 para confirmar a base.
 
 Use como baseline o commit que contém a conclusão do M5 ou um posterior. Na árvore
 atual, M0 a M5 estão concluídos: Workbench e painel, ToolRegistry compartilhado
-com 34 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
+com 39 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
 compostos, rollback, leituras mecânicas, edição, placa, furos/padrões, sketch/pad,
 booleanas, filete/chanfro, três receitas, seleção aguardada e captura visual já
 funcionam e estão testados. Histórico local versionado registra pedidos, planos,

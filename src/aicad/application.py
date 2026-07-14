@@ -93,6 +93,44 @@ class CadAdapter(Protocol):
         self, object: str, size: float, edge_reference: str, name: str = "AIChamfer"
     ) -> dict[str, Any]: ...
 
+    def create_circular_sketch(
+        self, diameter: float, name: str = "AICircleSketch"
+    ) -> dict[str, Any]: ...
+
+    def revolve_sketch(
+        self,
+        sketch: str,
+        angle: float = 360.0,
+        axis: str = "x",
+        name: str = "AIRevolve",
+    ) -> dict[str, Any]: ...
+
+    def loft_sketches(
+        self,
+        sketches: list[str],
+        ruled: bool = False,
+        name: str = "AILoft",
+    ) -> dict[str, Any]: ...
+
+    def create_helical_gear(
+        self,
+        teeth: int,
+        module: float,
+        thickness: float,
+        helix_angle: float,
+        bore_diameter: float,
+        pressure_angle: float = 20,
+        name: str = "HelicalGear",
+    ) -> dict[str, Any]: ...
+
+    def create_external_thread(
+        self,
+        diameter: float,
+        pitch: float,
+        length: float,
+        name: str = "AIThread",
+    ) -> dict[str, Any]: ...
+
     def create_spur_gear(
         self,
         teeth: int,
@@ -167,6 +205,11 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.fillet_edges": "fillet_edges",
         "cad.chamfer_edges": "chamfer_edges",
         "cad.create_spur_gear": "create_spur_gear",
+        "cad.create_circular_sketch": "create_circular_sketch",
+        "cad.revolve_sketch": "revolve_sketch",
+        "cad.loft_sketches": "loft_sketches",
+        "cad.create_helical_gear": "create_helical_gear",
+        "cad.create_external_thread": "create_external_thread",
         "cad.validate_document": "validate_document",
         "cad.list_documents": "list_documents",
         "cad.new_document": "new_document",

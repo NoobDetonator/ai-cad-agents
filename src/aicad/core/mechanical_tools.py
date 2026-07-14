@@ -437,6 +437,79 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
             output_schema=OBJECT_RESULT,
         ),
         _spec(
+            "cad.create_circular_sketch",
+            "Create a closed circular sketch on the global XY plane centered "
+            "at the origin, with diameter in millimeters. Move it with "
+            "cad.transform_object to position loft sections or revolve "
+            "profiles.",
+            ToolRisk.MODIFY,
+            _object_schema({"diameter": POSITIVE, "name": NAME}, ("diameter",)),
+            family="sketch",
+            aliases=("sketch circular", "círculo", "circular sketch", "circle"),
+            tags=("esboço", "círculo", "diâmetro", "sketch", "circle", "profile"),
+            examples=("Crie um sketch circular de 40 mm de diâmetro.",),
+            order=191,
+            output_schema=OBJECT_RESULT,
+        ),
+        _spec(
+            "cad.revolve_sketch",
+            "Revolve one closed sketch around the global X or Y axis through "
+            "the origin by angle degrees (0 to 360). The sketch must lie "
+            "entirely on one side of the axis; position it first with "
+            "cad.transform_object. Good for pulleys, shafts and turned caps.",
+            ToolRisk.MODIFY,
+            _object_schema(
+                {
+                    "sketch": REFERENCE,
+                    "angle": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 360,
+                    },
+                    "axis": {"type": "string", "enum": ["x", "y"]},
+                    "name": NAME,
+                },
+                ("sketch",),
+            ),
+            family="feature",
+            aliases=("revolução", "revolucionar sketch", "revolve", "revolution"),
+            tags=("revolução", "torno", "eixo", "revolve", "lathe", "turned"),
+            examples=("Revolucione o perfil em 360 graus ao redor do eixo X.",),
+            order=196,
+            output_schema=OBJECT_RESULT,
+        ),
+        _spec(
+            "cad.loft_sketches",
+            "Loft two to eight closed sketches into one solid, in the given "
+            "order. Sections must sit at different heights: create each "
+            "sketch, then move it in Z with cad.transform_object before "
+            "lofting. Ruled true gives straight flanks between sections.",
+            ToolRisk.MODIFY,
+            _object_schema(
+                {
+                    "sketches": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256,
+                        },
+                        "minItems": 2,
+                        "maxItems": 8,
+                    },
+                    "ruled": {"type": "boolean"},
+                    "name": NAME,
+                },
+                ("sketches",),
+            ),
+            family="feature",
+            aliases=("loft", "transição entre perfis", "loft sketches"),
+            tags=("loft", "seções", "transição", "sections", "blend"),
+            examples=("Faça um loft entre os dois perfis circulares.",),
+            order=197,
+            output_schema=OBJECT_RESULT,
+        ),
+        _spec(
             "cad.boolean_operation",
             "Combine two solids into a new derived object: fuse is union, cut is "
             "left minus right, common is intersection. Source objects are "
@@ -522,6 +595,73 @@ def mechanical_tool_specs() -> tuple[ToolSpec, ...]:
                 "Crie uma engrenagem de 20 dentes, módulo 2 e 8 mm de espessura.",
             ),
             order=240,
+            output_schema=OBJECT_RESULT,
+        ),
+        _spec(
+            "cad.create_helical_gear",
+            "Create an external involute helical gear centered at the global "
+            "origin, extruded along +Z with a controlled twist. helix_angle "
+            "is in degrees (1 to 45, sign sets hand); mesh two helical gears "
+            "by using opposite signs and the same module. Pitch diameter = "
+            "module * teeth (mm); bore_diameter 0 means solid.",
+            ToolRisk.MODIFY,
+            _object_schema(
+                {
+                    "teeth": {"type": "integer", "minimum": 6, "maximum": 200},
+                    "module": {"type": "number", "exclusiveMinimum": 0},
+                    "thickness": {"type": "number", "exclusiveMinimum": 0},
+                    "helix_angle": {
+                        "type": "number",
+                        "minimum": -45,
+                        "maximum": 45,
+                    },
+                    "bore_diameter": {"type": "number", "minimum": 0},
+                    "pressure_angle": {
+                        "type": "number",
+                        "minimum": 14.5,
+                        "maximum": 25,
+                    },
+                    "name": NAME,
+                },
+                ("teeth", "module", "thickness", "helix_angle", "bore_diameter"),
+            ),
+            family="mechanical",
+            aliases=(
+                "engrenagem helicoidal",
+                "helicoidal",
+                "helical gear",
+            ),
+            tags=("dentes", "módulo", "hélice", "gear", "helix", "helical"),
+            examples=(
+                "Crie uma engrenagem helicoidal de 24 dentes, módulo 2, "
+                "hélice de 15 graus.",
+            ),
+            order=242,
+            output_schema=OBJECT_RESULT,
+        ),
+        _spec(
+            "cad.create_external_thread",
+            "Create an external ISO-style 60-degree thread as a solid: a "
+            "core cylinder with a swept helical ridge, based at the global "
+            "origin along +Z. diameter is the nominal major diameter, pitch "
+            "and length in millimeters (e.g. M8x1.25: diameter 8, pitch "
+            "1.25). Maximum 64 turns. Meant for 3D printing; join it to a "
+            "part with cad.boolean_operation fuse.",
+            ToolRisk.MODIFY,
+            _object_schema(
+                {
+                    "diameter": POSITIVE,
+                    "pitch": POSITIVE,
+                    "length": POSITIVE,
+                    "name": NAME,
+                },
+                ("diameter", "pitch", "length"),
+            ),
+            family="mechanical",
+            aliases=("rosca externa", "rosca", "external thread", "thread"),
+            tags=("rosca", "parafuso", "passo", "thread", "screw", "pitch"),
+            examples=("Crie uma rosca M8 com passo 1.25 e 20 mm de comprimento.",),
+            order=244,
             output_schema=OBJECT_RESULT,
         ),
     )

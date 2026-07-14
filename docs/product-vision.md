@@ -54,7 +54,7 @@ Peças mecânicas para impressão 3D e fabricação leve:
 O Workbench **AI CAD** abre um painel funcional dentro do FreeCAD. O modo local
 entende comandos fechados; o modo DeepSeek opcional interpreta linguagem natural,
 seleciona ferramentas PT/EN e pode executar leituras em um loop limitado. Ambos,
-assim como o MCP, usam o mesmo `ToolRegistry` com 34 ferramentas.
+assim como o MCP, usam o mesmo `ToolRegistry` com 39 ferramentas.
 
 O produto já consegue:
 
@@ -86,12 +86,14 @@ reversibilidade e não muda o padrão seguro do lançador normal.
 
 ## Limites honestos do corte atual
 
-O M4 cobre modelagem mecânica básica de forma demonstrável, mas ainda não promete
+O corte atual cobre modelagem mecânica demonstrável, mas ainda não promete
 “qualquer coisa que o FreeCAD modele”. As features derivadas guardam seus objetos
 de origem e são reversíveis, porém ainda são BReps controlados: não formam uma
 árvore Part Design completa que se recomputa automaticamente depois de qualquer
-edição. O sketch retangular não é totalmente constrangido, e ainda faltam loft,
-sweep, revolução, superfícies, chapas, assemblies, desenhos técnicos, CAM e FEM.
+edição. Os sketches não são constrangidos; a engrenagem helicoidal aproxima o
+helicoide por seções loftadas; a rosca é voltada a impressão 3D, não a norma de
+fabricação. Ainda faltam sweep genérico (depende de ferramenta de trajetória),
+superfícies, chapas, assemblies, desenhos técnicos, CAM e FEM.
 
 A exportação STL/STEP de um objeto por vez já existe. Ainda faltam checagens
 configuráveis de fabricação, prévia do artefato e exportação de vários objetos;

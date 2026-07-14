@@ -182,6 +182,37 @@ class ToolRegistry:
             elif expected_type == "boolean":
                 if not isinstance(value, bool):
                     raise ToolInputError(f"{argument_name} must be a boolean.")
+            elif expected_type == "array":
+                if not isinstance(value, list):
+                    raise ToolInputError(f"{argument_name} must be an array.")
+                min_items = property_schema.get("minItems")
+                max_items = property_schema.get("maxItems")
+                if min_items is not None and len(value) < min_items:
+                    raise ToolInputError(
+                        f"{argument_name} requires at least {min_items} items."
+                    )
+                if max_items is not None and len(value) > max_items:
+                    raise ToolInputError(
+                        f"{argument_name} accepts at most {max_items} items."
+                    )
+                items_schema = property_schema.get("items", {})
+                if items_schema.get("type") != "string":
+                    raise RuntimeError(
+                        f"Unsupported array item type for {spec.name}."
+                    )
+                for element in value:
+                    if not isinstance(element, str):
+                        raise ToolInputError(
+                            f"{argument_name} items must be strings."
+                        )
+                    minimum_length = items_schema.get("minLength")
+                    maximum_length = items_schema.get("maxLength")
+                    if minimum_length is not None and len(element) < minimum_length:
+                        raise ToolInputError(f"{argument_name} has an empty item.")
+                    if maximum_length is not None and len(element) > maximum_length:
+                        raise ToolInputError(
+                            f"{argument_name} has an item that is too long."
+                        )
             else:
                 raise RuntimeError(
                     f"Unsupported argument type for {spec.name}: {expected_type}"
