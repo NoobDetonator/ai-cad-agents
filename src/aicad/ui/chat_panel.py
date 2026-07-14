@@ -281,11 +281,11 @@ def show_chat_panel() -> None:
         refresh_security_status()
 
     def refresh_view(tool_name: str) -> None:
-        if tool_name not in {
-            "cad.create_box",
-            "cad.create_cylinder",
-            "cad.undo",
-        }:
+        try:
+            risk = registry.get_spec(tool_name).risk
+        except KeyError:
+            return
+        if risk is not ToolRisk.MODIFY:
             return
         active_gui_document = Gui.activeDocument()
         if active_gui_document is not None:
@@ -553,6 +553,13 @@ def show_chat_panel() -> None:
         refresh_security_status()
         if turn_result.status is AgentTurnStatus.CANCELLED:
             append_assistant("Consulta cancelada sem alterar o documento.")
+            show_next_remote_confirmation()
+            return
+        if turn_result.status is AgentTurnStatus.AWAITING_SELECTION:
+            append_assistant(
+                "Selecione exatamente um objeto no FreeCAD e envie a instrução "
+                "novamente. Nenhuma alteração foi feita."
+            )
             show_next_remote_confirmation()
             return
         plan = turn_result.final_plan

@@ -30,6 +30,22 @@ def test_parser_creates_only_structured_cylinder_arguments() -> None:
     assert "eixo Z" in command.message
 
 
+def test_parser_supports_safe_m4_plate_and_object_reads() -> None:
+    plate = parse_chat_command("placa 100 x 60 x 8 nome Base")
+    assert plate.tool_name == "cad.create_plate"
+    assert plate.arguments == {
+        "length": 100.0,
+        "width": 60.0,
+        "thickness": 8.0,
+        "name": "Base",
+    }
+    measure = parse_chat_command("medir Base")
+    assert measure.tool_name == "cad.measure_object"
+    assert measure.arguments == {"object": "Base"}
+    parameters = parse_chat_command("parâmetros Base")
+    assert parameters.tool_name == "cad.get_editable_parameters"
+
+
 def test_parser_does_not_treat_python_as_a_command() -> None:
     command = parse_chat_command("python: import os; os.system('whoami')")
     assert command.tool_name is None

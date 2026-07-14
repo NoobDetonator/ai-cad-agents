@@ -12,10 +12,13 @@ HELP_TEXT = (
     "• <code>resumo</code> — lê o documento ativo<br>"
     "• <code>seleção</code> — lê a seleção atual<br>"
     "• <code>contexto</code> — lê o contexto versionado do trabalho atual<br>"
+    "• <code>detalhes Base</code>, <code>medir Base</code> ou "
+    "<code>parâmetros Base</code> — inspeciona um objeto<br>"
     "• <code>validar</code> — recalcula e verifica o documento<br>"
     "• <code>caixa 10 x 20 x 30 nome MinhaCaixa</code> — prepara uma caixa em mm<br>"
     "• <code>cilindro 30 x 60 nome Eixo</code> — prepara um cilindro por "
     "diâmetro × altura em mm<br>"
+    "• <code>placa 100 x 60 x 8 nome Base</code> — prepara uma placa em mm<br>"
     "• <code>desfazer</code> — prepara a reversão da última transação"
 )
 
@@ -39,6 +42,18 @@ _CYLINDER_PATTERN = re.compile(
     rf"^\s*(?:(?:criar|crie|fazer|faça|faca)\s+)?(?:um\s+)?cilindro\s+"
     rf"{_NUMBER}\s*[x×]\s*{_NUMBER}"
     rf"(?:\s+(?:nome|chamado)\s+([A-Za-z][A-Za-z0-9_-]*))?\s*$",
+    re.IGNORECASE,
+)
+
+_PLATE_PATTERN = re.compile(
+    rf"^\s*(?:(?:criar|crie|fazer|faça|faca)\s+)?(?:uma\s+)?(?:placa|chapa)\s+"
+    rf"{_NUMBER}\s*[x×]\s*{_NUMBER}\s*[x×]\s*{_NUMBER}"
+    rf"(?:\s+(?:nome|chamada)\s+([A-Za-z][A-Za-z0-9_-]*))?\s*$",
+    re.IGNORECASE,
+)
+
+_OBJECT_READ_PATTERN = re.compile(
+    r"^\s*(detalhes|medir|medidas|depend[eê]ncias|par[aâ]metros)\s+(.+?)\s*$",
     re.IGNORECASE,
 )
 
@@ -82,6 +97,23 @@ def parse_chat_command(text: str) -> ChatCommand:
             "cad.undo",
         )
 
+    object_read = _OBJECT_READ_PATTERN.fullmatch(cleaned)
+    if object_read:
+        action = _normalized(object_read.group(1))
+        reference = object_read.group(2).strip()
+        tools = {
+            "detalhes": "cad.get_object_details",
+            "medir": "cad.measure_object",
+            "medidas": "cad.measure_object",
+            "dependencias": "cad.get_dependencies",
+            "parametros": "cad.get_editable_parameters",
+        }
+        return ChatCommand(
+            f"Vou inspecionar {escape(reference)} sem modificar o documento.",
+            tools[action],
+            {"object": reference},
+        )
+
     box_match = _BOX_PATTERN.fullmatch(cleaned)
     if box_match:
         length, width, height = (
@@ -116,6 +148,26 @@ def parse_chat_command(text: str) -> ChatCommand:
             {
                 "diameter": diameter,
                 "height": height,
+                "name": name,
+            },
+        )
+
+    plate_match = _PLATE_PATTERN.fullmatch(cleaned)
+    if plate_match:
+        length, width, thickness = (
+            float(value.replace(",", ".")) for value in plate_match.groups()[:3]
+        )
+        name = plate_match.group(4) or "AIPlate"
+        return ChatCommand(
+            (
+                f"Plano: criar a placa {name} com {length:g} × {width:g} × "
+                f"{thickness:g} mm, recalcular e validar antes de confirmar."
+            ),
+            "cad.create_plate",
+            {
+                "length": length,
+                "width": width,
+                "thickness": thickness,
                 "name": name,
             },
         )
@@ -160,6 +212,45 @@ def format_tool_result(tool_name: str, result: Any) -> str:
             f"{summary['selected_count']} selecionados, "
             f"{summary['error_count']} com erro{recent_text}."
         )
+    if tool_name == "cad.resolve_object":
+        if result["status"] == "awaiting_selection":
+            return "Selecione exatamente um objeto no FreeCAD para continuar."
+        if result["status"] == "not_found":
+            return "Não encontrei um objeto correspondente à referência informada."
+        item = result["object"]
+        return (
+            f"Objeto resolvido: <b>{escape(str(item['label']))}</b> "
+            f"(<code>{escape(str(item['name']))}</code>)."
+        )
+    if tool_name == "cad.measure_object":
+        return (
+            f"<b>{escape(str(result['label']))}</b>: "
+            f"{result['length_mm']:g} × {result['width_mm']:g} × "
+            f"{result['height_mm']:g} mm; volume {result['volume_mm3']:g} mm³."
+        )
+    if tool_name == "cad.get_object_details":
+        item = result["object"]
+        return (
+            f"Detalhes de <b>{escape(str(item['label']))}</b>: "
+            f"{len(result['editable_parameters'])} parâmetros editáveis e "
+            f"{len(result['edge_references'])} referências geométricas de aresta."
+        )
+    if tool_name == "cad.get_dependencies":
+        return (
+            f"Relações de <code>{escape(str(result['name']))}</code>: "
+            f"depende de {len(result['depends_on'])} e é usado por "
+            f"{len(result['used_by'])} objetos."
+        )
+    if tool_name == "cad.get_editable_parameters":
+        names = ", ".join(
+            escape(str(item["name"])) for item in result["parameters"]
+        ) or "nenhum"
+        return f"Parâmetros editáveis de <b>{escape(str(result['label']))}</b>: {names}."
+    if tool_name == "cad.capture_view":
+        return (
+            "Vista 3D capturada no cache local seguro: "
+            f"<code>{escape(str(result['capture_id']))}</code>."
+        )
     if tool_name == "cad.create_box":
         dimensions = " × ".join(f"{value:g}" for value in result["dimensions_mm"])
         label = escape(str(result["label"]))
@@ -176,6 +267,26 @@ def format_tool_result(tool_name: str, result: Any) -> str:
             f"altura {result['height_mm']:g} mm; "
             f"volume {result['volume_mm3']:g} mm³; eixo Z). "
             "A operação pode ser desfeita."
+        )
+    mechanical_actions = {
+        "cad.rename_object": "Objeto renomeado",
+        "cad.set_parameter": "Parâmetro alterado",
+        "cad.transform_object": "Objeto transformado",
+        "cad.create_plate": "Placa criada",
+        "cad.create_through_hole": "Furo passante criado",
+        "cad.create_rectangular_hole_pattern": "Padrão retangular criado",
+        "cad.create_circular_hole_pattern": "Padrão circular criado",
+        "cad.create_rectangular_sketch": "Sketch retangular criado",
+        "cad.pad_sketch": "Pad criado",
+        "cad.boolean_operation": "Operação booleana concluída",
+        "cad.fillet_edges": "Filete criado",
+        "cad.chamfer_edges": "Chanfro criado",
+    }
+    if tool_name in mechanical_actions:
+        label = escape(str(result.get("label", result.get("name", "objeto"))))
+        return (
+            f"{mechanical_actions[tool_name]} em <b>{label}</b>, "
+            "validado e reversível por undo."
         )
     if tool_name == "cad.validate_document":
         if result["valid"]:

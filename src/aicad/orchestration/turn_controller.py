@@ -35,6 +35,7 @@ ProgressCallback = Callable[[AgentStage], None]
 
 class AgentTurnStatus(StrEnum):
     DONE = "done"
+    AWAITING_SELECTION = "awaiting_selection"
     AWAITING_APPROVAL = "awaiting_approval"
     CANCELLED = "cancelled"
 
@@ -300,6 +301,29 @@ class AgentTurnController:
                     read_calls += 1
                     self._memory.record(envelope)
                     history.append(self._tool_message(call.call_id, envelope))
+                    if self._awaits_selection(envelope):
+                        metrics.finish(
+                            details={
+                                "read_calls": read_calls,
+                                "outcome": "awaiting_selection",
+                            }
+                        )
+                        self._stage(
+                            metrics,
+                            AgentStage.AWAIT_SELECTION,
+                            progress,
+                        )
+                        metrics.finish(details={"outcome": "user_action_required"})
+                        return AgentTurnResult(
+                            turn_id,
+                            AgentTurnStatus.AWAITING_SELECTION,
+                            rounds,
+                            total_calls,
+                            read_calls,
+                            plan,
+                            tuple(history),
+                            metrics.events,
+                        )
                 metrics.finish(details={"read_calls": len(calls)})
 
             raise OrchestrationLimitError(
@@ -364,6 +388,14 @@ class AgentTurnController:
                 )
             except ValidationError as exc:
                 raise RuntimeError("A safe tool result could not be formed.") from exc
+
+    @staticmethod
+    def _awaits_selection(envelope: ToolResultEnvelope) -> bool:
+        return (
+            envelope.status is ToolResultStatus.COMPLETED
+            and isinstance(envelope.result, Mapping)
+            and envelope.result.get("status") == "awaiting_selection"
+        )
 
     @staticmethod
     def _assistant_message(plan: OrchestrationPlan) -> ProviderAssistantMessage:

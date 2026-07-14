@@ -23,6 +23,7 @@ from aicad.bridge.protocol import (
 from aicad.bridge.session import default_session_store
 from aicad.bridge.transport import TcpBridgeClient
 from aicad.core.context import DocumentStateToken
+from aicad.core.visual_cache import read_capture
 from aicad.orchestration import OrchestrationPlan, PlannedToolCall
 from aicad.orchestration.plan_service import (
     CompositePlanStatus,
@@ -119,6 +120,17 @@ def inspect() -> None:
         context_response = run_bridge_request(bridge_client, context_request)
         assert context_response.status is BridgeResponseStatus.COMPLETED
         assert context_response.result["active"] is False
+        selection_resolution = run_bridge_request(
+            bridge_client,
+            BridgeRequest(
+                request_id=uuid4(),
+                tool_name="cad.resolve_object",
+                arguments={},
+                source="mcp",
+            ),
+        )
+        assert selection_resolution.status is BridgeResponseStatus.COMPLETED
+        assert selection_resolution.result["status"] == "awaiting_selection"
 
         prompt.setPlainText("resumo")
         send.click()
@@ -300,6 +312,18 @@ def inspect() -> None:
         )
         assert plan_status.result["status"] == CompositePlanStatus.COMPLETED
         assert plan_status.result["completed_calls"] == 2
+        visual_context = run_bridge_request(
+            bridge_client,
+            BridgeRequest(
+                request_id=uuid4(),
+                tool_name="cad.capture_view",
+                arguments={"width": 800, "height": 600},
+                source="mcp",
+            ),
+        )
+        assert visual_context.status is BridgeResponseStatus.COMPLETED
+        assert visual_context.result["resource_uri"].startswith("aicad://view/")
+        assert read_capture(visual_context.result["capture_id"]).startswith(b"\x89PNG")
         assert main_window.grab().save(str(screenshot_path), "PNG")
 
         for _ in range(2):

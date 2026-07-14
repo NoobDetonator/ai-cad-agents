@@ -19,7 +19,10 @@ como registrados em `docs/milestones.md`.
 - **Estado do M3.4:** concluído, com 110 testes e smokes reais.
 - **Estado do M3.5:** concluído, com 115 testes e execução real por plano aprovado.
 - **Estado do M3.6:** concluído com 126 testes, rollback real e planos via MCP.
-- **Capacidades atuais:** resumo, seleção, caixa, cilindro, validação e undo.
+- **Estado do M4.1–M4.3:** concluído com 25 ferramentas, três receitas, seleção
+  interativa, captura visual, projeções MCP e smoke mecânico real.
+- **Capacidades atuais:** 25 ferramentas de leitura e modelagem, três receitas,
+  planos compostos, seleção aguardada e captura visual.
 - **IA atual:** até quatro rodadas, leituras retornam ao modelo e mutações encerram
   a descoberta sem execução automática.
 
@@ -60,7 +63,11 @@ Quatro dimensões serão medidas separadamente:
 Segurança é uma trava, não uma dimensão negociável: execução sem aprovação,
 mutação não reversível e código arbitrário têm meta permanente igual a zero.
 
-## 4. Gargalos confirmados na implementação atual
+## 4. Gargalos confirmados na baseline
+
+Esta lista registra o diagnóstico que orientou M3 e M4. Os itens 1–8 e 10 foram
+resolvidos; os custos de timer e conexão do item 9 continuam apenas como hipótese
+a medir, sem justificar uma troca prematura de transporte.
 
 1. O painel cria o orquestrador com `max_tool_calls=1`.
 2. A interface usa somente `payload.tool_calls[0]`.
@@ -362,7 +369,7 @@ sensível ou exceção interna. Repetir automaticamente uma mutação não é pe
 
 Manter poucas ferramentas de controle no MCP e publicar contexto separadamente:
 
-### Resources planejados
+### Resources planejados e entregues
 
 - `aicad://document/context`;
 - `aicad://document/selection`;
@@ -370,25 +377,32 @@ Manter poucas ferramentas de controle no MCP e publicar contexto separadamente:
 - `aicad://plans/{plan_id}`;
 - `aicad://view/current`, opcional e binário.
 
+No M4 foram entregues `aicad://recipes` e `aicad://view/{capture_id}`. Os recursos
+de documento, catálogo e plano continuam candidatos para o M5; não foram criados
+atalhos diretos ao adaptador.
+
 Resources chamam os mesmos serviços e leituras do registro. Não acessam o
 adaptador diretamente.
 
-### Tools de controle planejadas
+### Tools de controle entregues
 
 - manter `available_cad_tools` e `request_cad_tool` por compatibilidade;
 - `submit_cad_plan`, com lista de chamadas registradas;
 - `get_cad_plan_status`;
 - `cancel_cad_plan`.
+- `available_cad_recipes` e `submit_cad_recipe`.
 
 O chat usa o mesmo `PlanService` que essas ferramentas, sem chamar o MCP por
 dentro. Resultados MCP devem usar conteúdo estruturado e, quando útil, links para
 Resources em vez de repetir um snapshot grande.
 
-### Prompts planejados
+### Prompts entregues
 
-Prompts MCP serão projeções das receitas seguras e escolhidos pelo usuário, por
-exemplo `modelar_placa`, `criar_flange` e `revisar_peca`. Eles não executam nada e
-não carregam handlers próprios.
+Prompts MCP são projeções das receitas seguras e escolhidos pelo usuário. Eles
+não executam nada e não carregam handlers próprios.
+
+Os nomes concretos iniciais são `model_mounting_plate`, `model_flange` e
+`model_rectangular_pad`.
 
 ## 14. Receitas reutilizáveis em vez de código gerado
 
@@ -593,6 +607,10 @@ Resultado registrado:
 - pontuação e motivos por ferramenta estão no relatório JSON do benchmark;
 - nenhuma dependência, chamada de modelo, permissão ou ferramenta CAD foi criada.
 
+Esse resultado é a medição histórica do M3.3. Com as 25 ferramentas do M4, o
+mesmo corpus mantém recall 20/20 e economiza mais de 90%; o corpus mecânico obtém
+30/30 e 87,6% de economia.
+
 ### M3.4 — Loop somente leitura — concluído
 
 Entregas:
@@ -611,8 +629,8 @@ Resultado registrado:
 - `AgentTurnController` é neutro de Qt/FreeCAD e só recebe um `read_executor`;
 - o provedor recebe histórico tipado de assistente/ferramenta com ID, status,
   resultado e código de erro seguro;
-- o loop limita quatro rodadas, oito chamadas, seis leituras, uma proposta de
-  mutação, 45 segundos e 64 KiB de resultados;
+- o loop limita quatro rodadas, oito chamadas, seis leituras, até duas propostas
+  de mutação, 45 segundos e 64 KiB de resultados;
 - mutações encerram em `awaiting_approval` sem execução; mistura de riscos, ID
   repetido e excesso de orçamento falham fechados;
 - cancelamento cooperativo é verificado em cada fronteira segura e aparece no
@@ -685,7 +703,7 @@ Resultado:
 - polling e cancelamento são idempotentes e o processo MCP não executa handlers;
 - smoke gráfico comprova aprovação única, duas mutações, polling e cancelamento.
 
-### M4.1 — Ferramentas que aumentam compreensão
+### M4.1 — Ferramentas que aumentam compreensão — concluído
 
 Adicionar primeiro:
 
@@ -697,7 +715,11 @@ Adicionar primeiro:
 
 Essas leituras reduzem adivinhação e melhoram todas as mutações futuras.
 
-### M4.2 — Ferramentas mecânicas prioritárias
+Entregue em `aicad.core.mechanical_tools` e `FreeCadAdapter`: detalhes,
+bounding box e medidas, dependências, resolução por nome/label/seleção e
+parâmetros editáveis permitidos. Resolução ambígua falha fechada.
+
+### M4.2 — Ferramentas mecânicas prioritárias — concluído
 
 Adicionar conforme o corpus, nesta ordem inicial:
 
@@ -712,7 +734,12 @@ Adicionar conforme o corpus, nesta ordem inicial:
 Cada ferramenta tem schema pequeno, output schema, transação, pós-condição,
 falha injetável e teste de undo.
 
-### M4.3 — Receitas, seleção interativa e contexto visual
+As doze mutações foram entregues. Operações derivadas mantêm links para fontes;
+filete e chanfro usam assinatura geométrica de aresta em vez de índice exposto.
+O smoke `tests/freecad_m4_smoke.py` comprova sucesso, falha abortada e restauração
+por undo no FreeCAD real.
+
+### M4.3 — Receitas, seleção interativa e contexto visual — concluído
 
 Entregas:
 
@@ -725,6 +752,15 @@ Entregas:
 Aceite: placa com furos e flange são construídas por planos de ferramentas
 registradas, sem código gerado e com uma revisão clara do plano.
 
+O `RecipeCatalog` compila placa de fixação, flange e pad retangular para planos
+validados. `AgentTurnController` e painel expõem `awaiting_selection`. Capturas
+PNG sob demanda usam ID opaco, limite e cache fora do Git. O MCP publica catálogo
+de receitas, submissão, prompts e recursos a partir dos mesmos serviços.
+
+O corpus `benchmarks/agent-corpus-m4.json` cobre as 18 capacidades adicionadas em
+30 pedidos PT/EN. O seletor obteve recall 30/30, média de 2,97 ferramentas entre
+25 e economia de 87,6% dos bytes de schemas.
+
 ## 20. Três primeiros incrementos recomendados
 
 Para reduzir risco e tempo de entrega, os próximos incrementos devem ser pequenos:
@@ -733,10 +769,10 @@ Para reduzir risco e tempo de entrega, os próximos incrementos devem ser pequen
    para todas as decisões seguintes.
 2. **ContextSnapshot L0/L1 — concluído:** reaproveita o adaptador e o registro atuais; dá ganho
    direto para pedidos contextuais.
-3. **Loop read-only:** prova múltiplas rodadas, cancelamento e retorno de resultados
-   antes de autorizar qualquer nova mutação.
+3. **Loop read-only — concluído:** prova múltiplas rodadas, cancelamento e retorno
+   de resultados antes de autorizar qualquer nova mutação.
 
-Somente depois começar aprovação por hash e planos compostos.
+Aprovação por hash, planos compostos e todo o M4 também estão concluídos.
 
 ## 21. Reuso para cortar tempo de desenvolvimento
 
@@ -846,8 +882,8 @@ O marco de otimização estará concluído quando:
 
 ## 26. Orientação para retomada em outro chat
 
-Ao continuar, M3.1 a M3.6 já estão concluídos. Iniciar pelo M4.1, adicionando
-leituras de detalhes, medidas, dependências, aliases e parâmetros editáveis antes
-de ampliar o conjunto de mutações. Qualquer atalho que introduza Python
-arbitrário, um registro paralelo ou aprovação ampla deve ser recusado mesmo que
-produza uma demonstração mais rápida.
+Ao continuar, M3.1 a M3.6 e M4.1 a M4.3 já estão concluídos. Iniciar pelo M5,
+definindo primeiro o contrato versionado, redaction, retenção e local de
+armazenamento da auditoria. Não persistir a conversa completa por conveniência.
+Qualquer atalho que introduza Python arbitrário, um registro paralelo ou aprovação
+ampla deve ser recusado mesmo que produza uma demonstração mais rápida.

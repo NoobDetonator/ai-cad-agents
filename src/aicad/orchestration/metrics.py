@@ -22,6 +22,7 @@ class AgentStage(StrEnum):
     ASK_MODEL = "ask_model"
     VALIDATE_PLAN = "validate_plan"
     EXECUTE_READS = "execute_reads"
+    AWAIT_SELECTION = "await_selection"
     AWAIT_APPROVAL = "await_approval"
     EXECUTE_MUTATIONS = "execute_mutations"
     VERIFY = "verify"

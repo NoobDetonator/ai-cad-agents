@@ -1,203 +1,171 @@
 # AI CAD Workbench
 
-Base inicial de um ambiente CAD paramétrico controlável por chat interno e por MCP.
-
-O primeiro protótipo usa o FreeCAD como motor de modelagem, visualização e documento. A camada `aicad` concentra ferramentas determinísticas, permissões e a integração local com MCP.
+Workbench seguro para controlar o FreeCAD por chat interno, agentes de IA e MCP.
+O FreeCAD é o motor CAD; contratos, política de risco, receitas e orquestração
+permanecem independentes dele.
 
 ## Estado atual
 
-- Workbench `AI CAD` carregável pelo ambiente portátil já preparado.
-- Painel lateral com chat local determinístico e sem dependência de provedor.
-- Comandos para ler documento e seleção, validar, criar caixas e cilindros e desfazer.
-- Confirmação explícita na interface antes de criar ou desfazer.
-- `ToolRegistry` único para catálogo, schemas, validação e política de risco.
-- Chat e MCP conectados ao mesmo registro e ao mesmo adaptador.
-- Caixas e cilindros criados em transações validadas e reversíveis.
-- Ponte MCP–GUI autenticada, restrita ao loopback e executada pela thread Qt.
-- Mutações MCP pendentes até confirmação explícita no painel.
-- Base de orquestração neutra valida planos e chamadas sem executar ferramentas.
-- Contrato versionado para resultados, erros seguros e métricas monotônicas do agente.
-- Benchmark offline v1 com 30 pedidos em português e baseline reproduzível.
-- Contexto L0/L1 versionado com documento, seleção, objetos recentes e paginação.
-- Mudanças manuais relevantes alteram o token de estado e invalidam contexto antigo.
-- Seletor local PT/EN envia somente ferramentas relevantes em ordem estável à IA.
-- Benchmark do seletor: recall 20/20 e economia de 57,6% dos schemas no corpus v1.
-- Loop DeepSeek limitado executa leituras, devolve resultados e permite cancelar.
-- Memória de leitura permanece em RAM e é invalidada quando o estado CAD muda.
-- Mutação da IA usa plano imutável, hash, estado-base e autorização de curta duração.
-- Planos de 2–8 mutações usam aprovação única e rollback compensatório verificado.
-- Testes unitários, teste transacional no FreeCADCmd e fluxo MCP gráfico automatizado.
-- Instalação reproduzível e isolada para Windows.
+Os marcos M0 a M4 estão implementados. O corte funcional atual oferece:
 
-## Preparação
+- Workbench **AI CAD** e painel lateral testados no FreeCAD 1.1.1;
+- um único `ToolRegistry`, com 25 ferramentas, usado pelo chat e pelo MCP;
+- chat local determinístico e modo DeepSeek opcional;
+- leituras de documento, seleção, contexto, objetos, medidas, dependências,
+  parâmetros editáveis e imagem da vista;
+- criação e edição de primitivas, placas, furos, padrões, sketch retangular, pad,
+  booleanas, filetes e chanfros;
+- três receitas confiáveis: placa de fixação, flange e pad retangular;
+- planos de uma ou várias mutações com confirmação visual, validação e rollback;
+- MCP com ferramentas, receitas, prompts e recursos derivados dos mesmos serviços;
+- nenhum caminho para executar Python, macro, shell ou texto gerado como código.
 
-Execute no PowerShell:
+As features derivadas por furo, padrão, pad, booleana, filete e chanfro guardam
+links para os objetos de origem e são reversíveis. Nesta fase elas são resultados
+BRep controlados, não uma árvore Part Design totalmente paramétrica que se atualiza
+automaticamente após toda mudança na origem.
+
+## Preparação e abertura
+
+Em uma máquina ainda não preparada:
 
 ```powershell
 .\scripts\setup.ps1
 ```
 
-Se o ambiente já estiver preparado, não execute o setup novamente.
-
-Depois, abra o FreeCAD com:
+Se o ambiente já existe, não execute o setup novamente e não baixe o FreeCAD.
+Abra o projeto com:
 
 ```powershell
 .\scripts\iniciar.ps1
 ```
 
-O ambiente `AI CAD` aparecerá na lista de Workbenches.
+O Workbench **AI CAD** aparecerá na lista e abrirá o painel à direita.
 
 ## Chat local
 
-O painel aceita, nesta fase, um vocabulário fechado. Exemplos:
+O modo local não usa provedor. Exemplos:
 
 ```text
 resumo
 seleção
 contexto
+detalhes Base
+medir Base
+dependências Base
+parâmetros Base
 validar
-caixa 10 x 20 x 30 nome MinhaCaixa
+caixa 10 x 20 x 30 nome Corpo
 cilindro 30 x 60 nome Eixo
+placa 100 x 60 x 8 nome Base
 desfazer
 ```
 
-Leituras são executadas imediatamente. Criação e desfazer mostram o plano e só
-executam depois do clique em **Confirmar operação**. Texto livre não vira Python
-nem é enviado a um serviço externo.
-
-## MCP local
-
-Com o FreeCAD aberto por `scripts/iniciar.ps1`, o servidor MCP encontra a sessão
-gráfica por um registro efêmero no diretório local do usuário. Leituras percorrem
-a ponte e são executadas na thread principal do Qt. Para qualquer ferramenta
-`modify`, `request_cad_tool` retorna `pending_confirmation`; somente o clique no
-painel autoriza a execução.
-
-O mesmo `request_id`, nome e argumentos podem ser reenviados para consultar o
-resultado sem repetir a mutação. Reutilizar o ID com conteúdo diferente é
-rejeitado.
-
-Planos compostos também estão disponíveis como operações de controle do MCP:
-`submit_cad_plan` congela de duas a oito mutações contra o estado atual,
-`get_cad_plan_status` consulta progresso e `cancel_cad_plan` solicita
-cancelamento. A submissão concluída significa apenas que o plano entrou no
-`PlanService`; seu resultado começa em `awaiting_approval`. As mutações continuam
-paradas até uma única confirmação visual no painel. O serviço autoritativo, o
-executor e o registro vivem no processo gráfico — o servidor MCP não executa
-handlers CAD.
-
-O transporte escuta apenas em `127.0.0.1`, usa token aleatório por sessão,
-mensagens limitadas e timeout. O token não é gravado no repositório nem exibido
-em logs.
+Leituras são imediatas. Mutações mostram o plano e exigem **Confirmar operação**.
+Texto desconhecido recebe ajuda; nunca é avaliado como código.
 
 ## IA DeepSeek
 
-No painel do FreeCAD:
+O modo DeepSeek fica desligado até o usuário marcá-lo. A chave só é necessária
+para uma chamada real e é armazenada pelo `keyring` no Gerenciador de Credenciais
+do Windows, nunca em `.env`, arquivos do projeto, logs ou histórico.
 
-1. clique em **Configurar chave DeepSeek**;
-2. cole a chave no campo mascarado e confirme;
-3. marque **Usar IA DeepSeek**;
-4. escreva o pedido em linguagem natural e clique em **Enviar**.
+Antes de chamar o modelo, um seletor local PT/EN envia no máximo quatro ferramentas
+relevantes. O agente pode executar leituras limitadas e replanejar, mas qualquer
+mutação encerra a descoberta em `awaiting_approval`. Se a instrução depender de
+um único objeto e a seleção não for inequívoca, o turno para em
+`awaiting_selection` e pede uma seleção no FreeCAD sem alterar o documento.
 
-A chave fica no Gerenciador de Credenciais do Windows por meio de **keyring**.
-Ela não é salva em arquivos de ambiente, arquivos do projeto, logs ou histórico
-do painel. Abrir o painel não consulta o cofre. Depois de configurar ou remover,
-o status mostra apenas o estado da credencial, nunca seu conteúdo.
+Planos aprovados são congelados com hash e estado-base. A autorização vale apenas
+para as chamadas exibidas e expira rapidamente. O executor relê o documento,
+revalida os schemas e verifica a pós-condição. Planos de duas a oito operações
+possuem aprovação única e rollback compensatório verificado.
 
-O modo começa desligado. Marcar a opção não faz uma chamada por si só, mas cada
-envio feito enquanto ela estiver marcada transmite o texto e um snapshot limitado
-e versionado do documento ativo para https://api.deepseek.com/chat/completions. Um
-seletor local escolhe até quatro ferramentas relevantes antes do envio, sem outra
-chamada ao modelo. O adaptador usa **deepseek-v4-flash** e pode fazer até quatro
-rodadas controladas para ler o documento e revisar a resposta.
+## Ferramentas do Marco 4
 
-Respostas de leitura podem usar o ToolRegistry imediatamente. Operações
-**modify**, como criar uma caixa, um cilindro ou desfazer, mostram intenção,
-plano, ferramenta, argumentos, ID, hash e revisão-base. O clique em **Confirmar
-operação** autoriza somente essa chamada exata e por poucos segundos. O documento
-é relido antes da execução; qualquer mudança invalida o plano. Desmarcar a opção
-restaura o chat local fechado. O botão **Remover chave** apaga a credencial.
+Leituras:
 
-Durante uma consulta, o painel mostra se está preparando contexto, selecionando
-ferramentas, consultando o modelo, validando ou lendo o documento. **Cancelar
-consulta da IA** solicita interrupção cooperativa no próximo ponto seguro. As
-leituras pedidas pelo modelo são executadas na thread principal do FreeCAD; seus
-resultados voltam ao modelo com ID, status e código de erro controlado. O loop não
-executa mutações e não repete indefinidamente.
+- `cad.get_object_details`, `cad.measure_object`, `cad.get_dependencies`;
+- `cad.resolve_object`, `cad.get_editable_parameters`, `cad.capture_view`.
 
-## Testes
+Mutações:
+
+- `cad.rename_object`, `cad.set_parameter`, `cad.transform_object`;
+- `cad.create_plate`, `cad.create_through_hole`;
+- `cad.create_rectangular_hole_pattern`, `cad.create_circular_hole_pattern`;
+- `cad.create_rectangular_sketch`, `cad.pad_sketch`;
+- `cad.boolean_operation`, `cad.fillet_edges`, `cad.chamfer_edges`.
+
+Todas têm schemas pequenos e são validadas pelo registro. Mutações usam a mesma
+rotina transacional: abrem uma transação nomeada, recalculam, validam forma e
+documento, confirmam no sucesso e abortam na falha. Operações por aresta recebem
+assinaturas geométricas estáveis no contrato, não índices topológicos expostos.
+
+## Receitas e MCP
+
+O `RecipeCatalog` compila parâmetros tipados somente para chamadas registradas:
+
+- `mounting_plate`: placa e padrão retangular de furos;
+- `flange`: cilindro e padrão circular de furos;
+- `rectangular_pad`: sketch retangular e pad.
+
+O MCP publica o catálogo com `available_cad_tools` e `available_cad_recipes`.
+`submit_cad_recipe` cria um plano revisável; `submit_cad_plan`,
+`get_cad_plan_status` e `cancel_cad_plan` controlam planos compostos. A execução
+continua na GUI do FreeCAD e exige confirmação visual.
+
+Também são publicados:
+
+- recurso `aicad://recipes`;
+- recurso PNG `aicad://view/{capture_id}`;
+- prompts `model_mounting_plate`, `model_flange` e `model_rectangular_pad`.
+
+Capturas são feitas somente sob demanda, limitadas a PNG de 8 MiB, guardadas no
+cache local do usuário e identificadas por ID opaco. Caminhos locais não chegam
+ao modelo nem entram no Git.
+
+## Testes e benchmark
+
+Execute antes de concluir qualquer alteração:
 
 ```powershell
 .\scripts\testar.ps1
 ```
 
-A suíte abre e fecha automaticamente uma instância isolada do FreeCAD para
-confirmar que o Workbench aparece, o painel abre e o fluxo criar/desfazer funciona.
+A suíte cobre código neutro, transações reais em FreeCADCmd, todas as operações
+mecânicas e um smoke gráfico que abre o Workbench, inspeciona o painel, exercita
+MCP, seleção e captura visual. Os marcadores esperados são:
 
-O benchmark offline não usa provedor, chave ou FreeCAD:
-
-```powershell
-.\scripts\benchmark_agent.ps1
+```text
+FREECAD_SMOKE_OK
+FREECAD_M4_SMOKE_OK
+FREECAD_GUI_SMOKE_OK
 ```
 
-A baseline M3.1 mede o parser local atual em 30 casos: 14 das 20 escolhas de
-ferramenta são exatas, os 10 pedidos sem ferramenta são bloqueados com segurança
-e ainda não há esclarecimento ou rejeição explicativa. Esses números são a régua
-para contexto e seleção de ferramentas nas próximas etapas.
-
-Para medir a recuperação local usada pelo modo DeepSeek:
+O benchmark offline não usa rede, chave ou FreeCAD:
 
 ```powershell
 .\scripts\benchmark_agent.ps1 -Strategy selector
 ```
 
-No corpus v1, o seletor recupera a ferramenta esperada em 20/20 pedidos, não
-expõe mutações nos cinco pedidos perigosos, envia em média 2,83 das sete
-ferramentas e reduz em 57,6% os bytes de schemas. A medição é local e não acessa
-rede, chave ou FreeCAD.
+No corpus mecânico M4, o seletor recupera 30/30 ferramentas esperadas, envia em
+média 2,97 das 25 ferramentas e economiza 87,6% dos bytes de schemas.
 
 ## Segurança
 
-Chaves de API nunca são salvas no repositório. O painel grava e remove a
-credencial somente pelo cofre do Windows. A pasta `.runtime`, ambientes,
-downloads, arquivos CAD gerados e segredos permanecem ignorados pelo Git.
-Salvar uma chave não ativa o provedor automaticamente; o envio externo
-depende da opção visível **Usar IA DeepSeek**.
+- Chat e MCP passam pelo mesmo `ToolRegistry` e pelo mesmo adaptador.
+- O MCP usa TCP loopback autenticado e transfere execução para a thread Qt.
+- Toda mutação de IA ou MCP exige confirmação explícita.
+- Não existe ferramenta de Python arbitrário, macro ou shell.
+- Chaves permanecem no cofre do Windows.
+- `.runtime`, `.tools`, `.downloads`, `.venv`, capturas, CAD gerado e segredos
+  permanecem fora do Git.
 
-O MCP não acessa o adaptador diretamente. Toda chamada passa pelo protocolo
-tipado, pela validação do `ToolRegistry`, pela fila da GUI e, nas mutações, pela
-confirmação visual.
+## Documentação
 
-`cad.get_context_snapshot` está no mesmo registro usado pelo chat e pelo MCP.
-Ela é somente leitura, limita objetos, suporta paginação e não expõe token da
-ponte, segredo ou caminho local.
+- [Arquitetura](docs/architecture.md)
+- [Visão do produto](docs/product-vision.md)
+- [Marcos e transferência](docs/milestones.md)
+- [Plano de otimização do agente](docs/ai-agent-optimization-plan.md)
 
-O seletor não cria permissões nem executa ferramentas. Ele apenas reduz o catálogo
-que a IA enxerga; nomes e argumentos retornados continuam sendo revalidados pelo
-`ToolRegistry`. Pedidos reconhecidos como tentativa de Python arbitrário, comando
-do sistema, macro, remoção de arquivos ou desvio de confirmação recebem somente
-ferramentas de leitura.
-
-Uma proposta de mutação DeepSeek vira `ValidatedPlan`. O hash cobre estado-base,
-intenção, passos, ferramenta e argumentos. `ApprovalGrant` é criado somente no
-clique, autoriza um único `call_id`, expira rapidamente e não contém segredo. O
-executor confere novamente hash, autorização, schema, risco e estado, executa uma
-única mutação transacional e valida o documento e o novo estado depois.
-
-O M3.6 permite planos compostos tanto no chat DeepSeek quanto pelo MCP quando já
-existe um documento ativo. Todas as chamadas são pré-validadas antes da primeira
-mutação. Uma aprovação cobre o hash e todos os IDs; cada etapa é validada. Em
-falha ou cancelamento entre etapas, somente as transações já confirmadas pelo
-plano são desfeitas, e documento, seleção e fingerprint precisam voltar à
-baseline. `undo` não pode ser uma etapa composta porque ainda não há compensação
-segura por redo.
-
-## Arquitetura
-
-Consulte [docs/architecture.md](docs/architecture.md),
-[docs/product-vision.md](docs/product-vision.md) e
-[docs/milestones.md](docs/milestones.md). O último contém o plano completo de
-marcos e o roteiro para retomar o projeto em outro computador ou chat. A evolução
-detalhada do loop, contexto, seleção de ferramentas, planos compostos e desempenho
-está em
-[docs/ai-agent-optimization-plan.md](docs/ai-agent-optimization-plan.md).
+O próximo marco planejado é M5: histórico e auditoria local sem segredos.

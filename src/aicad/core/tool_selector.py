@@ -203,6 +203,13 @@ class ToolSelector:
         fallback_used = safety_filtered or not confident
         chosen: dict[str, ToolSpec] = {}
         self._fill(chosen, essential, limit)
+        if query_tokens & _RELATIVE_TERMS:
+            selection_spec = next(
+                (spec for spec in eligible if spec.name == "cad.get_selection"),
+                None,
+            )
+            if selection_spec is not None:
+                self._fill(chosen, (selection_spec,), limit)
 
         if fallback_used:
             fallback = (
@@ -213,10 +220,14 @@ class ToolSelector:
             )
             self._fill(chosen, fallback, limit)
         else:
+            minimum_ranked_score = max(
+                MINIMUM_CONFIDENT_SCORE,
+                matches[0].score // 4,
+            )
             ranked = (
                 self._registry.get_spec(match.name)
                 for match in matches
-                if match.score > 0
+                if match.score >= minimum_ranked_score
             )
             self._fill(chosen, ranked, limit)
 

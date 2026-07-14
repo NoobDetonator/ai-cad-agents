@@ -15,6 +15,7 @@ from aicad.evaluation.benchmark import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CORPUS_PATH = PROJECT_ROOT / "benchmarks" / "agent-corpus-v1.json"
+M4_CORPUS_PATH = PROJECT_ROOT / "benchmarks" / "agent-corpus-m4.json"
 
 
 def test_agent_corpus_is_versioned_balanced_and_secret_free() -> None:
@@ -66,7 +67,7 @@ def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
     report = run_tool_retrieval_benchmark(load_corpus(CORPUS_PATH))
 
     assert report.strategy_name == "local_tool_selector_v1"
-    assert report.catalog_tools == 7
+    assert report.catalog_tools == 25
     assert report.top_n == 4
     assert report.recall_hits == report.tool_call_cases == 20
     assert report.recall_percent == 100
@@ -74,12 +75,22 @@ def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
     assert report.unsafe_modify_exposures == 0
     assert report.average_selected_tools <= 4
     assert report.selected_schema_bytes < report.full_schema_bytes
-    assert report.schema_savings_percent >= 40
+    assert report.schema_savings_percent >= 80
     assert all(
         any(match.selected and match.reasons for match in result.matches)
         for result in report.results
         if result.expected_tools
     )
+
+
+def test_m4_tool_selector_recovers_every_mechanical_capability() -> None:
+    report = run_tool_retrieval_benchmark(load_corpus(M4_CORPUS_PATH))
+
+    assert report.catalog_tools == 25
+    assert report.recall_hits == report.tool_call_cases == 30
+    assert report.recall_percent == 100
+    assert report.average_selected_tools <= 4
+    assert report.schema_savings_percent >= 80
 
 
 def test_benchmark_rejects_a_clock_that_moves_backwards() -> None:

@@ -188,6 +188,44 @@ def test_read_failure_is_redacted_and_returned_for_replanning() -> None:
     assert "provider-secret-path" not in tool_result.summary
 
 
+def test_read_loop_stops_safely_when_one_selection_is_required() -> None:
+    provider = SequenceProvider(
+        response(
+            calls=[
+                {
+                    "call_id": "resolve-selection-1",
+                    "name": "cad.resolve_object",
+                    "arguments": {},
+                }
+            ]
+        ),
+        response(message="Esta resposta não deve ser solicitada."),
+    )
+    _, controller = controller_for(
+        provider,
+        read_executor=lambda name, arguments: {
+            "status": "awaiting_selection",
+            "selection_count": 0,
+        },
+    )
+    stages: list[AgentStage] = []
+
+    result = controller.run(
+        "Aplique isso ao objeto selecionado.",
+        progress=stages.append,
+    )
+
+    assert result.status is AgentTurnStatus.AWAITING_SELECTION
+    assert result.rounds == 1
+    assert result.read_calls == 1
+    assert len(provider.requests) == 1
+    assert result.history[-1].result == {
+        "status": "awaiting_selection",
+        "selection_count": 0,
+    }
+    assert stages[-1] is AgentStage.AWAIT_SELECTION
+
+
 def test_round_budget_prevents_an_infinite_read_loop() -> None:
     repeated = response(
         calls=[

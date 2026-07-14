@@ -1,89 +1,75 @@
 # Visão do produto
 
-Um ambiente CAD paramétrico local, auditável e independente de provedor, controlável por conversa e por agentes externos.
+Um ambiente CAD paramétrico local, auditável e independente de provedor,
+controlável por conversa e por agentes externos.
 
 ## Primeiro nicho
 
-Peças mecânicas simples para impressão 3D e fabricação leve:
+Peças mecânicas para impressão 3D e fabricação leve:
 
-- suportes;
-- caixas e tampas;
-- adaptadores;
-- flanges;
-- placas e gabaritos.
+- suportes, caixas e tampas;
+- adaptadores e flanges;
+- placas, gabaritos e peças furadas;
+- componentes formados por sketches, pads e booleanas controladas.
 
 ## Fluxo obrigatório
 
-1. Entender intenção e restrições.
-2. Expor suposições.
-3. Criar plano de operações.
-4. Gerar prévia.
-5. Aplicar em uma transação.
-6. Recalcular e validar.
-7. Confirmar ou reverter.
+1. Entender intenção, referência e restrições.
+2. Ler o estado real do documento quando necessário.
+3. Expor suposições e pedir seleção quando houver ambiguidade.
+4. Criar um plano estruturado somente com ferramentas registradas.
+5. Mostrar a revisão e exigir confirmação para mutações.
+6. Aplicar transações, recalcular e validar.
+7. Confirmar o resultado ou reverter toda a unidade aprovada.
 
-## Estado atual
+## Estado atual — M4 concluído
 
-O corte funcional atual cobre o ciclo completo para caixa e cilindro paramétricos:
+O Workbench **AI CAD** abre um painel funcional dentro do FreeCAD. O modo local
+entende comandos fechados; o modo DeepSeek opcional interpreta linguagem natural,
+seleciona ferramentas PT/EN e pode executar leituras em um loop limitado. Ambos,
+assim como o MCP, usam o mesmo `ToolRegistry` com 25 ferramentas.
 
-- o Workbench aparece e abre o painel de chat;
-- o pedido local é convertido em uma chamada estruturada;
-- o plano é mostrado antes da mutação;
-- a interface exige confirmação explícita;
-- caixas e cilindros são criados em transações, recalculados e validados;
-- a transação é reversível por `desfazer`;
-- a mesma lista de capacidades é usada pelo chat e pelo MCP;
-- a ponte MCP–GUI executa leituras na thread Qt;
-- mutações MCP ficam pendentes até confirmação explícita no painel;
-- o M3 já possui contratos neutros e planejamento estruturado sem execução.
+O produto já consegue:
 
-A DeepSeek já pode ser ativada explicitamente no painel para interpretar
-linguagem natural e propor uma chamada validada pelo registro. O modo permanece
-desligado por padrão; leituras podem prosseguir e mutações continuam pendentes
-até confirmação visual. O loop atual pode fazer várias leituras e revisar a
-resposta, mas não executa mutações por conta própria. Exportação para fabricação
-ainda não foi implementada.
+- inspecionar documento, seleção, contexto, objetos, medidas e dependências;
+- resolver nomes e labels sem aceitar ambiguidades;
+- listar parâmetros editáveis e capturar a vista sob demanda;
+- criar caixa, cilindro, placa, sketch retangular e pad;
+- renomear, alterar dimensões permitidas, mover e rotacionar objetos;
+- criar furos passantes e padrões retangulares ou circulares;
+- executar união, corte e interseção com operandos explícitos;
+- aplicar filete e chanfro por assinatura geométrica de aresta;
+- construir placa de fixação, flange e pad retangular por receitas confiáveis;
+- aprovar uma mutação ou um plano de duas a oito operações e desfazê-lo;
+- projetar o mesmo catálogo, receitas, prompts e capturas pela ponte MCP segura.
 
-O M3.1 também está concluído: resultados e erros do futuro loop possuem contrato
-versionado, as etapas podem ser medidas com relógio monotônico sem persistir dados
-e um corpus offline de 30 pedidos registra a baseline do parser atual. Isso ainda
-não muda o comportamento do painel; fornece a régua segura para o contexto
-versionado do M3.2.
+Todas as mutações são chamadas estruturadas, confirmadas, transacionais,
+recalculadas e validadas. Texto do modelo nunca vira Python, macro ou shell. A
+chave DeepSeek só é solicitada para uso real e fica no cofre do Windows.
 
-O M3.2 está concluído. O contexto agora possui revisão e fingerprints, inclui
-seleção, parâmetros, forma, objetos recentes e paginação, e é consumido pela
-DeepSeek e pelo MCP por meio da mesma ferramenta de leitura. Uma alteração manual
-relevante muda o token; isso prepara a futura recusa de planos obsoletos sem
-liberar nenhuma nova mutação.
+## Limites honestos do corte atual
 
-O M3.3 também está concluído. A DeepSeek recebe apenas o subconjunto localmente
-relevante do `ToolRegistry`, limitado a quatro ferramentas e ordenado de forma
-estável. O seletor obteve recall 20/20 e reduziu 57,6% dos schemas no corpus v1;
-pedidos perigosos receberam somente leituras. Isso melhora velocidade e foco sem
-delegar seleção a outra chamada de IA nem criar permissão nova.
+O M4 cobre modelagem mecânica básica de forma demonstrável, mas ainda não promete
+“qualquer coisa que o FreeCAD modele”. As features derivadas guardam seus objetos
+de origem e são reversíveis, porém ainda são BReps controlados: não formam uma
+árvore Part Design completa que se recomputa automaticamente depois de qualquer
+edição. O sketch retangular não é totalmente constrangido, e ainda faltam loft,
+sweep, revolução, superfícies, chapas, assemblies, desenhos técnicos, CAM e FEM.
 
-O M3.4 está concluído. A IA pode pedir leituras, receber resultados estruturados
-e revisar a resposta em até quatro rodadas. O usuário vê o progresso e pode
-cancelar; a memória é temporária e vinculada à revisão CAD. O controlador nunca
-executa mutações: ao encontrar uma, encerra a descoberta e entrega apenas a
-proposta para o fluxo de confirmação já existente.
-
-O M3.5 está concluído. Uma mutação proposta pela IA é congelada com hash e
-`DocumentStateToken`; o clique autoriza somente aquele plano e aquela chamada por
-um prazo curto. O executor recusa estado obsoleto, revalida tudo pelo registro,
-executa uma única transação e confere a pós-condição. Alterar silenciosamente o
-plano depois de exibido deixa de ser possível.
-
-O M3.6 está concluído no chat e no MCP. A IA pode propor de duas a oito mutações
-com uma aprovação única; todas são pré-validadas e qualquer falha desfaz apenas
-as etapas do plano, verificando a restauração da baseline. O `PlanService`
-autoritativo fica na GUI e oferece submissão, status e cancelamento idempotentes
-pela ponte autenticada, sem executar handlers CAD no processo MCP.
+Também ainda faltam auditoria persistente, validações de fabricação e exportação
+STEP/STL. Esses itens pertencem aos próximos marcos.
 
 ## Diferenciais pretendidos
 
-- operação local e privada;
-- histórico completo das ações da IA;
+- operação local, privada e explicável;
 - mesma capacidade no chat e via MCP;
-- modelos paramétricos editáveis;
+- ferramentas pequenas que a IA escolhe com pouco contexto;
+- receitas reutilizáveis no lugar de código gerado;
+- modelos cada vez mais paramétricos e editáveis;
+- histórico completo das decisões sem guardar segredos;
 - validação antes de exportar ou fabricar.
+
+## Direção seguinte
+
+M5 adicionará histórico e auditoria local versionados. Depois, M6 cobre validação
+de fabricação e exportações controladas, e M7 simplifica instalação e uso diário.

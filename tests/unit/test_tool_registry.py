@@ -22,6 +22,9 @@ def test_default_registry_has_unique_tools() -> None:
     assert [spec.name for spec in specs if spec.essential] == [
         "cad.get_context_snapshot"
     ]
+    mechanical_specs = specs[7:]
+    assert len(mechanical_specs) == 18
+    assert all(spec.output_schema is not None for spec in mechanical_specs)
 
 
 def test_registry_executes_connected_handler() -> None:

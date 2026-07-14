@@ -122,8 +122,8 @@ finitos e payloads acima dos limites são recusados.
 
 `TurnMetricsRecorder` mede etapas com relógio monotônico e mantém eventos somente
 em memória. Ele não grava horário de parede, prompt, credencial ou exceção. O
-painel ainda não consome esses contratos; essa integração ocorrerá com o loop do
-agente, preservando o comportamento atual.
+controlador e o painel já usam esses eventos para progresso, cancelamento,
+aprovação e espera por seleção.
 
 O corpus `benchmarks/agent-corpus-v1.json` contém 30 pedidos em português:
 20 chamadas de ferramenta, cinco pedidos que exigem esclarecimento e cinco
@@ -153,8 +153,8 @@ de recentes.
 
 A ferramenta `cad.get_context_snapshot` pertence ao mesmo `ToolRegistry` e chega
 ao MCP pela ponte autenticada. O modo DeepSeek usa essa leitura no lugar do resumo
-simples, ainda com uma única rodada e uma única ferramenta proposta. Nenhuma
-permissão de mutação foi ampliada.
+simples e pode pedir novas leituras dentro dos limites do turno. Nenhuma permissão
+de mutação foi ampliada.
 
 ## Recuperação local de ferramentas
 
@@ -175,14 +175,16 @@ Pontuações e motivos ficam disponíveis para o benchmark, mas não autorizam
 execução. O provedor só pode chamar nomes do subconjunto recebido e cada argumento
 continua revalidado contra o schema original do `ToolRegistry`. No corpus v1, o
 seletor obteve recall 20/20, exposição de mutações 0/5 nos casos perigosos e
-economia de 57,6% dos bytes de schemas, sem dependência ou chamada de IA extra.
+economia superior a 90% dos bytes de schemas com o catálogo ampliado. No corpus
+mecânico M4, recuperou 30/30 capacidades, com média de 2,97 ferramentas e
+economia de 87,6%, sem dependência ou chamada de IA extra.
 
 ## Loop controlado somente leitura
 
 O M3.4 adiciona `AgentTurnController` em `aicad.orchestration`, sem importar Qt ou
 FreeCAD. O controlador usa o `AiOrchestrator` e o mesmo `ToolRegistry`, com os
 limites iniciais de quatro rodadas, oito chamadas totais, seis leituras, uma
-proposta de mutação, 45 segundos e 64 KiB de resultados por turno.
+ou duas propostas de mutação, 45 segundos e 64 KiB de resultados por turno.
 
 Cada resposta validada segue uma destas rotas:
 
@@ -190,6 +192,8 @@ Cada resposta validada segue uma destas rotas:
 - somente leituras: executa pelo `read_executor` injetado, forma um resultado
   seguro e devolve ao provedor preservando o `call_id`;
 - qualquer mutação: para em `awaiting_approval` sem chamar nenhum handler;
+- seleção ausente ou ambígua: para em `awaiting_selection` sem chamar novamente
+  o provedor e sem alterar o documento;
 - mistura de leitura e mutação, ID repetido ou orçamento excedido: falha fechada.
 
 No painel, o controlador roda no worker de rede, mas seu `read_executor` coloca a
@@ -257,6 +261,57 @@ mesma instância do serviço pelo runtime. O MCP projeta `submit`, `status` e
 possui handlers CAD nem um serviço paralelo. A confirmação, execução serial,
 progresso e rollback permanecem na thread Qt.
 
+## Modelagem mecânica do M4
+
+O M4 acrescenta 18 contratos ao catálogo, totalizando 25 ferramentas. Specs,
+schemas de entrada e saída, aliases PT/EN, risco e ordem canônica ficam em
+`aicad.core.mechanical_tools`, que não importa FreeCAD.
+
+As seis leituras novas resolvem um objeto por nome interno, label inequívoca ou
+seleção; expõem detalhes, medidas, bounding box, dependências, parâmetros
+editáveis e captura visual. Ausência ou ambiguidade não é resolvida por palpite.
+
+As doze mutações cobrem renomear, alterar parâmetros permitidos, transformar,
+criar placa, furos e padrões, sketch retangular, pad, booleanas, filete e chanfro.
+O adaptador usa uma única fronteira transacional que:
+
+1. exige documento ativo e habilita undo;
+2. abre uma transação nomeada;
+3. aplica somente argumentos já validados;
+4. recalcula e valida formas e documento;
+5. confirma e registra o resultado, ou aborta e recalcula em qualquer erro.
+
+Furos, padrões, pad, booleanas, filetes e chanfros geram features BRep derivadas
+com `SourceObjects` e `FeatureKind`. Essa rastreabilidade ajuda inspeção e undo,
+mas não promete recomputação paramétrica automática de toda a cadeia nesta fase.
+O sketch retangular também é propositalmente simples e ainda não é totalmente
+constrangido.
+
+Filete e chanfro não recebem `Edge1`, `Edge2` ou outro índice topológico externo.
+`cad.get_object_details` calcula uma assinatura a partir do tipo de curva,
+comprimento, centro e vértices; a mutação resolve novamente essa assinatura no
+estado corrente e falha se ela não for única.
+
+## Receitas e contexto visual
+
+`RecipeCatalog`, em `aicad.orchestration.recipes`, contém parâmetros Pydantic e
+compiladores confiáveis. Ele não executa código nem possui handlers paralelos:
+produz somente `PlannedToolCall` que é revalidado pelo registro e submetido ao
+mesmo `PlanService`.
+
+As receitas iniciais são placa de fixação, flange e pad retangular. Cada uma
+valida previamente relações geométricas impossíveis, como furos fora da peça, e
+produz um plano composto legível antes da confirmação.
+
+`cad.capture_view` salva PNG somente sob demanda no cache local do usuário. O
+contrato retorna um UUID opaco e `aicad://view/{capture_id}`; nunca retorna o
+caminho. O cache aceita até 8 MiB por imagem, mantém no máximo oito capturas e
+fica fora do repositório.
+
+O MCP projeta esses serviços como `available_cad_recipes`, `submit_cad_recipe`,
+recurso `aicad://recipes`, template de imagem e três prompts guiados. Ferramentas,
+receitas, chat e MCP continuam convergindo no mesmo registro e no mesmo executor.
+
 ## Credenciais de provedor
 
 CredentialStore mantém identificadores de provedor separados das chaves e usa
@@ -307,18 +362,18 @@ avaliar código.
 
 ## Contrato de mutação
 
-Caixa e cilindro usam a mesma rotina transacional do adaptador:
+Todas as mutações geométricas usam a mesma rotina transacional do adaptador:
 
 1. validam dimensões finitas, positivas e o nome;
 2. garantem que o histórico de desfazer esteja habilitado;
 3. abrem uma transação nomeada;
-4. criam e configuram o objeto paramétrico;
+4. criam ou editam o objeto permitido;
 5. recalculam e validam forma e documento dentro da transação;
 6. confirmam em caso de sucesso ou abortam e recalculam em qualquer falha.
 
-O cilindro recebe diâmetro e altura em milímetros, calcula o raio localmente e
-fica alinhado ao eixo Z. Os testes exigem volume correto, duas transações
-independentes e remoção ordenada por `undo`.
+Os testes exigem propriedades e medidas reais, falha segura, transações
+independentes e restauração do fingerprint por `undo`.
+
 ## Fluxo atual do MCP
 
 O servidor MCP e a GUI usam a mesma composição do registro em seus processos.
@@ -337,9 +392,13 @@ imutável à GUI. A resposta do comando de controle contém o estado
 idempotente. Somente o `PlanBridgeDispatcher` da GUI emite a autorização MCP e
 chama o executor compartilhado.
 
+Receitas são listadas e compiladas localmente pelo catálogo confiável. A
+submissão passa pelo mesmo caminho de plano composto. Recursos visuais só leem
+capturas previamente produzidas pela ferramenta registrada; o template MCP não
+aceita caminhos de arquivo.
+
 ## Próxima etapa técnica
 
-M3.1 a M3.6 foram concluídos. A próxima etapa é M4.1 em
-`docs/ai-agent-optimization-plan.md`: ampliar primeiro as ferramentas de leitura
-de objetos, medidas, dependências, aliases e parâmetros editáveis para reduzir
-adivinhação antes de adicionar novas mutações.
+M3.1 a M3.6 e M4.1 a M4.3 foram concluídos. A próxima etapa é M5: criar histórico
+e auditoria local versionados, com retenção explícita e redaction de segredos,
+sem persistir a conversa completa por padrão.

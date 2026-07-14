@@ -9,6 +9,7 @@ $FreeCadModule = Join-Path $ProjectRoot "src\freecad\AiCad"
 $UserConfig = Join-Path $Runtime "test-user.cfg"
 $SystemConfig = Join-Path $Runtime "test-system.cfg"
 $GuiSmokeTimeoutSeconds = 60
+$env:AICAD_VISUAL_CACHE = Join-Path $Runtime "visual-cache"
 
 if (-not (Test-Path -LiteralPath $VenvPython)) {
     throw "Ambiente Python ausente. Execute .\scripts\setup.ps1."
@@ -32,6 +33,16 @@ try {
         $freeCadText = $freeCadOutput -join "`n"
         if ($LASTEXITCODE -ne 0 -or $freeCadText -notmatch "FREECAD_SMOKE_OK") {
             throw "O teste de integracao com o FreeCAD falhou."
+        }
+        $m4Output = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
+            -M $FreeCadModule `
+            -P $VenvSitePackages `
+            -P (Join-Path $ProjectRoot "src") `
+            (Join-Path $ProjectRoot "tests\freecad_m4_smoke.py") 2>&1
+        $m4Output | ForEach-Object { Write-Host $_ }
+        $m4Text = $m4Output -join "`n"
+        if ($LASTEXITCODE -ne 0 -or $m4Text -notmatch "FREECAD_M4_SMOKE_OK") {
+            throw "O teste mecanico M4 do FreeCAD falhou."
         }
     }
     if (Test-Path -LiteralPath $FreeCadExeFile) {

@@ -40,6 +40,7 @@ class ProviderToolDefinition(BaseModel):
     description: ShortText
     risk: ToolRisk
     input_schema: dict[str, JsonValue]
+    output_schema: dict[str, JsonValue] | None = None
 
 
 class ProviderToolCall(BaseModel):
@@ -174,4 +175,5 @@ def tool_definition_from_spec(spec: ToolSpec) -> ProviderToolDefinition:
         description=spec.description,
         risk=spec.risk,
         input_schema=deepcopy(spec.input_schema),
+        output_schema=deepcopy(spec.output_schema),
     )

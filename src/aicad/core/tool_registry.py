@@ -20,6 +20,7 @@ class ToolSpec:
     description: str
     risk: ToolRisk
     input_schema: dict[str, Any]
+    output_schema: dict[str, Any] | None = None
     family: str = "general"
     aliases: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
@@ -463,4 +464,8 @@ def build_default_registry() -> ToolRegistry:
             canonical_order=300,
         )
     )
+    from aicad.core.mechanical_tools import mechanical_tool_specs
+
+    for spec in mechanical_tool_specs():
+        registry.register(spec)
     return registry

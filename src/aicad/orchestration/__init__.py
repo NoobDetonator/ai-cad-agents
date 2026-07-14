@@ -66,6 +66,7 @@ from aicad.orchestration.turn_controller import (
     AgentTurnResult,
     AgentTurnStatus,
 )
+from aicad.orchestration.recipes import RecipeCatalog, default_recipe_catalog
 
 
 __all__ = [
@@ -117,10 +118,12 @@ __all__ = [
     "ProviderToolDefinition",
     "ProviderToolResultMessage",
     "ProviderUnavailableError",
+    "RecipeCatalog",
     "SingleMutationPlanExecutor",
     "StalePlanError",
     "TurnMetricsRecorder",
     "ValidatedPlan",
     "ValidatedPlanCall",
     "tool_definition_from_spec",
+    "default_recipe_catalog",
 ]

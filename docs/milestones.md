@@ -4,7 +4,7 @@ Este documento é o ponto de retomada do projeto em outro computador ou em outro
 chat. Ele registra o estado funcional, as decisões que não podem ser perdidas, o
 roteiro de desenvolvimento e os critérios de aceite de cada etapa.
 
-O detalhamento mais recente do M3 e da ordem técnica do M4 está em
+O detalhamento mais recente do M3 e da execução do M4 está em
 `docs/ai-agent-optimization-plan.md`. Esse plano acrescenta métricas, contexto
 versionado, seleção de ferramentas, loop controlado, aprovação por plano e
 rollback composto sem alterar as regras ou os marcos já concluídos.
@@ -14,13 +14,15 @@ rollback composto sem alterar as regras ou os marcos já concluídos.
 - **Data:** 14 de julho de 2026.
 - **Repositório privado:** `https://github.com/NoobDetonator/ai-cad-agents`.
 - **Branch de trabalho:** `main`.
-- **Baseline mínima desta revisão:** `21c2b0d` — `Add reversible composite plan execution`.
+- **Baseline anterior ao M4:** `700836e` — `Expose reversible plans through MCP`.
+- **Baseline recomendada:** o commit que contém este documento ou um posterior.
 - **Diretório usado no computador do trabalho:**
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD portátil 1.1.1 e Python 3.11 fornecido
   pelo próprio pacote do FreeCAD.
-- **Última validação completa:** 126 testes unitários, `FREECAD_SMOKE_OK` e
-  `FREECAD_GUI_SMOKE_OK`, incluindo o fluxo MCP gráfico.
+- **Última validação completa:** 134 testes unitários, `FREECAD_SMOKE_OK`,
+  `FREECAD_M4_SMOKE_OK` e `FREECAD_GUI_SMOKE_OK`, incluindo modelagem mecânica,
+  receitas, fluxo MCP gráfico e captura visual.
 
 O caminho local pode ser diferente no computador de casa. Nenhum código deve
 depender do caminho absoluto acima; os scripts calculam a raiz do projeto.
@@ -58,33 +60,41 @@ O modo padrão continua sem modelo e reconhece um vocabulário local fechado:
 ```text
 resumo
 seleção
+contexto
+detalhes Base
+medir Base
+dependências Base
+parâmetros Base
 validar
 caixa 10 x 20 x 30 nome MinhaCaixa
 cilindro 30 x 60 nome Eixo
+placa 100 x 60 x 8 nome Base
 desfazer
 ```
 
 - Leituras são executadas imediatamente.
-- `caixa`, `cilindro` e `desfazer` apresentam um plano e aguardam o botão
+- `caixa`, `cilindro`, `placa` e `desfazer` apresentam um plano e aguardam o botão
   **Confirmar operação**.
 - Um pedido desconhecido mostra ajuda e não é interpretado como código.
 - Entradas, nomes e dimensões passam pela validação central do registro.
 
 ### Mutações CAD
 
-A criação de caixa e cilindro:
+As mutações registradas:
 
 1. valida dimensões finitas e positivas;
 2. valida o nome do objeto;
 3. habilita a pilha de desfazer quando necessário;
 4. abre uma transação nomeada;
-5. cria e recalcula o objeto;
+5. criam ou editam e recalculam o objeto;
 6. valida forma e documento dentro da transação;
 7. confirma em caso de sucesso;
 8. aborta e recalcula em caso de falha.
 
-O teste de integração comprova volume, transações independentes e que
-`undo` remove cada objeto na ordem correta.
+O teste de integração comprova propriedades, volume, medidas, dependências,
+falhas abortadas e que `undo` restaura o fingerprint anterior. O M4 cobre placa,
+furos e padrões, sketch/pad, transformação, parâmetros, booleanas, filete e
+chanfro, além das primitivas anteriores.
 
 ### MCP
 
@@ -97,6 +107,8 @@ O teste de integração comprova volume, transações independentes e que
 - A fila e o timer do Qt garantem que o transporte nunca chame FreeCAD por uma
   worker thread.
 - IDs repetidos com o mesmo conteúdo funcionam como polling idempotente.
+- O MCP lista e submete receitas pelo mesmo `PlanService`.
+- Prompts e Resources expõem receitas e capturas por ID opaco, nunca por caminho.
 
 ## 4. Arquitetura atual
 
@@ -135,15 +147,17 @@ flowchart LR
 
 ### Ferramentas registradas
 
-| Ferramenta | Risco | Estado atual |
+| Grupo | Ferramentas | Risco | Estado atual |
 | --- | --- | --- |
-| `cad.get_document_summary` | `read` | Funciona dentro do FreeCAD |
-| `cad.get_selection` | `read` | Funciona dentro da GUI do FreeCAD |
-| `cad.get_context_snapshot` | `read` | L0/L1 versionado, limitado e paginado |
-| `cad.create_box` | `modify` | Funciona com confirmação e transação |
-| `cad.create_cylinder` | `modify` | Diâmetro × altura, eixo Z, confirmação e undo |
-| `cad.validate_document` | `read` | Funciona e recalcula o documento |
-| `cad.undo` | `modify` | Funciona com confirmação |
+| Documento | `get_document_summary`, `get_selection`, `get_context_snapshot`, `validate_document` | `read` | Testado |
+| Objeto | `get_object_details`, `measure_object`, `get_dependencies`, `resolve_object`, `get_editable_parameters` | `read` | Testado |
+| Visual | `capture_view` | `read` | PNG sob demanda e cache limitado |
+| Primitivas | `create_box`, `create_cylinder`, `create_plate` | `modify` | Transacional e reversível |
+| Edição | `rename_object`, `set_parameter`, `transform_object` | `modify` | Transacional e reversível |
+| Furos | `create_through_hole`, `create_rectangular_hole_pattern`, `create_circular_hole_pattern` | `modify` | BRep derivado e reversível |
+| Construção | `create_rectangular_sketch`, `pad_sketch`, `boolean_operation` | `modify` | Fontes vinculadas e reversíveis |
+| Acabamento | `fillet_edges`, `chamfer_edges` | `modify` | Assinatura geométrica de aresta |
+| Histórico CAD | `undo` | `modify` | Confirmação obrigatória |
 
 ## 5. Resumo dos marcos
 
@@ -153,7 +167,7 @@ flowchart LR
 | M1 — Chat local seguro | Concluído | Painel funcional, caixa transacional, confirmação e registro compartilhado |
 | M2 — Ponte MCP–GUI | Concluído | Comunicação local segura e execução na thread Qt |
 | M3 — Orquestrador de IA | Concluído | Contexto, seleção, loop seguro e planos reversíveis via chat/MCP |
-| M4 — Modelagem mecânica básica | Em andamento | Ferramentas priorizadas pelo benchmark e receitas seguras |
+| M4 — Modelagem mecânica básica | Concluído | 18 capacidades mecânicas, receitas, seleção e visão |
 | M5 — Histórico e auditoria | Planejado | Registro persistente de planos, confirmações e resultados |
 | M6 — Validação e exportação | Planejado | Regras de fabricação e exportações controladas |
 | M7 — Empacotamento e experiência | Planejado | Instalação, atualização e uso diário mais simples |
@@ -306,7 +320,7 @@ ferramentas e confirmação já exercitada pelo MCP.
   sem bloquear a thread Qt.
 - O loop faz até quatro rodadas e duas chamadas propostas por rodada; somente
   leituras executam automaticamente e mutações aguardam confirmação.
-- O loop iterativo com retorno de resultados ao modelo ainda não foi implementado.
+- O loop iterativo devolve resultados de leitura ao modelo e pode replanejar.
 - M3.1 concluído com `ToolResultEnvelope`, erros categorizados, eventos monotônicos,
   corpus de 30 pedidos e runner offline sem FreeCAD, rede ou credencial.
 - Baseline local: 14/20 ferramentas exatas, 0/5 esclarecimentos explícitos,
@@ -318,7 +332,8 @@ ferramentas e confirmação já exercitada pelo MCP.
 - M3.3 concluído com metadados no registro, seleção local PT/EN, top-N quatro e
   ordenação canônica antes da chamada DeepSeek.
 - Benchmark do seletor: recall 20/20, mutações expostas 0/5 nos pedidos perigosos,
-  média de 2,83 ferramentas e economia de 57,6% dos schemas.
+  média de 2,83 ferramentas e economia superior a 90% dos schemas no catálogo
+  atual; o corpus mecânico alcança 30/30 e economia de 87,6%.
 - M3.4 concluído com loop de leitura, histórico de ferramentas, cancelamento,
   progresso, memória em RAM e cliente HTTP reutilizado durante o turno.
 - M3.5 concluído com plano imutável, hash canônico, autorização exata, recusa de
@@ -334,8 +349,7 @@ ferramentas e confirmação já exercitada pelo MCP.
   metadados sensíveis.
 - `benchmarks/agent-corpus-v1.json` registra 30 casos em português.
 - `scripts/benchmark_agent.ps1` executa a baseline reproduzível.
-- Os contratos ainda não substituem os resultados atuais do painel; a migração
-  será feita pelo controlador do loop em uma etapa posterior.
+- Os contratos são usados pelo controlador do loop e pela apresentação do painel.
 
 ### M3.2 — Contexto versionado — concluído
 
@@ -426,38 +440,33 @@ Um pedido em linguagem natural produz um plano verificável e chamadas de
 ferramenta estruturadas. Leituras podem prosseguir; mutações aguardam confirmação.
 Desligar o provedor não quebra o chat local nem o MCP.
 
-## 10. M4 — Modelagem mecânica básica
+## 10. M4 — Modelagem mecânica básica — concluído
 
 Adicionar uma ferramenta por vez, sempre com schema, validação, transação, undo,
 teste fora do FreeCAD quando possível e teste de integração dentro dele.
 
-### Progresso atual
+### Entregas
 
-- `cad.create_cylinder` concluída com diâmetro, altura, eixo Z, confirmação,
-  validação de volume e undo independente.
-- O mesmo helper transacional atende caixa e cilindro e aborta em falhas.
-- Chat local, DeepSeek e MCP recebem a ferramenta pelo registro compartilhado.
-
-Ordem restante:
-
-1. placa com dimensões e espessura;
-2. criação de sketch retangular simples;
-3. extrusão/pad controlado;
-4. furo cilíndrico passante;
-5. padrões de furos simples;
-6. chanfro e filete com seleção explícita;
-7. renomear e alterar parâmetros existentes;
-8. consulta de medidas e bounding box;
-9. operações booleanas com validação de operandos.
-
-Para operações baseadas em faces ou arestas, não confiar apenas em índices
-topológicos instáveis. Registrar referências, contexto e estratégia de resolução.
+- Seis leituras de compreensão: detalhes, medidas, dependências, resolução de
+  objeto, parâmetros editáveis e captura de vista.
+- Doze mutações: renomear, editar parâmetro, transformar, placa, furo passante,
+  dois padrões de furos, sketch, pad, booleana, filete e chanfro.
+- Schemas de saída compartilhados e catálogo total de 25 ferramentas.
+- Uma fronteira transacional comum com validação, abort e undo comprovado.
+- Assinatura geométrica de arestas no lugar de índices topológicos expostos.
+- Features derivadas rastreáveis por `SourceObjects` e `FeatureKind`.
+- `RecipeCatalog` confiável para placa de fixação, flange e pad retangular.
+- Estado `awaiting_selection` no agente e mensagem explícita no painel.
+- Captura PNG sob demanda, cache limitado e resource URI opaca.
+- Tools, Prompts e Resources MCP projetados dos mesmos serviços.
+- Corpus M4 PT/EN com recall 30/30 e economia de 87,6% dos schemas.
+- Smoke real de toda a mecânica e smoke visual/MCP no FreeCAD gráfico.
 
 ### Critério de aceite de M4
 
 É possível construir, revisar e editar peças mecânicas simples sem gerar objetos
 inválidos silenciosamente. Cada operação pode ser desfeita e tem cobertura de
-falha, não apenas de sucesso.
+falha, não apenas de sucesso. Critério atendido.
 
 ## 11. M5 — Histórico e auditoria
 
@@ -519,7 +528,7 @@ git log -3 --oneline
 ```
 
 Confirmar que a branch é `main`, que não há mudanças locais inesperadas e que o
-commit `971df80` ou um commit posterior está presente.
+commit que contém a conclusão do M4 ou um posterior está presente.
 
 ### Ler antes de alterar
 
@@ -556,8 +565,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\testar.ps1
 
 Resultado esperado:
 
-- 126 testes Python aprovados ou quantidade superior;
+- 134 testes Python aprovados ou quantidade superior;
 - `FREECAD_SMOKE_OK`;
+- `FREECAD_M4_SMOKE_OK`;
 - `FREECAD_GUI_SMOKE_OK`;
 - janela gráfica abre e fecha automaticamente;
 - captura local em `.runtime\gui-smoke-panel.png`.
@@ -608,19 +618,20 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 
 ## 16. Limitações e riscos conhecidos
 
-- O parser atual não entende linguagem natural aberta.
-- As mutações geométricas atuais criam somente caixa e cilindro isolados.
+- O parser local continua fechado; linguagem natural aberta depende do modo de IA.
+- Features derivadas do M4 são BReps rastreáveis, mas ainda não formam uma árvore
+  Part Design totalmente paramétrica e autorrecomputável.
+- O sketch retangular básico ainda não é totalmente constrangido.
 - Chamadas MCP ao documento dependem de uma sessão gráfica do FreeCAD ativa.
 - `cad.validate_document` recalcula, embora seja classificado como leitura por não
   alterar intencionalmente a geometria.
 - `undo` atua sobre a última transação disponível; uma evolução futura deve
   registrar e apresentar claramente a origem da transação.
 - A suíte gráfica depende de uma sessão Windows capaz de abrir GUI.
-- A seleção topológica do FreeCAD pode ser instável após mudanças paramétricas;
-  operações futuras precisam tratar esse problema explicitamente.
+- Assinaturas geométricas reduzem o risco de índice topológico instável, mas podem
+  ficar ambíguas quando duas arestas são geometricamente idênticas; nesse caso a
+  operação falha e exige referência mais específica.
 - Não há persistência de conversas ou auditoria estruturada ainda.
-- O modo DeepSeek realiza uma única rodada; ainda não devolve resultados de
-  ferramentas ao modelo.
 
 ## 17. Decisões técnicas
 
@@ -637,9 +648,9 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 
 1. Política de aprovação para leituras potencialmente caras.
 2. Persistência e retenção do histórico de auditoria.
-3. Política de loop iterativo e troca futura entre provedores.
-4. Estratégia para referências topológicas robustas.
-5. Ordem exata das ferramentas mecânicas após caixa e cilindro.
+3. Política para troca futura entre provedores.
+4. Evolução das referências geométricas para faces e cadeias mais complexas.
+5. Estratégia de recomputação paramétrica para features derivadas.
 6. Formato de distribuição do Workbench para usuários não desenvolvedores.
 
 As escolhas pendentes devem ser registradas antes de se tornarem dependências
@@ -658,15 +669,13 @@ os arquivos da pasta docs, com atenção especial a docs/milestones.md e
 docs/ai-agent-optimization-plan.md. Verifique o Git, preserve mudanças existentes
 e execute scripts/testar.ps1 para confirmar a base.
 
-O baseline mínimo desta revisão é 21c2b0d ou um commit posterior. Na árvore atual, o
-Workbench, o chat local seguro, caixa e cilindro transacionais, undo, ToolRegistry
-compartilhado, ponte MCP–GUI autenticada e planejamento opcional com DeepSeek já
-funcionam e estão testados. M3.1 a M3.6 também possuem contratos,
-métricas, benchmark offline, contexto versionado, seleção local de ferramentas e
-loop controlado, autorização exata, rollback composto comprovado e planos MCP com
-polling/cancelamento idempotentes. O próximo marco recomendado é M4.1 em
-docs/ai-agent-optimization-plan.md: ampliar leituras de objetos, medidas,
-dependências, aliases e parâmetros antes de acrescentar novas mutações.
+Use como baseline o commit que contém a conclusão do M4 ou um posterior. Na árvore
+atual, M0 a M4 estão concluídos: Workbench e painel, ToolRegistry compartilhado
+com 25 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
+compostos, rollback, leituras mecânicas, edição, placa, furos/padrões, sketch/pad,
+booleanas, filete/chanfro, três receitas, seleção aguardada e captura visual já
+funcionam e estão testados. O próximo marco é M5 — histórico e auditoria. Defina
+primeiro contrato, redaction, retenção e armazenamento local fora do Git.
 
 Mantenha o FreeCAD como adaptador, não crie execução arbitrária de Python, não
 salve credenciais no projeto e faça toda mutação de forma transacional, validada

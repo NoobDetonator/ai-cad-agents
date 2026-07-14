@@ -93,7 +93,7 @@ class BenchmarkCorpus(BaseModel):
 
     corpus_version: Literal[BENCHMARK_CORPUS_VERSION] = BENCHMARK_CORPUS_VERSION
     description: str = Field(min_length=1, max_length=1000)
-    cases: tuple[BenchmarkCase, ...] = Field(min_length=30, max_length=500)
+    cases: tuple[BenchmarkCase, ...] = Field(min_length=1, max_length=500)
 
     @field_validator("cases")
     @classmethod
