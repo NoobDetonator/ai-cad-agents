@@ -18,6 +18,7 @@ como registrados em `docs/milestones.md`.
 - **Estado do M3.3:** concluído, com 103 testes e benchmark local do seletor.
 - **Estado do M3.4:** concluído, com 110 testes e smokes reais.
 - **Estado do M3.5:** concluído, com 115 testes e execução real por plano aprovado.
+- **Estado do M3.6:** em andamento; M3.6a concluído com 121 testes e rollback real.
 - **Capacidades atuais:** resumo, seleção, caixa, cilindro, validação e undo.
 - **IA atual:** até quatro rodadas, leituras retornam ao modelo e mutações encerram
   a descoberta sem execução automática.
@@ -651,7 +652,7 @@ Resultado registrado:
 - o smoke FreeCAD real criou a peça pelo plano aprovado, validou e desfez;
 - nenhuma chave ou rede externa foi necessária para concluir o marco.
 
-### M3.6 — Plano composto reversível
+### M3.6 — Plano composto reversível — M3.6a concluído
 
 Entregas:
 
@@ -663,6 +664,27 @@ Entregas:
 
 Aceite: um plano de duas mutações ou conclui validado ou restaura exatamente a
 baseline em falha injetada.
+
+Resultado do M3.6a:
+
+- `CompositeValidatedPlan` congela de duas a oito mutações e recusa `undo` como
+  etapa não compensável;
+- `CompositeApprovalGrant` cobre hash e todos os IDs com uma aprovação;
+- toda ferramenta, handler, risco e argumento é pré-validado;
+- execução é serial, com validação após cada transação;
+- falha ou cancelamento entre etapas desfaz exatamente as transações confirmadas;
+- restauração exige documento, fingerprint e seleção iguais à baseline;
+- `PlanService` mantém status/progresso e submit/status/cancel idempotentes;
+- painel mostra hash, etapas e progresso usando o mesmo serviço;
+- testes injetam falha na segunda etapa e comprovam rollback sem repetição;
+- FreeCAD real comprova sucesso de duas mutações e rollback de duas transações.
+
+Parte restante M3.6b:
+
+- estender o protocolo da ponte para envelopes de plano e status;
+- hospedar o `PlanService` autoritativo no processo GUI;
+- expor `submit_cad_plan`, `get_cad_plan_status` e `cancel_cad_plan` no MCP;
+- manter polling idempotente sem executar handlers no processo MCP.
 
 ### M4.1 — Ferramentas que aumentam compreensão
 
@@ -826,7 +848,7 @@ O marco de otimização estará concluído quando:
 ## 26. Orientação para retomada em outro chat
 
 Ao continuar, não começar aumentando o número de ferramentas nem alterando a
-ponte. M3.1 a M3.5 estão concluídos; implementar o M3.6 deste documento e seguir
+ponte. M3.1 a M3.5 e M3.6a estão concluídos; implementar o M3.6b e seguir
 os critérios de aceite em ordem. Qualquer atalho que introduza Python arbitrário,
 um registro paralelo ou aprovação ampla deve ser recusado mesmo que produza uma
 demonstração mais rápida.

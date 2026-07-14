@@ -9,7 +9,14 @@ sys.path.insert(0, str(project_root / "src"))
 from aicad.adapters.freecad_adapter import FreeCadAdapter
 from aicad.application import build_cad_tool_registry
 from aicad.core.context import DocumentStateToken
+from aicad.core.tool_registry import build_default_registry
 from aicad.orchestration import OrchestrationPlan, PlannedToolCall
+from aicad.orchestration.plan_service import (
+    CompositeApprovalGrant,
+    CompositePlanError,
+    CompositePlanExecutor,
+    CompositeValidatedPlan,
+)
 from aicad.orchestration.plans import (
     ApprovalGrant,
     SingleMutationPlanExecutor,
@@ -99,5 +106,89 @@ assert execution.state_after.revision > execution.state_before.revision
 assert len(App.ActiveDocument.Objects) == 1
 assert adapter.undo()["undone"] is True
 assert len(App.ActiveDocument.Objects) == 0
+
+composite_proposal = OrchestrationPlan(
+    intention="Criar dois sólidos aprovados.",
+    assumptions=(),
+    steps=("Criar caixa.", "Criar cilindro."),
+    message="Plano composto transacional.",
+    tool_calls=(
+        PlannedToolCall(
+            call_id="smoke-composite-box-1",
+            name="cad.create_box",
+            arguments={
+                "length": 3,
+                "width": 4,
+                "height": 5,
+                "name": "CompositeBox",
+            },
+            risk="modify",
+            requires_confirmation=True,
+        ),
+        PlannedToolCall(
+            call_id="smoke-composite-cylinder-1",
+            name="cad.create_cylinder",
+            arguments={
+                "diameter": 6,
+                "height": 12,
+                "name": "CompositeCylinder",
+            },
+            risk="modify",
+            requires_confirmation=True,
+        ),
+    ),
+)
+composite_base = adapter.get_context_snapshot()
+composite_plan = CompositeValidatedPlan.build(
+    composite_proposal,
+    DocumentStateToken.model_validate(composite_base["state_token"]),
+    registry,
+)
+composite_result = CompositePlanExecutor(
+    registry,
+    adapter.get_context_snapshot,
+).execute(composite_plan, CompositeApprovalGrant.issue(composite_plan))
+assert len(composite_result.results) == 2
+assert len(App.ActiveDocument.Objects) == 2
+assert adapter.undo()["undone"] is True
+assert adapter.undo()["undone"] is True
+assert len(App.ActiveDocument.Objects) == 0
+
+rollback_registry = build_default_registry()
+rollback_registry.bind("cad.create_box", adapter.create_box)
+rollback_registry.bind("cad.create_cylinder", adapter.create_cylinder)
+validation_calls = [0]
+
+
+def fail_second_validation():
+    validation_calls[0] += 1
+    if validation_calls[0] == 2:
+        return {"valid": False, "errors": ["Injected smoke failure."]}
+    return adapter.validate_document()
+
+
+rollback_registry.bind("cad.validate_document", fail_second_validation)
+rollback_registry.bind("cad.undo", adapter.undo)
+rollback_base = adapter.get_context_snapshot()
+rollback_plan = CompositeValidatedPlan.build(
+    composite_proposal,
+    DocumentStateToken.model_validate(rollback_base["state_token"]),
+    rollback_registry,
+)
+try:
+    CompositePlanExecutor(
+        rollback_registry,
+        adapter.get_context_snapshot,
+    ).execute(rollback_plan, CompositeApprovalGrant.issue(rollback_plan))
+except CompositePlanError:
+    pass
+else:
+    raise AssertionError("Injected composite failure was not reported.")
+assert len(App.ActiveDocument.Objects) == 0
+restored_context = adapter.get_context_snapshot()
+assert (
+    restored_context["state_token"]["document_fingerprint"]
+    == rollback_base["state_token"]["document_fingerprint"]
+)
 print("FREECAD_SMOKE_OK")
 App.closeDocument("AICadSmokeTest")

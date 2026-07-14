@@ -25,6 +25,7 @@ O primeiro protótipo usa o FreeCAD como motor de modelagem, visualização e do
 - Loop DeepSeek limitado executa leituras, devolve resultados e permite cancelar.
 - Memória de leitura permanece em RAM e é invalidada quando o estado CAD muda.
 - Mutação da IA usa plano imutável, hash, estado-base e autorização de curta duração.
+- Planos de 2–8 mutações usam aprovação única e rollback compensatório verificado.
 - Testes unitários, teste transacional no FreeCADCmd e fluxo MCP gráfico automatizado.
 - Instalação reproduzível e isolada para Windows.
 
@@ -173,6 +174,13 @@ intenção, passos, ferramenta e argumentos. `ApprovalGrant` é criado somente n
 clique, autoriza um único `call_id`, expira rapidamente e não contém segredo. O
 executor confere novamente hash, autorização, schema, risco e estado, executa uma
 única mutação transacional e valida o documento e o novo estado depois.
+
+O corte M3.6a permite planos compostos no chat DeepSeek quando já existe um
+documento ativo. Todas as chamadas são pré-validadas antes da primeira mutação.
+Uma aprovação cobre o hash e todos os IDs; cada etapa é validada. Em falha ou
+cancelamento entre etapas, somente as transações já confirmadas pelo plano são
+desfeitas, e documento, seleção e fingerprint precisam voltar à baseline. `undo`
+não pode ser uma etapa composta porque ainda não há compensação segura por redo.
 
 ## Arquitetura
 

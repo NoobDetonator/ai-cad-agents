@@ -48,7 +48,7 @@ class AgentTurnLimits:
     max_rounds: int = 4
     max_total_calls: int = 8
     max_read_calls: int = 6
-    max_mutation_proposals: int = 1
+    max_mutation_proposals: int = 2
     max_duration_seconds: float = 45.0
     max_result_bytes: int = 64 * 1024
 

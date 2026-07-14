@@ -111,6 +111,40 @@ def test_read_loop_never_executes_a_mutation() -> None:
     assert executed == []
 
 
+def test_turn_can_return_two_mutations_without_executing_them() -> None:
+    provider = SequenceProvider(
+        response(
+            calls=[
+                {
+                    "call_id": "box-1",
+                    "name": "cad.create_box",
+                    "arguments": {"length": 10, "width": 20, "height": 30},
+                },
+                {
+                    "call_id": "cylinder-1",
+                    "name": "cad.create_cylinder",
+                    "arguments": {"diameter": 8, "height": 20},
+                },
+            ]
+        )
+    )
+    registry, controller = controller_for(provider)
+    executed: list[str] = []
+    registry.bind("cad.create_box", lambda **arguments: executed.append("box"))
+    registry.bind(
+        "cad.create_cylinder",
+        lambda **arguments: executed.append("cylinder"),
+    )
+
+    result = controller.run("Crie uma caixa e um cilindro.")
+
+    assert result.status is AgentTurnStatus.AWAITING_APPROVAL
+    assert result.total_tool_calls == 2
+    assert result.final_plan is not None
+    assert len(result.final_plan.tool_calls) == 2
+    assert executed == []
+
+
 def test_cancellation_stops_before_provider_or_tools() -> None:
     provider = SequenceProvider(response())
     _, controller = controller_for(provider)

@@ -23,12 +23,17 @@ from aicad.orchestration import (
     AgentTurnResult,
     AgentTurnStatus,
     ApprovalGrant,
+    CompositeApprovalGrant,
+    CompositePlanError,
+    CompositePlanExecutor,
+    CompositeValidatedPlan,
     AiOrchestrator,
     DeepSeekProvider,
     OrchestrationLimits,
     OrchestrationPlan,
     PlanApprovalError,
     PlanExecutionError,
+    PlanService,
     SingleMutationPlanExecutor,
     ValidatedPlan,
 )
@@ -124,7 +129,9 @@ def show_chat_panel() -> None:
     confirmation.hide()
 
     registry = get_tool_registry()
-    pending: list[ChatCommand | BridgeRequest | ValidatedPlan] = []
+    pending: list[
+        ChatCommand | BridgeRequest | ValidatedPlan | CompositeValidatedPlan
+    ] = []
     remote_confirmation_queue: list[BridgeRequest] = []
     bridge_controller: list[GuiBridgeController] = []
     credential_store = CredentialStore()
@@ -138,6 +145,7 @@ def show_chat_panel() -> None:
     active_ai_cancellation: list[AgentTurnCancellation] = []
     ai_stage: list[AgentStage | None] = [None]
     session_memory = AgentSessionMemory()
+    plan_service = PlanService()
     ai_timer = QtCore.QTimer(container)
 
     def append_assistant(message: str) -> None:
@@ -242,7 +250,13 @@ def show_chat_panel() -> None:
 
 
     def set_pending(
-        command: ChatCommand | BridgeRequest | ValidatedPlan | None,
+        command: (
+            ChatCommand
+            | BridgeRequest
+            | ValidatedPlan
+            | CompositeValidatedPlan
+            | None
+        ),
     ) -> None:
         pending.clear()
         if command is not None:
@@ -366,6 +380,21 @@ def show_chat_panel() -> None:
             f"Hash: <code>{escape(plan.plan_hash[:16])}…</code><br>"
             f"Estado-base: revisão {plan.base_state_token.revision}.<br>"
             "Somente a chamada exibida e este estado exato serão aceitos."
+        )
+
+    def describe_composite_plan(plan: CompositeValidatedPlan) -> str:
+        calls = "".join(
+            f"<li><code>{escape(call.name)}</code> — "
+            f"<code>{escape(call.call_id)}</code></li>"
+            for call in plan.calls
+        )
+        return (
+            "<b>Plano composto aguardando uma única aprovação.</b><br>"
+            f"ID: <code>{escape(str(plan.plan_id))}</code><br>"
+            f"Hash: <code>{escape(plan.plan_hash[:16])}…</code><br>"
+            f"Estado-base: revisão {plan.base_state_token.revision}."
+            f"<ol>{calls}</ol>"
+            "Falha em qualquer etapa desfaz somente as transações deste plano."
         )
 
     def request_deepseek_plan(text: str) -> None:
@@ -531,14 +560,25 @@ def show_chat_panel() -> None:
                 base_state = DocumentStateToken.model_validate(
                     base_context["state_token"]
                 )
-                validated_plan = ValidatedPlan.build(plan, base_state, registry)
+                if len(plan.tool_calls) == 1:
+                    validated_plan = ValidatedPlan.build(plan, base_state, registry)
+                else:
+                    validated_plan = CompositeValidatedPlan.build(
+                        plan,
+                        base_state,
+                        registry,
+                    )
             except (KeyError, RuntimeError, ValueError):
                 append_assistant(
                     "A mutação proposta não pôde ser congelada com segurança."
                 )
                 show_next_remote_confirmation()
                 return
-            append_assistant(describe_validated_plan(validated_plan))
+            if isinstance(validated_plan, CompositeValidatedPlan):
+                plan_service.submit(validated_plan)
+                append_assistant(describe_composite_plan(validated_plan))
+            else:
+                append_assistant(describe_validated_plan(validated_plan))
             set_pending(validated_plan)
             return
         command = ChatCommand(
@@ -594,6 +634,40 @@ def show_chat_panel() -> None:
                 append_assistant(
                     "Plano não executado: " + escape(str(exc))
                 )
+        elif isinstance(operation, CompositeValidatedPlan):
+            try:
+                grant = CompositeApprovalGrant.issue(operation)
+                append_assistant(
+                    f"Executando plano composto de {len(operation.calls)} etapas."
+                )
+
+                def show_composite_progress(snapshot) -> None:
+                    append_assistant(
+                        "Plano composto: "
+                        f"{snapshot.completed_calls}/{snapshot.total_calls} "
+                        "etapas validadas."
+                    )
+
+                result = plan_service.execute(
+                    operation.plan_id,
+                    grant,
+                    CompositePlanExecutor(registry, read_work_context),
+                    on_progress=show_composite_progress,
+                )
+                for call, tool_result in zip(
+                    operation.calls,
+                    result.results,
+                    strict=True,
+                ):
+                    append_assistant(format_tool_result(call.name, tool_result))
+                    refresh_view(call.name)
+                append_assistant(
+                    "Plano composto concluído; todas as pós-condições passaram."
+                )
+            except (CompositePlanError, PlanApprovalError, RuntimeError, ValueError) as exc:
+                append_assistant(
+                    "Plano composto não concluído: " + escape(str(exc))
+                )
         elif bridge_controller:
             response = bridge_controller[0].resolve_confirmation(
                 operation.request_id,
@@ -615,6 +689,11 @@ def show_chat_panel() -> None:
             append_assistant(
                 "Plano imutável cancelado; nenhuma autorização foi emitida e o "
                 "documento não foi alterado."
+            )
+        elif isinstance(operation, CompositeValidatedPlan):
+            plan_service.cancel(operation.plan_id)
+            append_assistant(
+                "Plano composto cancelado; nenhuma etapa foi executada."
             )
         elif bridge_controller:
             response = bridge_controller[0].resolve_confirmation(

@@ -231,6 +231,31 @@ antes do handler. O adaptador continua responsável pela transação e pela vali
 da própria geometria. O M3.5 não executa planos compostos nem repete uma mutação
 automaticamente em erro.
 
+## Planos compostos por rollback compensatório
+
+O corte M3.6a adiciona `CompositeValidatedPlan`, `CompositeApprovalGrant`,
+`CompositePlanExecutor` e `PlanService`. Um plano contém de duas a oito mutações,
+IDs únicos, um estado-base e um único hash. Documento ativo é obrigatório e
+`cad.undo` não pode ser etapa, pois ainda não existe compensação segura por redo.
+
+Antes da primeira alteração, todas as ferramentas, handlers, riscos, argumentos e
+a disponibilidade de rollback são verificados. A execução continua serial na
+thread Qt. Depois de cada transação, `cad.validate_document` precisa passar. Se uma
+etapa falhar ou houver cancelamento entre etapas, o executor chama `cad.undo`
+exatamente uma vez para cada transação já confirmada, em ordem inversa, e exige:
+
+- documento válido;
+- mesmo ID de documento;
+- mesmo fingerprint do documento;
+- mesmo fingerprint da seleção.
+
+`PlanService` mantém em RAM estados `awaiting_approval`, `running`, `completed`,
+`rolled_back`, `cancelled` e `failed`. Submeter novamente o mesmo ID/hash,
+consultar status e cancelar são idempotentes. O painel usa esse serviço e mostra
+progresso por etapa. A projeção desses comandos pelo processo MCP ainda depende
+de estender a ponte GUI; ela é a parte restante do M3.6 e não será simulada com um
+registro paralelo no processo MCP.
+
 ## Credenciais de provedor
 
 CredentialStore mantém identificadores de provedor separados das chaves e usa
@@ -305,7 +330,6 @@ clique do usuário. Repetir a request com o mesmo ID consulta o resultado.
 
 ## Próxima etapa técnica
 
-M3.1 a M3.5 foram concluídos. Seguir o M3.6 em
-`docs/ai-agent-optimization-plan.md`: criar serviço compartilhado para planos
-compostos, pré-validação total, uma autorização por hash e rollback compensatório
-com verificação do estado restaurado.
+M3.1 a M3.5 e o corte M3.6a foram concluídos. Finalizar o M3.6b em
+`docs/ai-agent-optimization-plan.md`: transportar submissão, status e cancelamento
+do `PlanService` pela ponte GUI autenticada, sem criar serviço paralelo no MCP.

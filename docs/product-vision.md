@@ -74,6 +74,12 @@ um prazo curto. O executor recusa estado obsoleto, revalida tudo pelo registro,
 executa uma única transação e confere a pós-condição. Alterar silenciosamente o
 plano depois de exibido deixa de ser possível.
 
+O M3.6a está concluído no chat. A IA pode propor de duas a oito mutações com uma
+aprovação única; todas são pré-validadas e qualquer falha desfaz apenas as etapas
+do plano, verificando a restauração da baseline. O mesmo serviço já possui status
+e cancelamento idempotentes em memória. Falta projetá-lo pela ponte autenticada
+para o processo MCP antes de considerar todo o M3.6 encerrado.
+
 ## Diferenciais pretendidos
 
 - operação local e privada;
