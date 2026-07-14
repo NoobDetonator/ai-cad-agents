@@ -131,6 +131,28 @@ def inspect() -> None:
         assert len(App.ActiveDocument.Objects) == 0
         assert "foi desfeita" in history.toPlainText()
 
+        prompt.setPlainText("cilindro 30 x 60 nome GuiSmokeCylinder")
+        send.click()
+        QtWidgets.QApplication.processEvents()
+        assert len(App.ActiveDocument.Objects) == 0
+        assert apply_button.isVisible()
+        apply_button.click()
+        wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 1)
+        cylinder = App.ActiveDocument.Objects[0]
+        assert cylinder.TypeId == "Part::Cylinder"
+        assert cylinder.Label == "GuiSmokeCylinder"
+        assert cylinder.Radius.Value == 15
+        assert cylinder.Height.Value == 60
+        assert "Cilindro GuiSmokeCylinder criado" in history.toPlainText()
+
+        prompt.setPlainText("desfazer")
+        send.click()
+        QtWidgets.QApplication.processEvents()
+        assert apply_button.isVisible()
+        apply_button.click()
+        wait_for_ui(lambda: len(App.ActiveDocument.Objects) == 0)
+        assert "foi desfeita" in history.toPlainText()
+
         mcp_box_request = BridgeRequest(
             request_id=uuid4(),
             tool_name="cad.create_box",

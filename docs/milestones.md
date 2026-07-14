@@ -14,7 +14,7 @@ roteiro de desenvolvimento e os critérios de aceite de cada etapa.
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD portátil 1.1.1 e Python 3.11 fornecido
   pelo próprio pacote do FreeCAD.
-- **Última validação completa:** 69 testes unitários, `FREECAD_SMOKE_OK` e
+- **Última validação completa:** 73 testes unitários, `FREECAD_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`, incluindo o fluxo MCP gráfico.
 
 O caminho local pode ser diferente no computador de casa. Nenhum código deve
@@ -55,18 +55,19 @@ resumo
 seleção
 validar
 caixa 10 x 20 x 30 nome MinhaCaixa
+cilindro 30 x 60 nome Eixo
 desfazer
 ```
 
 - Leituras são executadas imediatamente.
-- `caixa` e `desfazer` apresentam um plano e aguardam o botão
+- `caixa`, `cilindro` e `desfazer` apresentam um plano e aguardam o botão
   **Confirmar operação**.
 - Um pedido desconhecido mostra ajuda e não é interpretado como código.
 - Entradas, nomes e dimensões passam pela validação central do registro.
 
-### Mutação CAD
+### Mutações CAD
 
-A criação de caixa:
+A criação de caixa e cilindro:
 
 1. valida dimensões finitas e positivas;
 2. valida o nome do objeto;
@@ -77,7 +78,8 @@ A criação de caixa:
 7. confirma em caso de sucesso;
 8. aborta e recalcula em caso de falha.
 
-O teste de integração comprova que `undo` remove o objeto criado.
+O teste de integração comprova volume, transações independentes e que
+`undo` remove cada objeto na ordem correta.
 
 ### MCP
 
@@ -133,6 +135,7 @@ flowchart LR
 | `cad.get_document_summary` | `read` | Funciona dentro do FreeCAD |
 | `cad.get_selection` | `read` | Funciona dentro da GUI do FreeCAD |
 | `cad.create_box` | `modify` | Funciona com confirmação e transação |
+| `cad.create_cylinder` | `modify` | Diâmetro × altura, eixo Z, confirmação e undo |
 | `cad.validate_document` | `read` | Funciona e recalcula o documento |
 | `cad.undo` | `modify` | Funciona com confirmação |
 
@@ -144,7 +147,7 @@ flowchart LR
 | M1 — Chat local seguro | Concluído | Painel funcional, caixa transacional, confirmação e registro compartilhado |
 | M2 — Ponte MCP–GUI | Concluído | Comunicação local segura e execução na thread Qt |
 | M3 — Orquestrador de IA | Em andamento | DeepSeek opcional com plano seguro de uma rodada |
-| M4 — Modelagem mecânica básica | Planejado | Mais primitivas e operações paramétricas seguras |
+| M4 — Modelagem mecânica básica | Em andamento | Caixa e cilindro paramétricos seguros |
 | M5 — Histórico e auditoria | Planejado | Registro persistente de planos, confirmações e resultados |
 | M6 — Validação e exportação | Planejado | Regras de fabricação e exportações controladas |
 | M7 — Empacotamento e experiência | Planejado | Instalação, atualização e uso diário mais simples |
@@ -329,18 +332,24 @@ Desligar o provedor não quebra o chat local nem o MCP.
 Adicionar uma ferramenta por vez, sempre com schema, validação, transação, undo,
 teste fora do FreeCAD quando possível e teste de integração dentro dele.
 
-Ordem sugerida:
+### Progresso atual
 
-1. cilindro paramétrico;
-2. placa com dimensões e espessura;
-3. criação de sketch retangular simples;
-4. extrusão/pad controlado;
-5. furo cilíndrico passante;
-6. padrões de furos simples;
-7. chanfro e filete com seleção explícita;
-8. renomear e alterar parâmetros existentes;
-9. consulta de medidas e bounding box;
-10. operações booleanas com validação de operandos.
+- `cad.create_cylinder` concluída com diâmetro, altura, eixo Z, confirmação,
+  validação de volume e undo independente.
+- O mesmo helper transacional atende caixa e cilindro e aborta em falhas.
+- Chat local, DeepSeek e MCP recebem a ferramenta pelo registro compartilhado.
+
+Ordem restante:
+
+1. placa com dimensões e espessura;
+2. criação de sketch retangular simples;
+3. extrusão/pad controlado;
+4. furo cilíndrico passante;
+5. padrões de furos simples;
+6. chanfro e filete com seleção explícita;
+7. renomear e alterar parâmetros existentes;
+8. consulta de medidas e bounding box;
+9. operações booleanas com validação de operandos.
 
 Para operações baseadas em faces ou arestas, não confiar apenas em índices
 topológicos instáveis. Registrar referências, contexto e estratégia de resolução.
@@ -500,7 +509,7 @@ uma caixa pequena. Não usar documentos importantes para o primeiro teste manual
 ## 16. Limitações e riscos conhecidos
 
 - O parser atual não entende linguagem natural aberta.
-- Existe apenas uma mutação geométrica: criação de caixa.
+- As mutações geométricas atuais criam somente caixa e cilindro isolados.
 - Chamadas MCP ao documento dependem de uma sessão gráfica do FreeCAD ativa.
 - `cad.validate_document` recalcula, embora seja classificado como leitura por não
   alterar intencionalmente a geometria.

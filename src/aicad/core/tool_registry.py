@@ -198,6 +198,32 @@ def build_default_registry() -> ToolRegistry:
     )
     registry.register(
         ToolSpec(
+            name="cad.create_cylinder",
+            description=(
+                "Create a vertical parametric cylinder from its diameter and "
+                "height in millimeters, aligned with the Z axis, in a "
+                "reversible transaction."
+            ),
+            risk=ToolRisk.MODIFY,
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "diameter": {"type": "number", "exclusiveMinimum": 0},
+                    "height": {"type": "number", "exclusiveMinimum": 0},
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "[A-Za-z][A-Za-z0-9_-]*",
+                    },
+                },
+                "required": ["diameter", "height"],
+                "additionalProperties": False,
+            },
+        )
+    )
+    registry.register(
+        ToolSpec(
             name="cad.validate_document",
             description="Recompute and report document and shape errors.",
             risk=ToolRisk.READ,

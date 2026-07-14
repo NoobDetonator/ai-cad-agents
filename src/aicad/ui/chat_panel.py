@@ -222,7 +222,11 @@ def show_chat_panel() -> None:
         refresh_security_status()
 
     def refresh_view(tool_name: str) -> None:
-        if tool_name not in {"cad.create_box", "cad.undo"}:
+        if tool_name not in {
+            "cad.create_box",
+            "cad.create_cylinder",
+            "cad.undo",
+        }:
             return
         active_gui_document = Gui.activeDocument()
         if active_gui_document is not None:

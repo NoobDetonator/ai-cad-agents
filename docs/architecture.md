@@ -158,18 +158,18 @@ avaliar código.
 
 ## Contrato de mutação
 
-Para criar uma caixa, o adaptador:
+Caixa e cilindro usam a mesma rotina transacional do adaptador:
 
-1. valida dimensões finitas, positivas e o nome;
-2. garante que o histórico de desfazer do documento esteja habilitado;
-3. abre uma transação nomeada;
-4. cria o objeto e recalcula;
-5. valida a forma e o documento ainda dentro da transação;
-6. confirma em caso de sucesso ou aborta e recalcula em caso de falha.
+1. validam dimensões finitas, positivas e o nome;
+2. garantem que o histórico de desfazer esteja habilitado;
+3. abrem uma transação nomeada;
+4. criam e configuram o objeto paramétrico;
+5. recalculam e validam forma e documento dentro da transação;
+6. confirmam em caso de sucesso ou abortam e recalculam em qualquer falha.
 
-O teste de integração exige que a transação aumente a pilha de desfazer e que o
-objeto desapareça depois de `undo`.
-
+O cilindro recebe diâmetro e altura em milímetros, calcula o raio localmente e
+fica alinhado ao eixo Z. Os testes exigem volume correto, duas transações
+independentes e remoção ordenada por `undo`.
 ## Fluxo atual do MCP
 
 O servidor MCP e a GUI usam a mesma composição do registro em seus processos.

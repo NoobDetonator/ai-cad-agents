@@ -14,6 +14,7 @@ def test_default_registry_has_unique_tools() -> None:
     names = [spec.name for spec in build_default_registry().list_specs()]
     assert len(names) == len(set(names))
     assert "cad.create_box" in names
+    assert "cad.create_cylinder" in names
 
 
 def test_registry_executes_connected_handler() -> None:
@@ -63,6 +64,18 @@ def test_registry_validates_arguments_before_calling_handler() -> None:
         )
 
 
+def test_registry_rejects_invalid_cylinder_dimensions() -> None:
+    registry = build_default_registry()
+    registry.bind("cad.create_cylinder", lambda **arguments: arguments)
+
+    with pytest.raises(ToolInputError):
+        registry.execute(
+            "cad.create_cylinder",
+            {"diameter": 0, "height": 60},
+            confirmed=True,
+        )
+
+
 def test_registry_requires_confirmation_for_modifications() -> None:
     registry = build_default_registry()
     registry.bind("cad.undo", lambda: {"undone": True})
@@ -78,6 +91,11 @@ def test_registry_can_validate_a_call_without_a_handler() -> None:
         "cad.create_box",
         {"length": 10, "width": 20, "height": 30},
     ) == {"length": 10, "width": 20, "height": 30}
+
+    assert registry.validate_arguments(
+        "cad.create_cylinder",
+        {"diameter": 30, "height": 60, "name": "Shaft"},
+    ) == {"diameter": 30, "height": 60, "name": "Shaft"}
 
     with pytest.raises(ToolInputError):
         registry.validate_arguments("cad.undo", ["not", "an", "object"])

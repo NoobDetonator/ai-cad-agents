@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any
+from typing import Any, Callable
 
 
 class FreeCadAdapter:
@@ -64,25 +64,34 @@ class FreeCadAdapter:
             )
         return {"selection": selection}
 
-    def create_box(
-        self, length: float, width: float, height: float, name: str = "AIBox"
-    ) -> dict[str, Any]:
-        dimensions = (float(length), float(width), float(height))
-        if any(not math.isfinite(value) or value <= 0 for value in dimensions):
+    @staticmethod
+    def _positive_values(*values: float) -> tuple[float, ...]:
+        checked = tuple(float(value) for value in values)
+        if any(not math.isfinite(value) or value <= 0 for value in checked):
             raise ValueError("All dimensions must be positive.")
+        return checked
+
+    @staticmethod
+    def _validated_object_name(name: str) -> str:
         if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", name) is None:
             raise ValueError("The object name has an invalid format.")
+        return name
+
+    def _create_validated_shape(
+        self,
+        name: str,
+        configure: Callable[[Any], Any],
+    ) -> Any:
         app, _ = self._modules()
         document = app.ActiveDocument or app.newDocument("AICadDocument")
         if document.UndoMode == 0:
             document.UndoMode = 1
         document.openTransaction(f"AI CAD: create {name}")
         try:
-            box = document.addObject("Part::Box", name)
-            box.Label = name
-            box.Length, box.Width, box.Height = dimensions
+            item = configure(document)
+            item.Label = name
             document.recompute()
-            if box.Shape.isNull() or not box.Shape.isValid():
+            if item.Shape.isNull() or not item.Shape.isValid():
                 raise RuntimeError("FreeCAD produced an invalid shape.")
             validation = self._validate_document(document)
             if not validation["valid"]:
@@ -95,11 +104,53 @@ class FreeCadAdapter:
             document.abortTransaction()
             document.recompute()
             raise
+        return item
+
+    def create_box(
+        self, length: float, width: float, height: float, name: str = "AIBox"
+    ) -> dict[str, Any]:
+        dimensions = self._positive_values(length, width, height)
+        checked_name = self._validated_object_name(name)
+
+        def configure(document: Any) -> Any:
+            box = document.addObject("Part::Box", checked_name)
+            box.Length, box.Width, box.Height = dimensions
+            return box
+
+        box = self._create_validated_shape(checked_name, configure)
         return {
             "name": box.Name,
             "label": box.Label,
             "dimensions_mm": list(dimensions),
             "volume_mm3": float(box.Shape.Volume),
+            "valid": True,
+        }
+
+    def create_cylinder(
+        self,
+        diameter: float,
+        height: float,
+        name: str = "AICylinder",
+    ) -> dict[str, Any]:
+        checked_diameter, checked_height = self._positive_values(diameter, height)
+        checked_name = self._validated_object_name(name)
+        radius = checked_diameter / 2
+
+        def configure(document: Any) -> Any:
+            cylinder = document.addObject("Part::Cylinder", checked_name)
+            cylinder.Radius = radius
+            cylinder.Height = checked_height
+            cylinder.Angle = 360
+            return cylinder
+
+        cylinder = self._create_validated_shape(checked_name, configure)
+        return {
+            "name": cylinder.Name,
+            "label": cylinder.Label,
+            "diameter_mm": checked_diameter,
+            "radius_mm": radius,
+            "height_mm": checked_height,
+            "volume_mm3": float(cylinder.Shape.Volume),
             "valid": True,
         }
 

@@ -96,6 +96,44 @@ def test_orchestrator_validates_mutation_without_executing_it() -> None:
     assert call.arguments["name"] == "PlannedBox"
 
 
+def test_orchestrator_validates_cylinder_without_executing_it() -> None:
+    registry = build_default_registry()
+    executed: list[dict[str, Any]] = []
+    registry.bind(
+        "cad.create_cylinder",
+        lambda **arguments: executed.append(arguments),
+    )
+    provider = RecordingProvider(
+        provider_response(
+            tool_calls=[
+                {
+                    "call_id": "call-cylinder-1",
+                    "name": "cad.create_cylinder",
+                    "arguments": {
+                        "diameter": 30,
+                        "height": 60,
+                        "name": "PlannedCylinder",
+                    },
+                }
+            ]
+        )
+    )
+
+    plan = AiOrchestrator(registry, provider).create_plan("Crie um cilindro.")
+
+    assert executed == []
+    assert len(plan.tool_calls) == 1
+    call = plan.tool_calls[0]
+    assert call.name == "cad.create_cylinder"
+    assert call.risk is ToolRisk.MODIFY
+    assert call.requires_confirmation is True
+    assert call.arguments == {
+        "diameter": 30,
+        "height": 60,
+        "name": "PlannedCylinder",
+    }
+
+
 @pytest.mark.parametrize(
     "tool_call",
     [

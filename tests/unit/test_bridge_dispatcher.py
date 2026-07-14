@@ -43,6 +43,21 @@ class RecordingAdapter:
             "valid": True,
         }
 
+    def create_cylinder(
+        self,
+        diameter: float,
+        height: float,
+        name: str = "AICylinder",
+    ) -> dict[str, Any]:
+        self.create_thread_ids.append(get_ident())
+        self.created_names.append(name)
+        return {
+            "name": name,
+            "diameter_mm": diameter,
+            "height_mm": height,
+            "valid": True,
+        }
+
     def validate_document(self) -> dict[str, Any]:
         return {"valid": True, "errors": []}
 

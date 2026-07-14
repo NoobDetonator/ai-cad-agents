@@ -15,6 +15,11 @@ class FakeCadAdapter:
     ) -> dict[str, Any]:
         return {"name": name, "dimensions": [length, width, height]}
 
+    def create_cylinder(
+        self, diameter: float, height: float, name: str = "AICylinder"
+    ) -> dict[str, Any]:
+        return {"name": name, "diameter": diameter, "height": height}
+
     def validate_document(self) -> dict[str, Any]:
         return {"valid": True, "errors": []}
 
@@ -31,3 +36,10 @@ def test_application_connects_every_shared_tool_to_one_adapter() -> None:
         confirmed=True,
     )
     assert result == {"name": "TestBox", "dimensions": [1, 2, 3]}
+
+    cylinder = registry.execute(
+        "cad.create_cylinder",
+        {"diameter": 20, "height": 50, "name": "TestCylinder"},
+        confirmed=True,
+    )
+    assert cylinder == {"name": "TestCylinder", "diameter": 20, "height": 50}

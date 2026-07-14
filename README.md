@@ -8,11 +8,11 @@ O primeiro protótipo usa o FreeCAD como motor de modelagem, visualização e do
 
 - Workbench `AI CAD` carregável pelo ambiente portátil já preparado.
 - Painel lateral com chat local determinístico e sem dependência de provedor.
-- Comandos para ler documento e seleção, validar, criar uma caixa e desfazer.
+- Comandos para ler documento e seleção, validar, criar caixas e cilindros e desfazer.
 - Confirmação explícita na interface antes de criar ou desfazer.
 - `ToolRegistry` único para catálogo, schemas, validação e política de risco.
 - Chat e MCP conectados ao mesmo registro e ao mesmo adaptador.
-- Criação de caixa em transação validada e registrada no histórico de desfazer.
+- Caixas e cilindros criados em transações validadas e reversíveis.
 - Ponte MCP–GUI autenticada, restrita ao loopback e executada pela thread Qt.
 - Mutações MCP pendentes até confirmação explícita no painel.
 - Base de orquestração neutra valida planos e chamadas sem executar ferramentas.
@@ -46,6 +46,7 @@ resumo
 seleção
 validar
 caixa 10 x 20 x 30 nome MinhaCaixa
+cilindro 30 x 60 nome Eixo
 desfazer
 ```
 
@@ -89,7 +90,8 @@ do documento ativo para https://api.deepseek.com/chat/completions. O adaptador
 usa **deepseek-v4-flash** e uma rodada com no máximo uma chamada de ferramenta.
 
 Respostas de leitura podem usar o ToolRegistry imediatamente. Operações
-**modify**, como criar uma caixa ou desfazer, mostram intenção, plano, ferramenta
+**modify**, como criar uma caixa, um cilindro ou desfazer, mostram intenção,
+plano, ferramenta
 e argumentos e só são executadas depois de **Confirmar operação**. Desmarcar a
 opção restaura o chat local fechado. O botão **Remover chave** apaga a credencial.
 

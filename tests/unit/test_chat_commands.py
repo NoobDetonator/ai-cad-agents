@@ -18,6 +18,17 @@ def test_parser_creates_only_structured_box_arguments() -> None:
     }
 
 
+def test_parser_creates_only_structured_cylinder_arguments() -> None:
+    command = parse_chat_command("criar cilindro 30,5 x 60 nome Eixo_1")
+    assert command.tool_name == "cad.create_cylinder"
+    assert command.arguments == {
+        "diameter": 30.5,
+        "height": 60.0,
+        "name": "Eixo_1",
+    }
+    assert "eixo Z" in command.message
+
+
 def test_parser_does_not_treat_python_as_a_command() -> None:
     command = parse_chat_command("python: import os; os.system('whoami')")
     assert command.tool_name is None
@@ -33,6 +44,22 @@ def test_result_formatter_explains_reversibility() -> None:
             "volume_mm3": 6000.0,
         },
     )
+    assert "pode ser desfeita" in message
+
+
+def test_cylinder_result_formatter_reports_geometry_and_reversibility() -> None:
+    message = format_tool_result(
+        "cad.create_cylinder",
+        {
+            "label": "Eixo",
+            "diameter_mm": 30.0,
+            "height_mm": 60.0,
+            "volume_mm3": 42411.5,
+        },
+    )
+    assert "diâmetro 30 mm" in message
+    assert "altura 60 mm" in message
+    assert "eixo Z" in message
     assert "pode ser desfeita" in message
 
 

@@ -13,6 +13,8 @@ HELP_TEXT = (
     "• <code>seleção</code> — lê a seleção atual<br>"
     "• <code>validar</code> — recalcula e verifica o documento<br>"
     "• <code>caixa 10 x 20 x 30 nome MinhaCaixa</code> — prepara uma caixa em mm<br>"
+    "• <code>cilindro 30 x 60 nome Eixo</code> — prepara um cilindro por "
+    "diâmetro × altura em mm<br>"
     "• <code>desfazer</code> — prepara a reversão da última transação"
 )
 
@@ -29,6 +31,13 @@ _BOX_PATTERN = re.compile(
     rf"^\s*(?:(?:criar|crie|fazer|faça|faca)\s+)?(?:uma\s+)?caixa\s+"
     rf"{_NUMBER}\s*[x×]\s*{_NUMBER}\s*[x×]\s*{_NUMBER}"
     rf"(?:\s+(?:nome|chamada)\s+([A-Za-z][A-Za-z0-9_-]*))?\s*$",
+    re.IGNORECASE,
+)
+
+_CYLINDER_PATTERN = re.compile(
+    rf"^\s*(?:(?:criar|crie|fazer|faça|faca)\s+)?(?:um\s+)?cilindro\s+"
+    rf"{_NUMBER}\s*[x×]\s*{_NUMBER}"
+    rf"(?:\s+(?:nome|chamado)\s+([A-Za-z][A-Za-z0-9_-]*))?\s*$",
     re.IGNORECASE,
 )
 
@@ -84,6 +93,26 @@ def parse_chat_command(text: str) -> ChatCommand:
             },
         )
 
+    cylinder_match = _CYLINDER_PATTERN.fullmatch(cleaned)
+    if cylinder_match:
+        diameter, height = (
+            float(value.replace(",", ".")) for value in cylinder_match.groups()[:2]
+        )
+        name = cylinder_match.group(3) or "AICylinder"
+        return ChatCommand(
+            (
+                f"Plano: criar o cilindro {name} com diâmetro {diameter:g} mm "
+                f"e altura {height:g} mm no eixo Z, recalcular e validar antes "
+                "de confirmar a transação."
+            ),
+            "cad.create_cylinder",
+            {
+                "diameter": diameter,
+                "height": height,
+                "name": name,
+            },
+        )
+
     return ChatCommand(
         "Não reconheci esse pedido no modo local seguro.<br>" + HELP_TEXT
     )
@@ -92,7 +121,7 @@ def parse_chat_command(text: str) -> ChatCommand:
 def format_tool_result(tool_name: str, result: Any) -> str:
     if tool_name == "cad.get_document_summary":
         if not result["active"]:
-            return "Nenhum documento CAD está ativo. Crie uma caixa para iniciar um documento."
+            return "Nenhum documento CAD está ativo. Crie uma peça para iniciar."
         objects = result["objects"]
         object_word = "objeto" if len(objects) == 1 else "objetos"
         document_label = escape(str(result["label"]))
@@ -112,6 +141,15 @@ def format_tool_result(tool_name: str, result: Any) -> str:
         return (
             f"Caixa <b>{label}</b> criada e validada "
             f"({dimensions} mm; volume {result['volume_mm3']:g} mm³). "
+            "A operação pode ser desfeita."
+        )
+    if tool_name == "cad.create_cylinder":
+        label = escape(str(result["label"]))
+        return (
+            f"Cilindro <b>{label}</b> criado e validado "
+            f"(diâmetro {result['diameter_mm']:g} mm × "
+            f"altura {result['height_mm']:g} mm; "
+            f"volume {result['volume_mm3']:g} mm³; eixo Z). "
             "A operação pode ser desfeita."
         )
     if tool_name == "cad.validate_document":

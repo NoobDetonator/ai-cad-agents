@@ -24,13 +24,13 @@ Peças mecânicas simples para impressão 3D e fabricação leve:
 
 ## Estado atual
 
-O primeiro corte funcional cobre o ciclo completo para uma caixa paramétrica:
+O corte funcional atual cobre o ciclo completo para caixa e cilindro paramétricos:
 
 - o Workbench aparece e abre o painel de chat;
 - o pedido local é convertido em uma chamada estruturada;
 - o plano é mostrado antes da mutação;
 - a interface exige confirmação explícita;
-- a caixa é criada em transação, recalculada e validada;
+- caixas e cilindros são criados em transações, recalculados e validados;
 - a transação é reversível por `desfazer`;
 - a mesma lista de capacidades é usada pelo chat e pelo MCP;
 - a ponte MCP–GUI executa leituras na thread Qt;
