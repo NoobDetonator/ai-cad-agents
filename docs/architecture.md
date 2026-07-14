@@ -233,7 +233,7 @@ automaticamente em erro.
 
 ## Planos compostos por rollback compensatório
 
-O corte M3.6a adiciona `CompositeValidatedPlan`, `CompositeApprovalGrant`,
+O M3.6 adiciona `CompositeValidatedPlan`, `CompositeApprovalGrant`,
 `CompositePlanExecutor` e `PlanService`. Um plano contém de duas a oito mutações,
 IDs únicos, um estado-base e um único hash. Documento ativo é obrigatório e
 `cad.undo` não pode ser etapa, pois ainda não existe compensação segura por redo.
@@ -251,10 +251,11 @@ exatamente uma vez para cada transação já confirmada, em ordem inversa, e exi
 
 `PlanService` mantém em RAM estados `awaiting_approval`, `running`, `completed`,
 `rolled_back`, `cancelled` e `failed`. Submeter novamente o mesmo ID/hash,
-consultar status e cancelar são idempotentes. O painel usa esse serviço e mostra
-progresso por etapa. A projeção desses comandos pelo processo MCP ainda depende
-de estender a ponte GUI; ela é a parte restante do M3.6 e não será simulada com um
-registro paralelo no processo MCP.
+consultar status e cancelar são idempotentes. Chat e controlador GUI recebem a
+mesma instância do serviço pelo runtime. O MCP projeta `submit`, `status` e
+`cancel` em envelopes autenticados; ele pode montar e congelar um plano, mas não
+possui handlers CAD nem um serviço paralelo. A confirmação, execução serial,
+progresso e rollback permanecem na thread Qt.
 
 ## Credenciais de provedor
 
@@ -328,8 +329,17 @@ Leituras retornam o resultado executado na thread Qt. Mutações retornam
 `pending_confirmation`, aparecem no painel e só usam `confirmed=True` depois do
 clique do usuário. Repetir a request com o mesmo ID consulta o resultado.
 
+Para planos compostos, `submit_cad_plan` primeiro lê a baseline pela mesma
+ferramenta de contexto, valida cada chamada no registro local e envia o contrato
+imutável à GUI. A resposta do comando de controle contém o estado
+`awaiting_approval`; o painel apresenta todas as etapas em uma única confirmação.
+`get_cad_plan_status` faz polling sem efeito colateral e `cancel_cad_plan` é
+idempotente. Somente o `PlanBridgeDispatcher` da GUI emite a autorização MCP e
+chama o executor compartilhado.
+
 ## Próxima etapa técnica
 
-M3.1 a M3.5 e o corte M3.6a foram concluídos. Finalizar o M3.6b em
-`docs/ai-agent-optimization-plan.md`: transportar submissão, status e cancelamento
-do `PlanService` pela ponte GUI autenticada, sem criar serviço paralelo no MCP.
+M3.1 a M3.6 foram concluídos. A próxima etapa é M4.1 em
+`docs/ai-agent-optimization-plan.md`: ampliar primeiro as ferramentas de leitura
+de objetos, medidas, dependências, aliases e parâmetros editáveis para reduzir
+adivinhação antes de adicionar novas mutações.

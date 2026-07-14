@@ -5,10 +5,21 @@ from uuid import UUID, uuid4
 
 from mcp.server.fastmcp import FastMCP
 
-from aicad.bridge.protocol import BridgeRequest, BridgeResponse, BridgeResponseStatus
+from aicad.bridge.protocol import (
+    BridgePlanCancelRequest,
+    BridgePlanStatusRequest,
+    BridgePlanSubmitRequest,
+    BridgeRequest,
+    BridgeResponse,
+    BridgeResponseStatus,
+    BridgeTransportRequest,
+)
 from aicad.bridge.session import BridgeSessionError, default_session_store
 from aicad.bridge.transport import BridgeTransportError, TcpBridgeClient
 from aicad.core.tool_registry import ToolRisk
+from aicad.core.context import DocumentStateToken
+from aicad.orchestration.models import OrchestrationPlan, PlannedToolCall
+from aicad.orchestration.plan_service import CompositeValidatedPlan
 from aicad.runtime import get_tool_registry
 
 
@@ -43,7 +54,7 @@ def _build_bridge_request(
     )
 
 
-def _send_bridge_request(request: BridgeRequest) -> BridgeResponse:
+def _send_bridge_request(request: BridgeTransportRequest) -> BridgeResponse:
     try:
         session = default_session_store().load()
         return TcpBridgeClient(session.endpoint).request(request)
@@ -83,6 +94,105 @@ def execute_cad_read_tool(name: str, arguments: dict[str, object]) -> object:
         else "The CAD read did not complete."
     )
     raise RuntimeError(message)
+
+
+@mcp.tool()
+def submit_cad_plan(
+    intention: str,
+    steps: list[str],
+    calls: list[dict[str, object]],
+    assumptions: list[str] | None = None,
+    plan_id: str | None = None,
+    request_id: str | None = None,
+) -> dict[str, object]:
+    """Freeze and submit a 2-8 step mutation plan for one visual approval."""
+
+    if not 2 <= len(calls) <= 8:
+        raise ValueError("A CAD plan requires between two and eight calls.")
+    planned_calls: list[PlannedToolCall] = []
+    for index, raw_call in enumerate(calls, start=1):
+        if set(raw_call) - {"call_id", "name", "arguments"}:
+            raise ValueError("A CAD plan call contains unsupported fields.")
+        name = raw_call.get("name")
+        arguments = raw_call.get("arguments", {})
+        if not isinstance(name, str) or not isinstance(arguments, dict):
+            raise ValueError("Each CAD plan call requires a name and arguments.")
+        spec = tool_registry.get_spec(name)
+        if spec.risk is not ToolRisk.MODIFY or name == "cad.undo":
+            raise ValueError("Every CAD plan call must be a reversible mutation.")
+        checked = tool_registry.validate_arguments(name, arguments)
+        call_id = raw_call.get("call_id", f"mcp-step-{index}")
+        planned_calls.append(
+            PlannedToolCall(
+                call_id=call_id,
+                name=name,
+                arguments=checked,
+                risk=spec.risk,
+                requires_confirmation=True,
+            )
+        )
+
+    context_request = _build_bridge_request(
+        "cad.get_context_snapshot",
+        {"detail_level": "work", "max_objects": 25, "cursor": 0},
+    )
+    context_response = _send_bridge_request(context_request)
+    if context_response.status is not BridgeResponseStatus.COMPLETED:
+        raise RuntimeError("The active CAD baseline could not be read safely.")
+    if not isinstance(context_response.result, dict):
+        raise RuntimeError("The active CAD baseline response is invalid.")
+    base_state = DocumentStateToken.model_validate(
+        context_response.result["state_token"]
+    )
+    proposal = OrchestrationPlan(
+        intention=intention,
+        assumptions=tuple(assumptions or ()),
+        steps=tuple(steps),
+        message="Composite plan submitted through MCP.",
+        tool_calls=tuple(planned_calls),
+    )
+    frozen = CompositeValidatedPlan.build(
+        proposal,
+        base_state,
+        tool_registry,
+        plan_id=UUID(plan_id) if plan_id is not None else None,
+    )
+    request = BridgePlanSubmitRequest(
+        request_id=UUID(request_id) if request_id is not None else uuid4(),
+        plan=frozen,
+        source="mcp",
+    )
+    return _send_bridge_request(request).model_dump(mode="json")
+
+
+@mcp.tool()
+def get_cad_plan_status(
+    plan_id: str,
+    request_id: str | None = None,
+) -> dict[str, object]:
+    """Poll the GUI-owned status of a submitted composite CAD plan."""
+
+    request = BridgePlanStatusRequest(
+        request_id=UUID(request_id) if request_id is not None else uuid4(),
+        plan_id=UUID(plan_id),
+        source="mcp",
+    )
+    return _send_bridge_request(request).model_dump(mode="json")
+
+
+@mcp.tool()
+def cancel_cad_plan(
+    plan_id: str,
+    request_id: str | None = None,
+) -> dict[str, object]:
+    """Cancel a submitted plan before or between its safe transaction steps."""
+
+    request = BridgePlanCancelRequest(
+        request_id=UUID(request_id) if request_id is not None else uuid4(),
+        plan_id=UUID(plan_id),
+        source="mcp",
+    )
+    return _send_bridge_request(request).model_dump(mode="json")
 
 
 def main() -> None:

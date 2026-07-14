@@ -23,6 +23,7 @@ from aicad.bridge.protocol import (
     BridgeRequest,
     BridgeResponse,
     BridgeResponseStatus,
+    BridgeTransportRequest,
 )
 
 
@@ -156,7 +157,7 @@ class TcpBridgeClient:
     def __post_init__(self) -> None:
         _validate_transport_limits(self.timeout, self.max_message_bytes)
 
-    def request(self, request: BridgeRequest) -> BridgeResponse:
+    def request(self, request: BridgeTransportRequest) -> BridgeResponse:
         envelope = {
             "authorization": self.endpoint.session_token,
             "request": request.model_dump(mode="json"),

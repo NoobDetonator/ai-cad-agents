@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, TypeAlias
 from uuid import UUID
 
 from pydantic import (
@@ -10,11 +10,13 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
+    TypeAdapter,
     ValidationError,
     model_validator,
 )
 
-from aicad.core.tool_registry import ToolInputError, ToolRegistry
+from aicad.core.tool_registry import ToolInputError, ToolRegistry, ToolRisk
+from aicad.orchestration.plan_service import CompositeValidatedPlan
 
 
 PROTOCOL_VERSION = "1.0"
@@ -22,6 +24,12 @@ PROTOCOL_VERSION = "1.0"
 
 class BridgeRequestSource(StrEnum):
     MCP = "mcp"
+
+
+class BridgePlanOperation(StrEnum):
+    SUBMIT = "submit_plan"
+    STATUS = "get_plan_status"
+    CANCEL = "cancel_plan"
 
 
 class BridgeResponseStatus(StrEnum):
@@ -68,6 +76,50 @@ class BridgeRequest(BaseModel):
     )
     arguments: dict[str, JsonValue] = Field(default_factory=dict)
     source: BridgeRequestSource
+
+
+class BridgePlanSubmitRequest(BaseModel):
+    """Submit one immutable composite plan to the GUI-owned plan service."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    protocol_version: Literal[PROTOCOL_VERSION] = PROTOCOL_VERSION
+    request_id: UUID
+    operation: Literal[BridgePlanOperation.SUBMIT] = BridgePlanOperation.SUBMIT
+    plan: CompositeValidatedPlan
+    source: BridgeRequestSource
+
+
+class BridgePlanStatusRequest(BaseModel):
+    """Read the current state of one previously submitted composite plan."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    protocol_version: Literal[PROTOCOL_VERSION] = PROTOCOL_VERSION
+    request_id: UUID
+    operation: Literal[BridgePlanOperation.STATUS] = BridgePlanOperation.STATUS
+    plan_id: UUID
+    source: BridgeRequestSource
+
+
+class BridgePlanCancelRequest(BaseModel):
+    """Request cooperative cancellation of one composite plan."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    protocol_version: Literal[PROTOCOL_VERSION] = PROTOCOL_VERSION
+    request_id: UUID
+    operation: Literal[BridgePlanOperation.CANCEL] = BridgePlanOperation.CANCEL
+    plan_id: UUID
+    source: BridgeRequestSource
+
+
+BridgePlanRequest: TypeAlias = Annotated[
+    BridgePlanSubmitRequest | BridgePlanStatusRequest | BridgePlanCancelRequest,
+    Field(discriminator="operation"),
+]
+BridgeTransportRequest: TypeAlias = BridgeRequest | BridgePlanRequest
+_PLAN_REQUEST_ADAPTER = TypeAdapter(BridgePlanRequest)
 
 
 class BridgeResponse(BaseModel):
@@ -191,3 +243,58 @@ def validate_request_payload(
         ) from exc
 
     return request.model_copy(update={"arguments": checked_arguments})
+
+
+def validate_plan_request_payload(
+    payload: Mapping[str, Any], registry: ToolRegistry
+) -> BridgePlanRequest:
+    """Validate plan control envelopes and every submitted call against the registry."""
+
+    if not isinstance(payload, Mapping):
+        raise BridgeProtocolError(
+            BridgeErrorCode.INVALID_REQUEST,
+            "The bridge plan request must be a JSON object.",
+        )
+    received_version = payload.get("protocol_version")
+    if received_version != PROTOCOL_VERSION:
+        raise BridgeProtocolError(
+            BridgeErrorCode.UNSUPPORTED_VERSION,
+            "The bridge protocol version is not supported.",
+            details={"expected": PROTOCOL_VERSION, "received": received_version},
+        )
+    try:
+        request = _PLAN_REQUEST_ADAPTER.validate_python(dict(payload))
+    except ValidationError as exc:
+        raise BridgeProtocolError(
+            BridgeErrorCode.INVALID_REQUEST,
+            "The bridge plan request envelope is invalid.",
+            details=_validation_details(exc),
+        ) from exc
+
+    if not isinstance(request, BridgePlanSubmitRequest):
+        return request
+
+    for call in request.plan.calls:
+        try:
+            spec = registry.get_spec(call.name)
+        except KeyError as exc:
+            raise BridgeProtocolError(
+                BridgeErrorCode.UNKNOWN_TOOL,
+                "A submitted plan tool is not registered.",
+                details={"tool_name": call.name},
+            ) from exc
+        if spec.risk is not ToolRisk.MODIFY or call.name == "cad.undo":
+            raise BridgeProtocolError(
+                BridgeErrorCode.INVALID_REQUEST,
+                "Every submitted plan call must be a compensatable mutation.",
+                details={"tool_name": call.name},
+            )
+        try:
+            registry.validate_arguments(call.name, call.arguments)
+        except ToolInputError as exc:
+            raise BridgeProtocolError(
+                BridgeErrorCode.INVALID_ARGUMENTS,
+                str(exc),
+                details={"tool_name": call.name},
+            ) from exc
+    return request

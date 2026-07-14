@@ -77,6 +77,15 @@ O mesmo `request_id`, nome e argumentos podem ser reenviados para consultar o
 resultado sem repetir a mutação. Reutilizar o ID com conteúdo diferente é
 rejeitado.
 
+Planos compostos também estão disponíveis como operações de controle do MCP:
+`submit_cad_plan` congela de duas a oito mutações contra o estado atual,
+`get_cad_plan_status` consulta progresso e `cancel_cad_plan` solicita
+cancelamento. A submissão concluída significa apenas que o plano entrou no
+`PlanService`; seu resultado começa em `awaiting_approval`. As mutações continuam
+paradas até uma única confirmação visual no painel. O serviço autoritativo, o
+executor e o registro vivem no processo gráfico — o servidor MCP não executa
+handlers CAD.
+
 O transporte escuta apenas em `127.0.0.1`, usa token aleatório por sessão,
 mensagens limitadas e timeout. O token não é gravado no repositório nem exibido
 em logs.
@@ -175,12 +184,13 @@ clique, autoriza um único `call_id`, expira rapidamente e não contém segredo.
 executor confere novamente hash, autorização, schema, risco e estado, executa uma
 única mutação transacional e valida o documento e o novo estado depois.
 
-O corte M3.6a permite planos compostos no chat DeepSeek quando já existe um
-documento ativo. Todas as chamadas são pré-validadas antes da primeira mutação.
-Uma aprovação cobre o hash e todos os IDs; cada etapa é validada. Em falha ou
-cancelamento entre etapas, somente as transações já confirmadas pelo plano são
-desfeitas, e documento, seleção e fingerprint precisam voltar à baseline. `undo`
-não pode ser uma etapa composta porque ainda não há compensação segura por redo.
+O M3.6 permite planos compostos tanto no chat DeepSeek quanto pelo MCP quando já
+existe um documento ativo. Todas as chamadas são pré-validadas antes da primeira
+mutação. Uma aprovação cobre o hash e todos os IDs; cada etapa é validada. Em
+falha ou cancelamento entre etapas, somente as transações já confirmadas pelo
+plano são desfeitas, e documento, seleção e fingerprint precisam voltar à
+baseline. `undo` não pode ser uma etapa composta porque ainda não há compensação
+segura por redo.
 
 ## Arquitetura
 

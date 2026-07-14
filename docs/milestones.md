@@ -14,12 +14,12 @@ rollback composto sem alterar as regras ou os marcos já concluídos.
 - **Data:** 14 de julho de 2026.
 - **Repositório privado:** `https://github.com/NoobDetonator/ai-cad-agents`.
 - **Branch de trabalho:** `main`.
-- **Baseline mínima desta revisão:** `0048ffc` — `Add versioned CAD context snapshots`.
+- **Baseline mínima desta revisão:** `21c2b0d` — `Add reversible composite plan execution`.
 - **Diretório usado no computador do trabalho:**
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD portátil 1.1.1 e Python 3.11 fornecido
   pelo próprio pacote do FreeCAD.
-- **Última validação completa:** 121 testes unitários, `FREECAD_SMOKE_OK` e
+- **Última validação completa:** 126 testes unitários, `FREECAD_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`, incluindo o fluxo MCP gráfico.
 
 O caminho local pode ser diferente no computador de casa. Nenhum código deve
@@ -152,7 +152,7 @@ flowchart LR
 | M0 — Fundação | Concluído | Estrutura, Workbench, adaptador, registro e testes iniciais |
 | M1 — Chat local seguro | Concluído | Painel funcional, caixa transacional, confirmação e registro compartilhado |
 | M2 — Ponte MCP–GUI | Concluído | Comunicação local segura e execução na thread Qt |
-| M3 — Orquestrador de IA | Em andamento | Contexto, seleção de ferramentas e loop seguro e mensurável |
+| M3 — Orquestrador de IA | Concluído | Contexto, seleção, loop seguro e planos reversíveis via chat/MCP |
 | M4 — Modelagem mecânica básica | Em andamento | Ferramentas priorizadas pelo benchmark e receitas seguras |
 | M5 — Histórico e auditoria | Planejado | Registro persistente de planos, confirmações e resultados |
 | M6 — Validação e exportação | Planejado | Regras de fabricação e exportações controladas |
@@ -281,7 +281,7 @@ caixa; ela só aparece após confirmação no painel, pode ser desfeita e toda a
 suíte passa. Não existe endpoint externo, Python arbitrário ou atalho direto ao
 adaptador.
 
-## 9. M3 — Orquestrador de IA — em andamento
+## 9. M3 — Orquestrador de IA — concluído
 
 Plano detalhado de execução: `docs/ai-agent-optimization-plan.md`.
 
@@ -323,8 +323,8 @@ ferramentas e confirmação já exercitada pelo MCP.
   progresso, memória em RAM e cliente HTTP reutilizado durante o turno.
 - M3.5 concluído com plano imutável, hash canônico, autorização exata, recusa de
   estado obsoleto e pós-condição em uma única mutação.
-- M3.6a concluído com plano composto no chat, pré-validação, aprovação única,
-  status idempotente e rollback compensatório verificado.
+- M3.6 concluído com plano composto no chat e no MCP, pré-validação, aprovação
+  única, status/cancelamento idempotentes e rollback compensatório verificado.
 
 ### M3.1 — Medição e contratos — concluído
 
@@ -383,7 +383,7 @@ ferramentas e confirmação já exercitada pelo MCP.
 - Documento e avanço de estado são verificados como pós-condição.
 - Smoke real cria uma caixa pelo plano aprovado e desfaz para limpar o documento.
 
-### M3.6a — Plano composto no chat — concluído
+### M3.6 — Plano composto no chat e no MCP — concluído
 
 - De duas a oito mutações registradas podem formar um hash e uma aprovação.
 - Todas as chamadas e handlers são pré-validados antes da primeira execução.
@@ -392,7 +392,12 @@ ferramentas e confirmação já exercitada pelo MCP.
 - O rollback exige fingerprint, documento e seleção iguais à baseline.
 - `PlanService` oferece submit/status/cancel idempotentes e progresso em memória.
 - Smoke real cobre sucesso com duas mutações e falha injetada com rollback total.
-- M3.6b ainda deve projetar o serviço pela ponte autenticada para o processo MCP.
+- O runtime entrega a mesma instância do serviço ao chat e ao controlador GUI.
+- Envelopes tipados projetam submit/status/cancel pela ponte autenticada.
+- O MCP publica `submit_cad_plan`, `get_cad_plan_status` e `cancel_cad_plan` sem
+  executar handlers CAD no processo servidor.
+- Smoke gráfico cobre confirmação única de duas mutações, polling concluído e
+  cancelamento remoto sem alteração do documento.
 
 ### Passos
 
@@ -551,7 +556,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\testar.ps1
 
 Resultado esperado:
 
-- 121 testes Python aprovados ou quantidade superior;
+- 126 testes Python aprovados ou quantidade superior;
 - `FREECAD_SMOKE_OK`;
 - `FREECAD_GUI_SMOKE_OK`;
 - janela gráfica abre e fecha automaticamente;
@@ -653,14 +658,15 @@ os arquivos da pasta docs, com atenção especial a docs/milestones.md e
 docs/ai-agent-optimization-plan.md. Verifique o Git, preserve mudanças existentes
 e execute scripts/testar.ps1 para confirmar a base.
 
-O baseline mínimo desta revisão é 0048ffc ou um commit posterior. Na árvore atual, o
+O baseline mínimo desta revisão é 21c2b0d ou um commit posterior. Na árvore atual, o
 Workbench, o chat local seguro, caixa e cilindro transacionais, undo, ToolRegistry
 compartilhado, ponte MCP–GUI autenticada e planejamento opcional com DeepSeek já
-funcionam e estão testados. M3.1 a M3.5 e o M3.6a também possuem contratos,
+funcionam e estão testados. M3.1 a M3.6 também possuem contratos,
 métricas, benchmark offline, contexto versionado, seleção local de ferramentas e
-loop controlado, autorização exata e rollback composto comprovado. O próximo
-marco recomendado é M3.6b em docs/ai-agent-optimization-plan.md: expor submissão,
-status e cancelamento pela ponte GUI para o MCP sem duplicar o `PlanService`.
+loop controlado, autorização exata, rollback composto comprovado e planos MCP com
+polling/cancelamento idempotentes. O próximo marco recomendado é M4.1 em
+docs/ai-agent-optimization-plan.md: ampliar leituras de objetos, medidas,
+dependências, aliases e parâmetros antes de acrescentar novas mutações.
 
 Mantenha o FreeCAD como adaptador, não crie execução arbitrária de Python, não
 salve credenciais no projeto e faça toda mutação de forma transacional, validada

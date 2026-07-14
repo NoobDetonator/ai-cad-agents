@@ -26,6 +26,7 @@ from aicad.orchestration import (
     CompositeApprovalGrant,
     CompositePlanError,
     CompositePlanExecutor,
+    CompositePlanStatus,
     CompositeValidatedPlan,
     AiOrchestrator,
     DeepSeekProvider,
@@ -33,7 +34,6 @@ from aicad.orchestration import (
     OrchestrationPlan,
     PlanApprovalError,
     PlanExecutionError,
-    PlanService,
     SingleMutationPlanExecutor,
     ValidatedPlan,
 )
@@ -41,7 +41,7 @@ from aicad.orchestration.credentials import (
     CredentialStore,
     CredentialStoreError,
 )
-from aicad.runtime import get_tool_registry
+from aicad.runtime import get_plan_service, get_tool_registry
 from aicad.ui.bridge_controller import GuiBridgeController, get_or_start_gui_bridge
 
 
@@ -132,7 +132,7 @@ def show_chat_panel() -> None:
     pending: list[
         ChatCommand | BridgeRequest | ValidatedPlan | CompositeValidatedPlan
     ] = []
-    remote_confirmation_queue: list[BridgeRequest] = []
+    remote_confirmation_queue: list[BridgeRequest | CompositeValidatedPlan] = []
     bridge_controller: list[GuiBridgeController] = []
     credential_store = CredentialStore()
     bridge_active = [False]
@@ -145,7 +145,7 @@ def show_chat_panel() -> None:
     active_ai_cancellation: list[AgentTurnCancellation] = []
     ai_stage: list[AgentStage | None] = [None]
     session_memory = AgentSessionMemory()
-    plan_service = PlanService()
+    plan_service = get_plan_service()
     ai_timer = QtCore.QTimer(container)
 
     def append_assistant(message: str) -> None:
@@ -309,12 +309,22 @@ def show_chat_panel() -> None:
     def show_next_remote_confirmation() -> None:
         if pending or ai_busy[0] or not remote_confirmation_queue:
             return
-        request = remote_confirmation_queue.pop(0)
-        append_assistant(describe_bridge_request(request))
-        set_pending(request)
+        operation = remote_confirmation_queue.pop(0)
+        if isinstance(operation, BridgeRequest):
+            append_assistant(describe_bridge_request(operation))
+        else:
+            append_assistant(
+                "<b>Plano composto recebido pelo MCP.</b><br>"
+                + describe_composite_plan(operation)
+            )
+        set_pending(operation)
 
     def queue_bridge_confirmation(request: BridgeRequest) -> None:
         remote_confirmation_queue.append(request)
+        show_next_remote_confirmation()
+
+    def queue_bridge_plan_confirmation(plan: CompositeValidatedPlan) -> None:
+        remote_confirmation_queue.append(plan)
         show_next_remote_confirmation()
 
     def show_bridge_response(
@@ -636,7 +646,6 @@ def show_chat_panel() -> None:
                 )
         elif isinstance(operation, CompositeValidatedPlan):
             try:
-                grant = CompositeApprovalGrant.issue(operation)
                 append_assistant(
                     f"Executando plano composto de {len(operation.calls)} etapas."
                 )
@@ -648,22 +657,44 @@ def show_chat_panel() -> None:
                         "etapas validadas."
                     )
 
-                result = plan_service.execute(
-                    operation.plan_id,
-                    grant,
-                    CompositePlanExecutor(registry, read_work_context),
-                    on_progress=show_composite_progress,
-                )
-                for call, tool_result in zip(
-                    operation.calls,
-                    result.results,
-                    strict=True,
+                controller = bridge_controller[0] if bridge_controller else None
+                if controller is not None and controller.is_remote_plan(
+                    operation.plan_id
                 ):
-                    append_assistant(format_tool_result(call.name, tool_result))
-                    refresh_view(call.name)
-                append_assistant(
-                    "Plano composto concluído; todas as pós-condições passaram."
-                )
+                    snapshot = controller.resolve_plan_confirmation(
+                        operation.plan_id,
+                        approved=True,
+                        on_progress=show_composite_progress,
+                    )
+                    if snapshot.status is CompositePlanStatus.COMPLETED:
+                        for call in operation.calls:
+                            refresh_view(call.name)
+                        append_assistant(
+                            "Plano MCP concluído; todas as etapas foram validadas."
+                        )
+                    else:
+                        append_assistant(
+                            "Plano MCP encerrado no estado "
+                            f"<code>{escape(snapshot.status.value)}</code>."
+                        )
+                else:
+                    grant = CompositeApprovalGrant.issue(operation)
+                    result = plan_service.execute(
+                        operation.plan_id,
+                        grant,
+                        CompositePlanExecutor(registry, read_work_context),
+                        on_progress=show_composite_progress,
+                    )
+                    for call, tool_result in zip(
+                        operation.calls,
+                        result.results,
+                        strict=True,
+                    ):
+                        append_assistant(format_tool_result(call.name, tool_result))
+                        refresh_view(call.name)
+                    append_assistant(
+                        "Plano composto concluído; todas as pós-condições passaram."
+                    )
             except (CompositePlanError, PlanApprovalError, RuntimeError, ValueError) as exc:
                 append_assistant(
                     "Plano composto não concluído: " + escape(str(exc))
@@ -691,7 +722,14 @@ def show_chat_panel() -> None:
                 "documento não foi alterado."
             )
         elif isinstance(operation, CompositeValidatedPlan):
-            plan_service.cancel(operation.plan_id)
+            controller = bridge_controller[0] if bridge_controller else None
+            if controller is not None and controller.is_remote_plan(operation.plan_id):
+                controller.resolve_plan_confirmation(
+                    operation.plan_id,
+                    approved=False,
+                )
+            else:
+                plan_service.cancel(operation.plan_id)
             append_assistant(
                 "Plano composto cancelado; nenhuma etapa foi executada."
             )
@@ -707,7 +745,10 @@ def show_chat_panel() -> None:
 
     refresh_security_status()
     try:
-        controller = get_or_start_gui_bridge(queue_bridge_confirmation)
+        controller = get_or_start_gui_bridge(
+            queue_bridge_confirmation,
+            queue_bridge_plan_confirmation,
+        )
         bridge_controller.append(controller)
         bridge_active[0] = True
         refresh_security_status()

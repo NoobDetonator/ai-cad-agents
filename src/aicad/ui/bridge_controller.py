@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from typing import Any
 from uuid import UUID
 
 from aicad.bridge.dispatcher import BridgeDispatcher
+from aicad.bridge.plan_dispatcher import PlanBridgeDispatcher
 from aicad.bridge.protocol import BridgeRequest, BridgeResponse
 from aicad.bridge.session import (
     BridgeSessionRecord,
@@ -12,7 +14,12 @@ from aicad.bridge.session import (
 )
 from aicad.bridge.transport import LocalTcpBridgeServer
 from aicad.core.tool_registry import ToolRegistry
-from aicad.runtime import get_tool_registry
+from aicad.orchestration.plan_service import (
+    CompositeValidatedPlan,
+    PlanService,
+    PlanStatusSnapshot,
+)
+from aicad.runtime import get_plan_service, get_tool_registry
 
 
 GUI_REQUEST_TIMEOUT_SECONDS = 120.0
@@ -26,15 +33,28 @@ class GuiBridgeController:
         self,
         registry: ToolRegistry,
         *,
+        plan_service: PlanService | None = None,
         session_store: BridgeSessionStore | None = None,
     ) -> None:
         self._confirmation_listener: Callable[[BridgeRequest], None] | None = None
+        self._plan_confirmation_listener: (
+            Callable[[CompositeValidatedPlan], None] | None
+        ) = None
         self._dispatcher = BridgeDispatcher(
             registry,
             on_confirmation_requested=self._request_confirmation,
             request_timeout=GUI_REQUEST_TIMEOUT_SECONDS,
         )
-        self._server = LocalTcpBridgeServer(self._dispatcher.submit)
+        self._plan_dispatcher = PlanBridgeDispatcher(
+            registry,
+            plan_service or get_plan_service(),
+            on_confirmation_requested=self._request_plan_confirmation,
+            context_reader=lambda: registry.execute(
+                "cad.get_context_snapshot",
+                {"detail_level": "work", "max_objects": 25, "cursor": 0},
+            ),
+        )
+        self._server = LocalTcpBridgeServer(self._submit)
         self._session_store = session_store or default_session_store()
         self._session_record: BridgeSessionRecord | None = None
         self._timer: object | None = None
@@ -54,6 +74,16 @@ class GuiBridgeController:
         listener: Callable[[BridgeRequest], None],
     ) -> None:
         self._confirmation_listener = listener
+
+    def set_plan_confirmation_listener(
+        self,
+        listener: Callable[[CompositeValidatedPlan], None],
+    ) -> None:
+        self._plan_confirmation_listener = listener
+
+    @property
+    def plan_service(self) -> PlanService:
+        return self._plan_dispatcher.plan_service
 
     def start(self) -> BridgeSessionRecord:
         if self.is_running:
@@ -92,6 +122,22 @@ class GuiBridgeController:
             approved=approved,
         )
 
+    def is_remote_plan(self, plan_id: UUID) -> bool:
+        return self._plan_dispatcher.is_remote_plan(plan_id)
+
+    def resolve_plan_confirmation(
+        self,
+        plan_id: UUID,
+        *,
+        approved: bool,
+        on_progress: Callable[[PlanStatusSnapshot], None] | None = None,
+    ) -> PlanStatusSnapshot:
+        return self._plan_dispatcher.resolve_confirmation(
+            plan_id,
+            approved=approved,
+            on_progress=on_progress,
+        )
+
     def stop(self) -> None:
         timer = self._timer
         if timer is not None:
@@ -99,6 +145,7 @@ class GuiBridgeController:
         self._timer = None
 
         self._dispatcher.close()
+        self._plan_dispatcher.close()
         self._server.stop()
         record = self._session_record
         self._session_record = None
@@ -108,6 +155,12 @@ class GuiBridgeController:
     def _tick(self) -> None:
         self._dispatcher.expire_requests()
         self._dispatcher.process_next()
+        self._plan_dispatcher.process_next()
+
+    def _submit(self, payload: Mapping[str, Any]) -> BridgeResponse:
+        if "operation" in payload:
+            return self._plan_dispatcher.submit(payload)
+        return self._dispatcher.submit(payload)
 
     def _request_confirmation(self, request: BridgeRequest) -> None:
         listener = self._confirmation_listener
@@ -115,18 +168,27 @@ class GuiBridgeController:
             raise RuntimeError("No GUI confirmation listener is available.")
         listener(request)
 
+    def _request_plan_confirmation(self, plan: CompositeValidatedPlan) -> None:
+        listener = self._plan_confirmation_listener
+        if listener is None:
+            raise RuntimeError("No GUI plan confirmation listener is available.")
+        listener(plan)
+
 
 _controller: GuiBridgeController | None = None
 
 
 def get_or_start_gui_bridge(
     confirmation_listener: Callable[[BridgeRequest], None],
+    plan_confirmation_listener: Callable[[CompositeValidatedPlan], None] | None = None,
 ) -> GuiBridgeController:
     global _controller
 
     if _controller is None:
         _controller = GuiBridgeController(get_tool_registry())
     _controller.set_confirmation_listener(confirmation_listener)
+    if plan_confirmation_listener is not None:
+        _controller.set_plan_confirmation_listener(plan_confirmation_listener)
     if not _controller.is_running:
         _controller.start()
     return _controller
