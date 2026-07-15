@@ -241,6 +241,44 @@ def test_expired_read_is_never_executed_later() -> None:
     assert adapter.read_thread_ids == []
 
 
+class FailingAdapter(RecordingAdapter):
+    def __init__(self, error: Exception) -> None:
+        super().__init__()
+        self._error = error
+
+    def get_document_summary(self) -> dict[str, Any]:
+        raise self._error
+
+
+def read_failure_message(error: Exception) -> str:
+    dispatcher = BridgeDispatcher(build_cad_tool_registry(FailingAdapter(error)))
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(dispatcher.submit, request_payload())
+        wait_until_queued(dispatcher)
+        assert dispatcher.process_next() is True
+        response = future.result(timeout=1)
+
+    assert response.status is BridgeResponseStatus.FAILED
+    assert response.error is not None
+    assert response.error.code is BridgeErrorCode.EXECUTION_ERROR
+    return response.error.message
+
+
+def test_failure_surfaces_domain_reason_but_hides_internals() -> None:
+    domain = read_failure_message(
+        ValueError("The corner radius does not fit the adjacent path segments.")
+    )
+    assert "corner radius does not fit" in domain
+
+    # The adapter reports an unresolved reference as KeyError, whose str()
+    # would otherwise quote the message.
+    missing = read_failure_message(KeyError("Unknown CAD object: Sun2"))
+    assert missing.endswith("Unknown CAD object: Sun2")
+
+    internal = read_failure_message(AttributeError("Part.Cylinder has no attribute"))
+    assert "no attribute" not in internal
+
+
 def test_close_wakes_waiters_and_rejects_new_work() -> None:
     adapter = RecordingAdapter()
     dispatcher = BridgeDispatcher(build_cad_tool_registry(adapter))

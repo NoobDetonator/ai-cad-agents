@@ -1,5 +1,6 @@
 import pytest
 
+from aicad.adapters.freecad.sweeps import _planned_corner_arcs
 from aicad.adapters.freecad_adapter import FreeCadAdapter
 from aicad.core.tool_registry import (
     ToolInputError,
@@ -192,13 +193,47 @@ def test_adapter_validates_sweep_paths_before_freecad() -> None:
         adapter.create_sweep_path(["0,0,0", "0,0,0", "0,0,40"])
     with pytest.raises(ValueError, match="folds back"):
         adapter.create_sweep_path(["0,0,0", "0,0,40", "0,0,10"])
-    with pytest.raises(ValueError, match="does not fit"):
+    with pytest.raises(ValueError, match="must fit in half of the adjacent"):
         adapter.create_sweep_path(
             ["0,0,0", "0,0,30", "30,0,30"],
             corner_radius=20,
         )
     with pytest.raises(ValueError, match="cannot be negative"):
         adapter.create_sweep_path(["0,0,0", "0,0,40"], corner_radius=-1)
+
+
+def test_through_hole_accepts_a_z_window_to_scope_the_cutter() -> None:
+    registry = build_default_registry()
+    checked = registry.validate_arguments(
+        "cad.create_through_hole",
+        {
+            "object": "Boss",
+            "diameter": 40,
+            "x": 46,
+            "y": -12,
+            "z_min": 90,
+            "z_max": 120,
+        },
+    )
+    assert checked["z_min"] == 90
+    assert checked["z_max"] == 120
+
+    adapter = FreeCadAdapter()
+    assert adapter._checked_z_window(None, None) is None
+    assert adapter._checked_z_window(90, 120) == (90.0, 120.0)
+    with pytest.raises(ValueError, match="both z_min and z_max"):
+        adapter._checked_z_window(90, None)
+    with pytest.raises(ValueError, match="z_max above z_min"):
+        adapter._checked_z_window(120, 90)
+
+
+def test_corner_radius_that_exactly_fits_is_accepted() -> None:
+    # 36 / tan(45 deg) is 36.000000000000014, a few ulps over half of these
+    # 72 mm segments, so a bare ">" rejected radii that do fit.
+    arcs = _planned_corner_arcs(((0, 0, 0), (0, 0, 72), (72, 0, 72)), 36)
+
+    assert len(arcs) == 1
+    assert arcs[0] is not None
 
 
 def test_threaded_hole_and_pattern_specs_are_reversible_mutations() -> None:

@@ -14,20 +14,30 @@ class FeatureMixin:
         positions: tuple[tuple[float, float], ...],
         name: str,
         feature_kind: str,
+        z_min: float | None = None,
+        z_max: float | None = None,
     ) -> Any:
         checked_diameter = self._positive_values(diameter)[0]
         source = self._resolve_document_object(source_reference)
         self._shape_or_error(source)
+        window = self._checked_z_window(z_min, z_max)
         app, part = self._modules()
 
         def cut(document: Any) -> Any:
             bounds = source.Shape.BoundBox
-            margin = max(1.0, float(bounds.ZLength) * 0.1)
+            if window is None:
+                # Unscoped: span the whole solid so the hole is truly through.
+                margin = max(1.0, float(bounds.ZLength) * 0.1)
+                low = float(bounds.ZMin) - margin
+                height = float(bounds.ZLength) + 2 * margin
+            else:
+                low, high = window
+                height = high - low
             cutters = [
                 part.makeCylinder(
                     checked_diameter / 2,
-                    float(bounds.ZLength) + 2 * margin,
-                    app.Vector(x, y, float(bounds.ZMin) - margin),
+                    height,
+                    app.Vector(x, y, low),
                 )
                 for x, y in positions
             ]
@@ -52,6 +62,8 @@ class FeatureMixin:
         x: float,
         y: float,
         name: str = "AIThroughHole",
+        z_min: float | None = None,
+        z_max: float | None = None,
     ) -> dict[str, Any]:
         checked_x = self._finite_float(x)
         checked_y = self._finite_float(y)
@@ -63,6 +75,8 @@ class FeatureMixin:
             ((checked_x, checked_y),),
             name,
             "through_hole",
+            z_min,
+            z_max,
         )
         return {
             "name": result.Name,
@@ -151,6 +165,29 @@ class FeatureMixin:
             "pitch_diameter_mm": pitch,
             "valid": True,
         }
+
+    def _checked_z_window(
+        self,
+        z_min: float | None,
+        z_max: float | None,
+    ) -> tuple[float, float] | None:
+        """Resolve an optional Z window that scopes a hole to one feature.
+
+        Without it the cutter spans the whole solid's bounding box, so on a
+        fused body a hole drills every feature sharing that (x, y) column.
+        """
+
+        if z_min is None and z_max is None:
+            return None
+        if z_min is None or z_max is None:
+            raise ValueError("A hole Z window needs both z_min and z_max.")
+        low = self._finite_float(z_min)
+        high = self._finite_float(z_max)
+        if low is None or high is None:
+            raise ValueError("Hole Z window bounds must be finite.")
+        if high - low <= 0:
+            raise ValueError("A hole Z window requires z_max above z_min.")
+        return low, high
 
     @staticmethod
     def _checked_hole_cut(source: Any, cutter: Any) -> Any:
@@ -323,7 +360,10 @@ class FeatureMixin:
             if not source.Shape.Wires:
                 raise RuntimeError("The sketch does not contain a closed wire.")
             face = part.Face(source.Shape.Wires[0])
-            shape = face.extrude(app.Vector(0, 0, checked_length))
+            # Extrude along the sketch's own normal: a global +Z vector would
+            # lie inside an xz/yz sketch plane and collapse the pad.
+            normal = source.Placement.Rotation.multVec(app.Vector(0, 0, 1))
+            shape = face.extrude(normal.multiply(checked_length))
             return self._derived_feature(document, name, shape, (source,), "pad")
 
         result = self._run_transaction(f"pad {source.Name}", pad)

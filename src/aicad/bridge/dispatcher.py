@@ -11,6 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from aicad.audit.models import AuditSource
+from aicad.audit.redaction import redact_text
 from aicad.audit.service import AuditService
 from aicad.bridge.protocol import (
     BridgeError,
@@ -25,6 +26,15 @@ from aicad.core.tool_registry import ToolRegistry, ToolRisk
 
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_TRACKED_REQUESTS = 512
+
+# Exception types the adapter raises on purpose, with a message written for
+# the caller. Everything else is an implementation detail.
+_DOMAIN_ERRORS = (ValueError, RuntimeError, KeyError)
+
+# How long the GUI-hosted dispatcher works a request before expiring it. Any
+# client of that bridge must be willing to wait at least this long, so this
+# lives here rather than in the UI package that happens to configure it.
+GUI_REQUEST_TIMEOUT_SECONDS = 120.0
 
 
 @dataclass(slots=True)
@@ -256,12 +266,12 @@ class BridgeDispatcher:
                 status=BridgeResponseStatus.COMPLETED,
                 result=result,
             )
-        except Exception:
+        except Exception as exc:
             response = self._error_response(
                 request_to_execute.request_id,
                 BridgeResponseStatus.FAILED,
                 BridgeErrorCode.EXECUTION_ERROR,
-                "The CAD read operation failed.",
+                self._failure_message("The CAD read operation failed.", exc),
             )
         self._finish(request_to_execute.request_id, response)
         return True
@@ -339,12 +349,12 @@ class BridgeDispatcher:
                 status=BridgeResponseStatus.COMPLETED,
                 result=result,
             )
-        except Exception:
+        except Exception as exc:
             response = self._error_response(
                 request_id,
                 BridgeResponseStatus.FAILED,
                 BridgeErrorCode.EXECUTION_ERROR,
-                "The confirmed CAD operation failed.",
+                self._failure_message("The confirmed CAD operation failed.", exc),
             )
         self._finish(request_id, response)
         return response
@@ -487,3 +497,24 @@ class BridgeDispatcher:
             status=status,
             error=BridgeError(code=code, message=message),
         )
+
+    @staticmethod
+    def _failure_message(prefix: str, error: Exception) -> str:
+        """Append the adapter's own reason so MCP clients can self-correct.
+
+        Only the types the adapter raises deliberately carry domain messages
+        ("The corner radius does not fit the adjacent path segments.",
+        "Unknown CAD object: Sun2"); anything else is an implementation
+        detail and stays suppressed. Without the reason a caller cannot tell
+        a bad argument from a GUI failure, and the GUI already shows it to
+        the human via chat_panel.
+        """
+
+        if not isinstance(error, _DOMAIN_ERRORS):
+            return prefix
+        # KeyError's str() wraps its message in quotes; args[0] is the message.
+        raw = error.args[0] if isinstance(error, KeyError) and error.args else error
+        reason, _ = redact_text(str(raw).strip(), max_chars=400)
+        if not reason:
+            return prefix
+        return f"{prefix} {reason}"

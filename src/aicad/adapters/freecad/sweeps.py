@@ -89,13 +89,19 @@ def _planned_corner_arcs(
             arcs.append(None)
             continue
         trim = corner_radius / math.tan(angle / 2)
-        if (
-            trim > segment_lengths[index - 1] / 2
-            or trim > segment_lengths[index] / 2
-        ):
-            raise ValueError(
-                "The corner radius does not fit the adjacent path segments."
-            )
+        for adjacent in (segment_lengths[index - 1], segment_lengths[index]):
+            half = adjacent / 2
+            # An exact fit lands a few ulps over half (a 90 degree corner gives
+            # trim = radius/tan(45) = radius * 1.0000000000000002), so a bare
+            # ">" would reject radii that do fit.
+            if trim > half and not math.isclose(trim, half, rel_tol=1e-9):
+                raise ValueError(
+                    f"A corner radius of {corner_radius:g} mm needs "
+                    f"{trim:g} mm of straight run each side of the corner, "
+                    f"but it must fit in half of the adjacent "
+                    f"{adjacent:g} mm segment ({half:g} mm). Lengthen the "
+                    f"segment or reduce the radius."
+                )
         bisector = _unit(
             tuple(a + b for a, b in zip(toward_previous, toward_next))
         )

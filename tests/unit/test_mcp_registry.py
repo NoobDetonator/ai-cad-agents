@@ -1,6 +1,7 @@
 import pytest
 
 from aicad import mcp_server
+from aicad.bridge.dispatcher import GUI_REQUEST_TIMEOUT_SECONDS
 from aicad.bridge.protocol import BridgeResponse, BridgeResponseStatus
 from aicad.mcp_server import (
     available_cad_tools,
@@ -9,6 +10,13 @@ from aicad.mcp_server import (
     tool_registry,
 )
 from aicad.runtime import get_tool_registry
+
+
+def test_bridge_client_outwaits_the_gui_dispatcher() -> None:
+    # The transport default is 5 s, but the GUI works a request for 120 s. A
+    # client that hangs up first reports the bridge as unavailable while
+    # FreeCAD is still busy succeeding.
+    assert mcp_server.BRIDGE_CLIENT_TIMEOUT_SECONDS >= GUI_REQUEST_TIMEOUT_SECONDS
 
 
 def test_mcp_uses_the_shared_runtime_registry() -> None:

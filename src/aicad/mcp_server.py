@@ -15,6 +15,7 @@ from aicad.bridge.protocol import (
     BridgeResponseStatus,
     BridgeTransportRequest,
 )
+from aicad.bridge.dispatcher import GUI_REQUEST_TIMEOUT_SECONDS
 from aicad.bridge.session import BridgeSessionError, default_session_store
 from aicad.bridge.transport import BridgeTransportError, TcpBridgeClient
 from aicad.core.tool_registry import ToolRisk
@@ -29,6 +30,13 @@ from aicad.runtime import get_tool_registry
 mcp = FastMCP("AI CAD Workbench")
 tool_registry = get_tool_registry()
 recipe_catalog = default_recipe_catalog()
+
+# The GUI dispatcher works a request for GUI_REQUEST_TIMEOUT_SECONDS before it
+# expires it, and real CAD work (a 54-tooth ring, an interference analysis)
+# routinely runs for a minute. The transport default of 5 s would hang up long
+# before that and report the bridge as unavailable while FreeCAD is still busy
+# succeeding, so wait at least as long as the far side is willing to work.
+BRIDGE_CLIENT_TIMEOUT_SECONDS = GUI_REQUEST_TIMEOUT_SECONDS + 15.0
 
 
 @mcp.tool()
@@ -74,10 +82,14 @@ def _build_bridge_request(
 def _send_bridge_request(request: BridgeTransportRequest) -> BridgeResponse:
     try:
         session = default_session_store().load()
-        return TcpBridgeClient(session.endpoint).request(request)
+        return TcpBridgeClient(
+            session.endpoint,
+            timeout=BRIDGE_CLIENT_TIMEOUT_SECONDS,
+        ).request(request)
     except (BridgeSessionError, BridgeTransportError) as exc:
         raise RuntimeError(
-            "The FreeCAD GUI bridge is unavailable or did not respond."
+            "The FreeCAD GUI bridge is unavailable or did not respond: "
+            f"{exc}"
         ) from exc
 
 

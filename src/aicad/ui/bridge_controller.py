@@ -5,7 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from aicad.audit.service import AuditService
-from aicad.bridge.dispatcher import BridgeDispatcher
+from aicad.bridge.dispatcher import GUI_REQUEST_TIMEOUT_SECONDS, BridgeDispatcher
 from aicad.bridge.plan_dispatcher import PlanBridgeDispatcher
 from aicad.bridge.protocol import BridgeRequest, BridgeResponse
 from aicad.bridge.session import (
@@ -23,7 +23,6 @@ from aicad.orchestration.plan_service import (
 from aicad.runtime import get_audit_service, get_plan_service, get_tool_registry
 
 
-GUI_REQUEST_TIMEOUT_SECONDS = 120.0
 GUI_DISPATCH_INTERVAL_MS = 50
 
 
