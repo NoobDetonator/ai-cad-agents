@@ -57,16 +57,16 @@ Crie (ou complemente) `.cursor/mcp.json` no projeto que usará o CAD:
 
 ## Como o agente deve trabalhar
 
-1. **Descobrir capacidades**: `available_cad_tools` lista as 47 ferramentas
+1. **Descobrir capacidades**: `available_cad_tools` lista as 90 ferramentas
    com schema, risco, aliases e exemplos; `available_cad_recipes` lista as
    receitas confiáveis com parâmetros tipados.
 2. **Ler antes de agir**: `execute_cad_read_tool` executa qualquer ferramenta
    de risco `read` imediatamente — comece por
    `cad.get_context_snapshot` para obter o estado versionado do documento.
 3. **Uma mutação**: `request_cad_tool` com uma ferramenta `modify` retorna
-   `pending_confirmation`; o usuário decide no painel do FreeCAD. Repita a
-   chamada com o mesmo `request_id` para consultar o desfecho (polling
-   idempotente).
+   `pending_confirmation`; com a opção padrão marcada, o painel emite a aprovação
+   automática auditada, ou aguarda clique quando ela estiver desmarcada. Repita a
+   chamada com o mesmo `request_id` para consultar o desfecho (polling idempotente).
 4. **Plano de 2 a 8 mutações**: `submit_cad_plan` congela o plano com hash e
    estado-base e o usuário aprova tudo com uma única confirmação;
    `get_cad_plan_status` acompanha o progresso e `cancel_cad_plan` desiste.
@@ -87,8 +87,9 @@ Um fluxo completo típico: contexto → plano aprovado (placa + furos) → medid
 
 ## Comportamentos que o agente deve esperar
 
-- Toda mutação e exportação aguarda confirmação humana no painel; avise o
-  usuário para olhar o FreeCAD quando receber `pending_confirmation`.
+- Toda mutação e exportação entra na fila visível do painel. Mutações podem
+  receber aprovação automática auditada; exportações sempre aguardam decisão
+  humana. Avise o usuário se `pending_confirmation` permanecer pendente.
 - Argumentos fora do schema falham antes de qualquer execução, com mensagem
   explícita — corrija e reenvie.
 - Referências ambíguas de objeto retornam erro ou `awaiting_selection` em vez

@@ -195,611 +195,93 @@ class ToolRegistry:
                     raise ToolInputError(
                         f"{argument_name} accepts at most {max_items} items."
                     )
+                if property_schema.get("uniqueItems") and len(value) != len(
+                    {repr(element) for element in value}
+                ):
+                    raise ToolInputError(f"{argument_name} items must be unique.")
                 items_schema = property_schema.get("items", {})
-                if items_schema.get("type") != "string":
+                item_type = items_schema.get("type")
+                if item_type not in {"string", "integer", "number", "boolean"}:
                     raise RuntimeError(
                         f"Unsupported array item type for {spec.name}."
                     )
                 for element in value:
-                    if not isinstance(element, str):
+                    if item_type == "string" and not isinstance(element, str):
                         raise ToolInputError(
                             f"{argument_name} items must be strings."
                         )
+                    if item_type == "integer" and (
+                        not isinstance(element, int) or isinstance(element, bool)
+                    ):
+                        raise ToolInputError(
+                            f"{argument_name} items must be integers."
+                        )
+                    if item_type == "number" and (
+                        not isinstance(element, (int, float))
+                        or isinstance(element, bool)
+                    ):
+                        raise ToolInputError(
+                            f"{argument_name} items must be numbers."
+                        )
+                    if item_type == "number" and not math.isfinite(float(element)):
+                        raise ToolInputError(
+                            f"{argument_name} items must be finite."
+                        )
+                    if item_type == "boolean" and not isinstance(element, bool):
+                        raise ToolInputError(
+                            f"{argument_name} items must be booleans."
+                        )
                     minimum_length = items_schema.get("minLength")
                     maximum_length = items_schema.get("maxLength")
-                    if minimum_length is not None and len(element) < minimum_length:
+                    if (
+                        item_type == "string"
+                        and minimum_length is not None
+                        and len(element) < minimum_length
+                    ):
                         raise ToolInputError(f"{argument_name} has an empty item.")
-                    if maximum_length is not None and len(element) > maximum_length:
+                    if (
+                        item_type == "string"
+                        and maximum_length is not None
+                        and len(element) > maximum_length
+                    ):
                         raise ToolInputError(
                             f"{argument_name} has an item that is too long."
+                        )
+                    pattern = items_schema.get("pattern")
+                    if (
+                        item_type == "string"
+                        and pattern is not None
+                        and re.fullmatch(pattern, element) is None
+                    ):
+                        raise ToolInputError(
+                            f"{argument_name} has an item with an invalid format."
+                        )
+                    allowed_values = items_schema.get("enum")
+                    if allowed_values is not None and element not in allowed_values:
+                        raise ToolInputError(
+                            f"{argument_name} has an item outside the allowed values."
+                        )
+                    minimum = items_schema.get("minimum")
+                    maximum = items_schema.get("maximum")
+                    if minimum is not None and element < minimum:
+                        raise ToolInputError(
+                            f"{argument_name} has an item below the minimum."
+                        )
+                    if maximum is not None and element > maximum:
+                        raise ToolInputError(
+                            f"{argument_name} has an item above the maximum."
                         )
             else:
                 raise RuntimeError(
                     f"Unsupported argument type for {spec.name}: {expected_type}"
                 )
 
-
 def build_default_registry() -> ToolRegistry:
-    registry = ToolRegistry()
-    empty_object = {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": False,
-    }
-    registry.register(
-        ToolSpec(
-            name="cad.get_document_summary",
-            description="Read the active CAD document and its object tree.",
-            risk=ToolRisk.READ,
-            input_schema=empty_object,
-            family="context",
-            aliases=(
-                "resumo",
-                "resumo do documento",
-                "document summary",
-                "object tree",
-            ),
-            tags=(
-                "documento",
-                "modelo",
-                "objetos",
-                "existe",
-                "atualmente",
-                "document",
-                "model",
-                "objects",
-                "exists",
-            ),
-            examples=(
-                "O que existe atualmente neste modelo?",
-                "Show the document object tree.",
-            ),
-            canonical_order=10,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.get_selection",
-            description="Read the objects, faces and edges selected by the user.",
-            risk=ToolRisk.READ,
-            input_schema=empty_object,
-            family="context",
-            aliases=(
-                "seleção",
-                "seleção atual",
-                "selected objects",
-                "current selection",
-            ),
-            tags=(
-                "selecionado",
-                "selecionados",
-                "faces",
-                "arestas",
-                "selected",
-                "selection",
-                "edges",
-            ),
-            examples=(
-                "Quais objetos e faces eu selecionei?",
-                "Which edges are selected?",
-            ),
-            canonical_order=20,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.get_context_snapshot",
-            description=(
-                "Read a bounded, versioned snapshot of the active document, "
-                "selection and recently changed objects. Call it first: its "
-                "state_token is required to detect external changes and to "
-                "submit plans."
-            ),
-            risk=ToolRisk.READ,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "detail_level": {
-                        "type": "string",
-                        "enum": ["minimal", "work"],
-                    },
-                    "max_objects": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 100,
-                    },
-                    "cursor": {
-                        "type": "integer",
-                        "minimum": 0,
-                    },
-                },
-                "additionalProperties": False,
-            },
-            family="context",
-            aliases=(
-                "contexto",
-                "contexto atual",
-                "estado atual",
-                "current context",
-                "recent objects",
-            ),
-            tags=(
-                "recente",
-                "último",
-                "ultima",
-                "ele",
-                "essas",
-                "context",
-                "recent",
-                "current",
-            ),
-            examples=(
-                "Leia o estado atual e os objetos recentes.",
-                "Use the current selection and recent object.",
-            ),
-            essential=True,
-            canonical_order=30,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.create_box",
-            description=(
-                "Create a parametric box at the global origin: length along "
-                "X, width along Y, height along Z, in millimeters."
-            ),
-            risk=ToolRisk.MODIFY,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "length": {"type": "number", "exclusiveMinimum": 0},
-                    "width": {"type": "number", "exclusiveMinimum": 0},
-                    "height": {"type": "number", "exclusiveMinimum": 0},
-                    "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64,
-                        "pattern": "[A-Za-z][A-Za-z0-9_-]*",
-                    },
-                },
-                "required": ["length", "width", "height"],
-                "additionalProperties": False,
-            },
-            family="primitive",
-            aliases=(
-                "caixa",
-                "bloco retangular",
-                "cubo",
-                "box",
-                "rectangular block",
-                "cube",
-            ),
-            tags=(
-                "comprimento",
-                "largura",
-                "altura",
-                "length",
-                "width",
-                "height",
-                "criar",
-                "create",
-            ),
-            examples=(
-                "Crie uma caixa 10 x 20 x 30.",
-                "Create a box with length, width and height.",
-            ),
-            canonical_order=100,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.create_cylinder",
-            description=(
-                "Create a vertical parametric cylinder based at the global "
-                "origin, aligned with the Z axis, from its diameter and "
-                "height in millimeters."
-            ),
-            risk=ToolRisk.MODIFY,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "diameter": {"type": "number", "exclusiveMinimum": 0},
-                    "height": {"type": "number", "exclusiveMinimum": 0},
-                    "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64,
-                        "pattern": "[A-Za-z][A-Za-z0-9_-]*",
-                    },
-                },
-                "required": ["diameter", "height"],
-                "additionalProperties": False,
-            },
-            family="primitive",
-            aliases=(
-                "cilindro",
-                "eixo vertical",
-                "pino",
-                "cylinder",
-                "vertical shaft",
-                "pin",
-            ),
-            tags=(
-                "diâmetro",
-                "diametro",
-                "raio",
-                "altura",
-                "diameter",
-                "radius",
-                "height",
-                "criar",
-                "create",
-            ),
-            examples=(
-                "Modele um eixo vertical de 16 mm de diâmetro.",
-                "Create a cylinder with diameter and height.",
-            ),
-            canonical_order=110,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.validate_document",
-            description="Recompute and report document and shape errors.",
-            risk=ToolRisk.READ,
-            input_schema=empty_object,
-            family="validation",
-            aliases=(
-                "validar",
-                "verificar documento",
-                "validate document",
-                "check model",
-            ),
-            tags=(
-                "erros",
-                "inválido",
-                "invalido",
-                "formas",
-                "recalcular",
-                "errors",
-                "invalid",
-                "recompute",
-            ),
-            examples=(
-                "Confira se há formas inválidas ou erros no modelo.",
-                "Validate and recompute the document.",
-            ),
-            canonical_order=200,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.undo",
-            description="Undo the last committed CAD transaction.",
-            risk=ToolRisk.MODIFY,
-            input_schema=empty_object,
-            family="history",
-            aliases=(
-                "desfazer",
-                "reverter",
-                "voltar alteração",
-                "undo",
-                "revert",
-                "rollback",
-            ),
-            tags=(
-                "última",
-                "ultima",
-                "alteração",
-                "alteracao",
-                "volte",
-                "last",
-                "change",
-            ),
-            examples=(
-                "Volte a última alteração que fizemos na peça.",
-                "Undo the last CAD transaction.",
-            ),
-            canonical_order=300,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.get_audit_history",
-            description=(
-                "Read a bounded summary of this session's redacted local audit "
-                "history."
-            ),
-            risk=ToolRisk.READ,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 100,
-                    },
-                },
-                "additionalProperties": False,
-            },
-            family="history",
-            aliases=(
-                "histórico",
-                "historico",
-                "auditoria",
-                "audit history",
-            ),
-            tags=("ações", "planos", "aprovações", "actions", "audit"),
-            examples=(
-                "Mostre o histórico auditável desta sessão.",
-                "Show recent audited CAD actions.",
-            ),
-            canonical_order=310,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.export_audit_history",
-            description=(
-                "Export this session's redacted audit history to one explicit "
-                "absolute JSON destination without silent overwrite."
-            ),
-            risk=ToolRisk.EXPORT,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "destination": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 1024,
-                    },
-                    "overwrite": {"type": "boolean"},
-                },
-                "required": ["destination"],
-                "additionalProperties": False,
-            },
-            family="history",
-            aliases=(
-                "exportar histórico",
-                "exportar historico",
-                "export audit history",
-            ),
-            tags=("auditoria", "json", "arquivo", "audit", "export"),
-            examples=(
-                "Exporte o histórico para um arquivo JSON escolhido por mim.",
-            ),
-            canonical_order=320,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.list_documents",
-            description=(
-                "List every open document with name, label, saved file path "
-                "and object count, and report which one is active. All other "
-                "tools operate on the active document."
-            ),
-            risk=ToolRisk.READ,
-            input_schema=empty_object,
-            family="document",
-            aliases=(
-                "listar documentos",
-                "documentos abertos",
-                "list documents",
-                "open documents",
-            ),
-            tags=("documento", "abertos", "ativo", "document", "open", "active"),
-            examples=(
-                "Quais documentos estão abertos?",
-                "Which document is active?",
-            ),
-            canonical_order=330,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.new_document",
-            description=(
-                "Create a new empty document and make it the active one. Use "
-                "separate documents to keep independent parts organized. The "
-                "name must start with a letter and use only letters, digits, "
-                "underscore or hyphen."
-            ),
-            risk=ToolRisk.MODIFY,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64,
-                        "pattern": "[A-Za-z][A-Za-z0-9_-]*",
-                    },
-                },
-                "additionalProperties": False,
-            },
-            family="document",
-            aliases=(
-                "novo documento",
-                "criar documento",
-                "new document",
-                "create document",
-            ),
-            tags=("documento", "novo", "separar", "document", "new", "part"),
-            examples=(
-                "Crie um documento novo chamado Engrenagens.",
-                "Start a new document for the housing part.",
-            ),
-            canonical_order=340,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.set_active_document",
-            description=(
-                "Switch the active document to another open document by name "
-                "or label. All subsequent reads and mutations target the "
-                "newly active document."
-            ),
-            risk=ToolRisk.MODIFY,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "document": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256,
-                    },
-                },
-                "required": ["document"],
-                "additionalProperties": False,
-            },
-            family="document",
-            aliases=(
-                "ativar documento",
-                "trocar documento",
-                "switch document",
-                "activate document",
-            ),
-            tags=("documento", "ativo", "trocar", "document", "switch", "active"),
-            examples=(
-                "Ative o documento Engrenagens.",
-                "Switch to the Housing document.",
-            ),
-            canonical_order=350,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.save_document",
-            description=(
-                "Save the active document. Pass an explicit absolute .FCStd "
-                "destination on first save (no silent overwrite); omit the "
-                "destination to save a document to its existing file. The "
-                "result includes size and sha256."
-            ),
-            risk=ToolRisk.EXPORT,
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "destination": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 1024,
-                    },
-                    "overwrite": {"type": "boolean"},
-                },
-                "additionalProperties": False,
-            },
-            family="document",
-            aliases=(
-                "salvar documento",
-                "salvar projeto",
-                "save document",
-                "save file",
-            ),
-            tags=("documento", "salvar", "fcstd", "document", "save", "file"),
-            examples=(
-                "Salve o documento em C:/projetos/engrenagens.FCStd.",
-                "Save the active document.",
-            ),
-            canonical_order=360,
-        )
-    )
-    cad_export_schema = {
-        "type": "object",
-        "properties": {
-            "destination": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1024,
-            },
-            "object": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128,
-            },
-            "overwrite": {"type": "boolean"},
-        },
-        "required": ["destination", "object"],
-        "additionalProperties": False,
-    }
-    registry.register(
-        ToolSpec(
-            name="cad.export_stl",
-            description=(
-                "Export one validated solid object as an STL mesh file to one "
-                "explicit absolute destination without silent overwrite. The "
-                "document is validated first and the result includes size and "
-                "sha256 so the caller can verify the artifact."
-            ),
-            risk=ToolRisk.EXPORT,
-            input_schema=cad_export_schema,
-            family="export",
-            aliases=(
-                "exportar stl",
-                "export stl",
-                "salvar stl",
-                "save stl",
-            ),
-            tags=(
-                "stl",
-                "malha",
-                "mesh",
-                "impressão",
-                "impressao",
-                "3d print",
-                "exportar",
-                "export",
-                "arquivo",
-                "file",
-            ),
-            examples=(
-                "Exporte a peça Base como STL para impressão 3D.",
-                "Export the MountingPlate object to C:/parts/plate.stl.",
-            ),
-            canonical_order=400,
-        )
-    )
-    registry.register(
-        ToolSpec(
-            name="cad.export_step",
-            description=(
-                "Export one validated solid object as a STEP file to one "
-                "explicit absolute destination without silent overwrite. The "
-                "document is validated first and the result includes size and "
-                "sha256 so the caller can verify the artifact."
-            ),
-            risk=ToolRisk.EXPORT,
-            input_schema=cad_export_schema,
-            family="export",
-            aliases=(
-                "exportar step",
-                "export step",
-                "salvar step",
-                "save step",
-            ),
-            tags=(
-                "step",
-                "stp",
-                "cad",
-                "fabricação",
-                "fabricacao",
-                "manufacturing",
-                "exportar",
-                "export",
-                "arquivo",
-                "file",
-            ),
-            examples=(
-                "Exporte o flange como STEP para o fornecedor.",
-                "Export the Flange object to C:/parts/flange.step.",
-            ),
-            canonical_order=410,
-        )
-    )
-    from aicad.core.mechanical_tools import mechanical_tool_specs
+    """Build the provider-neutral catalog without importing a CAD backend."""
 
-    for spec in mechanical_tool_specs():
+    from aicad.core.tool_catalog import default_tool_specs
+
+    registry = ToolRegistry()
+    for spec in default_tool_specs():
         registry.register(spec)
     return registry

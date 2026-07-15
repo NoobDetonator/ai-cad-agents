@@ -43,7 +43,8 @@ def available_cad_tools() -> list[dict[str, object]]:
 
     Call this first. Tools with risk "read" run immediately through
     execute_cad_read_tool; tools with risk "modify" or "export" go through
-    request_cad_tool and wait for the user's visual confirmation in FreeCAD.
+    request_cad_tool and follow the visible approval policy in FreeCAD. Automatic
+    approval is the panel default for mutations; exports remain manual.
     """
     return [asdict(spec) for spec in tool_registry.list_specs()]
 
@@ -88,11 +89,11 @@ def request_cad_tool(
 ) -> dict[str, object]:
     """Request any registered CAD tool through the authenticated GUI bridge.
 
-    Mutations and exports return status "pending_confirmation": tell the
-    user to approve or reject the operation in the FreeCAD panel, then poll
-    by repeating this call with the SAME request_id until the status is
-    terminal (completed, rejected, failed or expired). Requests expire if
-    the user does not decide in time.
+    Mutations and exports first return status "pending_confirmation". The panel
+    automatically approves mutations while its visible option is enabled, but
+    exports and manual-mode sessions wait for the user. Poll by repeating this
+    call with the SAME request_id until the status is terminal (completed,
+    rejected, failed or expired).
     """
 
     request = _build_bridge_request(name, arguments, request_id)

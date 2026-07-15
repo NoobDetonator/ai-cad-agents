@@ -189,3 +189,105 @@ class EditMixin:
             "rotation_quaternion": [float(value) for value in changed.Placement.Rotation.Q],
             "valid": True,
         }
+
+    def translate_object(
+        self,
+        object: str,
+        dx: float = 0,
+        dy: float = 0,
+        dz: float = 0,
+    ) -> dict[str, Any]:
+        deltas = tuple(self._finite_float(value) for value in (dx, dy, dz))
+        if any(value is None for value in deltas):
+            raise ValueError("Translation deltas must be finite.")
+        checked_dx, checked_dy, checked_dz = deltas
+        if all(math.isclose(value, 0.0, abs_tol=1e-12) for value in deltas):
+            raise ValueError("At least one translation delta must be non-zero.")
+        item = self._resolve_document_object(object)
+        app, _ = self._modules()
+
+        def translate(_: Any) -> Any:
+            current = item.Placement
+            base = current.Base
+            item.Placement = app.Placement(
+                app.Vector(
+                    base.x + checked_dx,
+                    base.y + checked_dy,
+                    base.z + checked_dz,
+                ),
+                current.Rotation,
+            )
+            return item
+
+        changed = self._run_transaction(f"translate {item.Name}", translate)
+        base = changed.Placement.Base
+        return {
+            "name": changed.Name,
+            "label": changed.Label,
+            "position_mm": [float(base.x), float(base.y), float(base.z)],
+            "rotation_quaternion": [
+                float(value) for value in changed.Placement.Rotation.Q
+            ],
+            "valid": True,
+        }
+
+    def rotate_object(
+        self,
+        object: str,
+        axis: str,
+        angle: float,
+        pivot: str = "object_center",
+    ) -> dict[str, Any]:
+        checked_axis = str(axis).lower()
+        if checked_axis not in {"x", "y", "z"}:
+            raise ValueError("Rotation axis must be x, y or z.")
+        checked_pivot = str(pivot).lower()
+        if checked_pivot not in {"object_center", "global_origin"}:
+            raise ValueError("Rotation pivot must be object_center or global_origin.")
+        checked_angle = self._finite_float(angle)
+        if checked_angle is None or not -360 <= checked_angle <= 360:
+            raise ValueError("Rotation angle must be finite and within -360 to 360 degrees.")
+        if math.isclose(checked_angle % 360, 0.0, abs_tol=1e-12):
+            raise ValueError("Rotation angle must produce a non-zero rotation.")
+        item = self._resolve_document_object(object)
+        shape = self._shape_or_error(item)
+        app, _ = self._modules()
+        vectors = {
+            "x": app.Vector(1, 0, 0),
+            "y": app.Vector(0, 1, 0),
+            "z": app.Vector(0, 0, 1),
+        }
+        pivot_vector = (
+            shape.BoundBox.Center
+            if checked_pivot == "object_center"
+            else app.Vector(0, 0, 0)
+        )
+
+        def rotate(_: Any) -> Any:
+            current = item.Placement
+            delta = app.Rotation(vectors[checked_axis], checked_angle)
+            relative_base = current.Base - pivot_vector
+            next_base = pivot_vector + delta.multVec(relative_base)
+            next_rotation = delta.multiply(current.Rotation)
+            item.Placement = app.Placement(next_base, next_rotation)
+            return item
+
+        changed = self._run_transaction(f"rotate {item.Name}", rotate)
+        base = changed.Placement.Base
+        return {
+            "name": changed.Name,
+            "label": changed.Label,
+            "axis": checked_axis,
+            "angle_deg": checked_angle,
+            "pivot": checked_pivot,
+            "pivot_mm": [
+                float(pivot_vector.x),
+                float(pivot_vector.y),
+                float(pivot_vector.z),
+            ],
+            "position_mm": [float(base.x), float(base.y), float(base.z)],
+            "rotation_quaternion": [
+                float(value) for value in changed.Placement.Rotation.Q
+            ],
+            "valid": True,
+        }

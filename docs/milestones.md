@@ -44,7 +44,9 @@ exatamente a infraestrutura que o produto MCP usa.
   `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
 - **Ambiente validado:** Windows, FreeCAD 1.1.1 instalado em
   `C:\Program Files\FreeCAD 1.1` e Python 3.11 fornecido pelo FreeCAD.
-- **Última validação completa:** 181 testes unitários, `FREECAD_SMOKE_OK`,
+- **Última validação completa:** 198 testes unitários, `FREECAD_SMOKE_OK`,
+  `FREECAD_FOUNDATION_SMOKE_OK`, `FREECAD_ASSEMBLY_SMOKE_OK`,
+  `FREECAD_BEARINGS_SMOKE_OK`,
   `FREECAD_M4_SMOKE_OK`, `FREECAD_M6_SMOKE_OK`, `FREECAD_M7_SMOKE_OK` e
   `FREECAD_GUI_SMOKE_OK`, incluindo modelagem, documentos, exportação, receitas,
   fluxo MCP gráfico e captura visual.
@@ -65,7 +67,9 @@ Estas regras têm precedência sobre conveniências de implementação:
 7. `scripts/testar.ps1` é executado antes de concluir qualquer alteração.
 8. `.venv`, `.tools`, `.downloads`, `.runtime`, arquivos CAD gerados e segredos
    permanecem fora do Git.
-9. Mutações iniciadas por IA ou MCP precisam de confirmação explícita do usuário.
+9. Mutações iniciadas por IA ou MCP precisam de um `ApprovalGrant` exato emitido
+   pelo painel. A emissão pode ser automática quando a opção visível estiver
+   marcada; exportações continuam exigindo clique.
 10. Um marco só está concluído quando código, testes e documentação concordam.
 
 ## 3. O que funciona agora
@@ -78,9 +82,9 @@ Estas regras têm precedência sobre conveniências de implementação:
   FreeCAD instalado, sem script de inicialização.
 - O painel inicia no modo local; a DeepSeek só participa quando a opção visível
   é marcada pelo usuário.
-- `scripts/iniciar_rapido.ps1` permanece como auxiliar de desenvolvimento com
-  aprovação automática visível; a abertura normal pelo FreeCAD mantém
-  confirmação manual.
+- O painel inicia com aceitação automática visível para mutações; a opção pode
+  ser desmarcada para exigir confirmação manual. Exportações permanecem manuais.
+- `scripts/iniciar_rapido.ps1` permanece como auxiliar de desenvolvimento.
 
 ### Chat local determinístico
 
@@ -161,7 +165,8 @@ flowchart LR
 
 | Área | Arquivo principal | Responsabilidade |
 | --- | --- | --- |
-| Catálogo e política | `src/aicad/core/tool_registry.py` | Specs, schemas, validação, risco e confirmação |
+| Política do registro | `src/aicad/core/tool_registry.py` | Contratos, validação, risco, confirmação e execução |
+| Catálogo por domínio | `src/aicad/core/tool_catalog/` | Specs e schemas neutros agregados em ordem pública estável |
 | Comandos locais | `src/aicad/core/chat_commands.py` | Texto fechado para chamadas estruturadas e apresentação |
 | Composição | `src/aicad/application.py` | Liga specs aos métodos de um adaptador CAD abstrato |
 | Instância compartilhada | `src/aicad/runtime.py` | Fornece o registro usado por chat e MCP |
@@ -773,6 +778,80 @@ Critério de aceite atendido: o corpus de benchmark cresceu junto com o catálog
 e o seletor manteve recall; cada ferramenta nova tem teste de falha e de undo,
 não apenas de sucesso.
 
+## Expansão fundamental do catálogo — concluída
+
+O catálogo passou de 47 para 55 ferramentas sem criar novos caminhos MCP:
+
+- `cad.create_cone`, `cad.create_sphere` e `cad.create_torus` criam primitivas
+  paramétricas validadas na origem global;
+- `cad.measure_distance` devolve distância mínima, distância entre centros e o
+  par de pontos mais próximos;
+- `cad.duplicate_object` cria uma cópia BRep independente com offset opcional;
+- `cad.delete_object` recusa exclusão quando `InList` contém dependentes e não
+  oferece modo forçado ou cascata;
+- `cad.translate_object` e `cad.rotate_object` aplicam transformações relativas
+  explícitas, mantendo `cad.transform_object` como operação absoluta;
+- o catálogo neutro ganhou o domínio `objects`; o adaptador ganhou mixins
+  `primitives` e `objects`;
+- o corpus `agent-corpus-foundation-v1.json` contém 16 pedidos PT/EN e quatro
+  pedidos inseguros, com recall 16/16 e zero exposição de mutações inseguras;
+- `freecad_foundation_smoke.py` confere volumes analíticos, distância, cópia,
+  transformação, proteção de dependências, exclusão e restauração por undo.
+
+## Expansão de montagem mecânica — concluída
+
+O catálogo passou de 55 para 61 ferramentas reutilizando o mesmo registro, ponte,
+aprovação e núcleo transacional:
+
+- `cad.create_internal_gear` gera uma coroa interna involuta real com aro explícito;
+- `cad.create_planetary_carrier` cria placa, furo central e círculo de pinos;
+- `cad.create_ball_bearing` gera pistas e esferas com folga radial validada;
+- `cad.apply_gear_backlash` afina flancos por alívio angular tangencial;
+- `cad.align_concentric` aplica alinhamento XY e plano Z reversível, registrando
+  a referência sem alegar um solver de montagem vivo;
+- `cad.analyze_interferences` mede distância e volume comum entre pares, separando
+  contato, violação de folga e interferência real;
+- `freecad_assembly_smoke.py` cobre sucesso, geometria inválida, análise e undo no
+  kernel instalado.
+
+## Expansão especializada de rolamentos — concluída
+
+O catálogo passou de 61 para 66 ferramentas, sem criar um marco novo e sem
+alterar a trilha de aprovação, transação ou MCP:
+
+- `cad.create_deep_groove_ball_bearing` cria pistas toroidais profundas,
+  esferas e gaiola conectada opcional com conformidade e folga radial explícitas;
+- `cad.create_thrust_ball_bearing` cria duas arruelas canaladas, esferas e
+  gaiola para carga axial em uma direção;
+- `cad.create_cylindrical_roller_bearing` cria pistas, rolos de comprimento
+  controlado e gaiola conectada de dois trilhos para carga radial;
+- `cad.create_print_in_place_roller_bearing` cria rolos capturados por aros a
+  45 graus, com folgas radial e axial calibráveis e orientação Z registrada;
+- `cad.create_printed_plain_bushing` cria bucha polimérica com folga de
+  funcionamento, canais axiais e alívio contra elephant foot;
+- `agent-corpus-bearings-v1.json` recupera 10/10 intenções PT/EN e não expõe
+  mutações nos três pedidos inseguros;
+- `freecad_bearings_smoke.py` valida formas, colisões internas, metadados e undo
+  no kernel real.
+
+Essas ferramentas produzem geometria conceitual e fabricável, não cálculo de
+vida L10, capacidade de carga, lubrificação, ajuste ISO ou certificação. Folgas
+de impressão devem ser calibradas na impressora, orientação e material reais.
+
+## Expansão do ambiente de Sketch — concluída
+
+O catálogo passou de 66 para 90 ferramentas sem criar um marco novo. A expansão
+adiciona 24 operações estruturadas para o ciclo fundamental completo de Sketch:
+planos globais com offset, nove construtores de geometria, referência externa,
+restrições geométricas e dimensionais, cotas dirigentes/de referência, edição e
+inspeção detalhada do solver. Os contratos ficam no domínio neutro `sketching` e
+o adaptador foi separado entre fundação, geometria e restrições.
+
+O corpus especializado recupera 24/24 capacidades e bloqueia quatro pedidos
+inseguros. `freecad_sketch_smoke.py` valida as operações no kernel real, produz
+um sólido por pad a partir do perfil e confirma o undo. A referência completa de
+contratos e convenções está em `docs/sketch-environment.md`.
+
 ## 14. Preparação do computador de casa
 
 ### Clonar e conferir
@@ -815,8 +894,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\testar.ps1
 
 Resultado esperado:
 
-- 181 testes Python aprovados ou quantidade superior;
+- 198 testes Python aprovados ou quantidade superior;
 - `FREECAD_SMOKE_OK`;
+- `FREECAD_FOUNDATION_SMOKE_OK`;
+- `FREECAD_ASSEMBLY_SMOKE_OK`;
+- `FREECAD_BEARINGS_SMOKE_OK`;
 - `FREECAD_M4_SMOKE_OK`;
 - `FREECAD_M6_SMOKE_OK`;
 - `FREECAD_M7_SMOKE_OK`;
@@ -932,11 +1014,16 @@ e execute scripts/testar.ps1 para confirmar a base.
 
 Use como baseline o commit que contém a conclusão do M7 ou um posterior. Na árvore
 atual, M0 a M7 estão concluídos: Workbench e painel, ToolRegistry compartilhado
-com 47 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
+com 90 ferramentas, ponte MCP–GUI, loop opcional DeepSeek, planos imutáveis e
 compostos, rollback, leituras mecânicas, edição, placa, furos/padrões (incluindo
 rebaixo, escareado e roscados), sketch/pad constrangidos, revolução, loft, sweep,
 booleanas, filete/chanfro, engrenagens retas/helicoidais com fase, roscas
-externa/interna, espelho, padrões linear/polar, cinco receitas, exportação
+externa/interna, espelho, padrões linear/polar, cone, esfera, toro, medição de
+distância, cópia independente, exclusão protegida, transformações relativas,
+engrenagem interna, porta-planetas, rolamento, backlash, alinhamento concêntrico
+e análise de interferências, rolamentos de pista profunda, axial e de rolos,
+rolamento print-in-place e bucha polimérica imprimível,
+cinco receitas, exportação
 STL/STEP de ponta a ponta, seleção aguardada e captura visual já funcionam e
 estão testados. Histórico local versionado registra pedidos, planos, aprovações,
 resultados e transações com redaction e exportação confirmada.

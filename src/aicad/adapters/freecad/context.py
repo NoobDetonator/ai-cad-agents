@@ -310,6 +310,33 @@ class ContextReadsMixin:
             "valid": bool(shape.isValid()),
         }
 
+    def measure_distance(self, left: str, right: str) -> dict[str, Any]:
+        left_item = self._resolve_document_object(left)
+        right_item = self._resolve_document_object(right)
+        if left_item is right_item:
+            raise ValueError("Distance operands must be different objects.")
+        left_shape = self._shape_or_error(left_item)
+        right_shape = self._shape_or_error(right_item)
+        minimum_distance, point_pairs, _ = left_shape.distToShape(right_shape)
+        left_center = left_shape.BoundBox.Center
+        right_center = right_shape.BoundBox.Center
+        center_distance = (right_center - left_center).Length
+        closest_points = []
+        if point_pairs:
+            left_point, right_point = point_pairs[0]
+            closest_points = [
+                [float(left_point.x), float(left_point.y), float(left_point.z)],
+                [float(right_point.x), float(right_point.y), float(right_point.z)],
+            ]
+        return {
+            "left": {"name": left_item.Name, "label": left_item.Label},
+            "right": {"name": right_item.Name, "label": right_item.Label},
+            "minimum_distance_mm": float(minimum_distance),
+            "center_distance_mm": float(center_distance),
+            "closest_points_mm": closest_points,
+            "intersects_or_touches": float(minimum_distance) <= 1e-7,
+        }
+
     def get_dependencies(self, object: str) -> dict[str, Any]:
         item = self._resolve_document_object(object)
 

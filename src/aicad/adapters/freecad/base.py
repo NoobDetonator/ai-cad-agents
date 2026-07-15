@@ -194,6 +194,8 @@ class FreeCadAdapterBase:
         self,
         title: str,
         operation: Callable[[Any], Any],
+        *,
+        recent_names: tuple[str, ...] | None = None,
     ) -> Any:
         document = self._active_document()
         self._ensure_undo(document)
@@ -214,7 +216,12 @@ class FreeCadAdapterBase:
             document.commitTransaction()
             mark_transaction(CadTransactionOutcome.COMMITTED)
             self._remember_audited_transaction(label, document.UndoCount)
-            self._context_tracker.record_recent(document.Name, (item.Name,))
+            recorded_names = recent_names
+            if recorded_names is None:
+                item_name = getattr(item, "Name", None)
+                recorded_names = (item_name,) if item_name else ()
+            if recorded_names:
+                self._context_tracker.record_recent(document.Name, recorded_names)
             return item
         except Exception:
             document.abortTransaction()

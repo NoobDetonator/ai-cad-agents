@@ -52,9 +52,10 @@ existir algo em `AiCad`, confira o destino antes de substituir ou remover.
 3. O painel lateral deve abrir à direita e publicar a ponte MCP automaticamente.
 4. Teste `resumo` no chat local ou chame `health` pelo cliente MCP.
 
-O modo normal sempre exige confirmação visual para mutações e exportações. O
-`scripts/iniciar_rapido.ps1` permanece exclusivamente para documentos
-descartáveis de desenvolvimento, com aprovação automática visível e temporária.
+O painel inicia com **Aceitar automaticamente as alterações** marcado para
+mutações locais, da IA e do MCP. A opção é visível e pode ser desmarcada para
+restaurar confirmação manual. Exportações sempre exigem confirmação visual. O
+`scripts/iniciar_rapido.ps1` permanece como auxiliar do ambiente portátil.
 
 ## Atualizar ou remover
 

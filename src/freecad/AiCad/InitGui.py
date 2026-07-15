@@ -62,4 +62,5 @@ class AICadWorkbench(Workbench):
         return "Gui::PythonWorkbench"
 
 
-Gui.addWorkbench(AICadWorkbench())
+if "AICadWorkbench" not in Gui.listWorkbenches():
+    Gui.addWorkbench(AICadWorkbench())

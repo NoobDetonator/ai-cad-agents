@@ -10,7 +10,7 @@ A IA planeja, a camada de ferramentas autoriza, o FreeCAD executa e o validador 
    vocabulário local fechado e não executa texto como código.
 2. **Orquestrador de IA** — planeja por um contrato neutro; o primeiro adaptador concreto usa a DeepSeek.
 3. **ToolRegistry** — catálogo único, schemas, handlers, validação de argumentos
-   e bloqueio de ferramentas de risco sem confirmação explícita.
+   e bloqueio de ferramentas de risco sem uma aprovação exata do painel.
 4. **Application** — conecta todas as especificações a uma única interface de
    adaptador CAD, sem importar FreeCAD.
 5. **FreeCadAdapter** — camada que importa o FreeCAD sob demanda, lê o documento
@@ -22,6 +22,31 @@ A IA planeja, a camada de ferramentas autoriza, o FreeCAD executa e o validador 
 8. **Validação** — recomputa e verifica estados de erro e validade das formas.
 9. **Avaliação offline** — corpus versionado e runner medem compreensão e
    segurança sem FreeCAD ou provedor.
+
+## Catálogo de ferramentas por domínio
+
+`aicad.core.tool_registry` contém somente os contratos `ToolSpec`, `ToolRisk`,
+a política de validação/execução e a montagem do registro. As 47 especificações
+neutras ficam em `aicad.core.tool_catalog`, separadas em nove módulos:
+
+| Módulo | Famílias |
+| --- | --- |
+| `context` | contexto e medição |
+| `primitives` | primitivas básicas |
+| `editing` | edição de objetos |
+| `objects` | cópia independente e exclusão protegida |
+| `modeling` | sketches, features, booleanas e acabamento |
+| `patterns` | espelho e padrões lineares, polares ou de furos |
+| `mechanical` | componentes mecânicos especializados |
+| `governance` | validação, undo e auditoria |
+| `documents` | documentos, salvamento e exportação |
+
+`tool_catalog.__init__` agrega esses módulos em uma ordem pública estável e
+recusa nomes duplicados. Schemas e resultados reutilizáveis ficam em
+`tool_catalog.schemas`. O antigo `aicad.core.mechanical_tools` permanece apenas
+como uma vista de compatibilidade, sem ser a fonte das definições. Essa divisão
+permite ampliar uma família sem aumentar o arquivo de política nem criar um
+catálogo paralelo.
 
 ## Carregamento pelo FreeCAD instalado
 
@@ -276,9 +301,10 @@ progresso e rollback permanecem na thread Qt.
 
 ## Modelagem mecânica do M4
 
-O M4 acrescentou 18 contratos ao catálogo, totalizando 25 ferramentas. Specs,
-schemas de entrada e saída, aliases PT/EN, risco e ordem canônica ficam em
-`aicad.core.mechanical_tools`, que não importa FreeCAD.
+O M4 acrescentou 18 contratos ao catálogo, totalizando 25 ferramentas. Naquele
+corte, specs, schemas de entrada e saída, aliases PT/EN, risco e ordem canônica
+ficavam em `aicad.core.mechanical_tools`. Hoje essas definições estão divididas
+por domínio em `aicad.core.tool_catalog`, que continua sem importar FreeCAD.
 
 As seis leituras novas resolvem um objeto por nome interno, label inequívoca ou
 seleção; expõem detalhes, medidas, bounding box, dependências, parâmetros
@@ -367,7 +393,7 @@ uma única operação pendente volta a controlar os botões de confirmar e cance
 
 ## Regra de dependência
 
-`aicad.core` não importa FreeCAD ou Qt. A UI, o MCP e os provedores dependem do núcleo. Somente o pacote `aicad.adapters.freecad` conversa diretamente com o FreeCAD: `freecad_adapter.py` expõe o `FreeCadAdapter` compondo mixins por domínio (base, context, edits, sketches, features, sweeps, mechanical, patterns, documents, export), e o caminho de import público continua `aicad.adapters.freecad_adapter`.
+`aicad.core` não importa FreeCAD ou Qt. A UI, o MCP e os provedores dependem do núcleo. Somente o pacote `aicad.adapters.freecad` conversa diretamente com o FreeCAD: `freecad_adapter.py` expõe o `FreeCadAdapter` compondo mixins por domínio (base, context, primitives, objects, edits, sketch foundations, sketch geometry, sketch constraints, features, sweeps, mechanical, bearings, assembly, patterns, documents, export), e o caminho de import público continua `aicad.adapters.freecad_adapter`.
 
 ## Fluxo atual do chat
 
@@ -376,26 +402,29 @@ uma única operação pendente volta a controlar os botões de confirmar e cance
 2. O `ToolRegistry` confere ferramenta, schema, campos extras, tipos, limites e
    risco.
 3. Ferramentas de leitura são executadas imediatamente.
-4. Ferramentas `modify` só são executadas depois da confirmação no painel.
+4. Ferramentas `modify` só são executadas depois de uma aprovação emitida pelo
+   painel; por padrão ela é automática e auditada, e o usuário pode exigir clique.
 5. O handler conectado chama o `FreeCadAdapter`.
 6. O resultado estruturado volta ao painel para apresentação.
 
 Não existe ferramenta de Python genérico e o parser não possui caminho para
 avaliar código.
 
-## Modo de teste rápido
+## Aceitação automática visível
 
-`scripts/iniciar_rapido.ps1` define `AICAD_QUICK_TEST_MODE=1` somente no processo
-filho do FreeCAD. O painel mostra uma caixa marcada e um aviso permanente no
-status. Quando uma mutação local, um plano da IA ou uma solicitação MCP entra na
+Sem override, o painel inicia com **Aceitar automaticamente as alterações**
+marcado. Quando uma mutação local, um plano da IA ou uma solicitação MCP entra na
 fila normal de confirmação, um timer Qt aciona o mesmo `confirm_pending` que o
-botão usaria.
+botão usaria e registra a decisão como aprovação automática. O usuário pode
+desmarcar a opção; `AICAD_QUICK_TEST_MODE=0` força o início manual em testes ou
+sessões controladas.
 
-Esse modo é auxiliar de desenvolvimento; a abertura normal pelo FreeCAD instalado
-não o ativa. Ele não chama handlers diretamente, não altera o risco da ferramenta e não
-pode ser ativado pelo texto do modelo. `ApprovalGrant`, validação de estado,
-transação, pós-condição e rollback continuam no caminho. O lançador normal e a
-suíte automatizada forçam o modo desligado. A preferência não é persistida.
+A aceitação automática não chama handlers diretamente, não altera o risco da
+ferramenta e não pode ser ativada pelo texto do modelo. `ApprovalGrant`, validação
+de estado, transação, pós-condição e rollback continuam no caminho. Exportações
+permanecem fora dessa política e exigem clique. A suíte automatizada força o modo
+desligado nos testes gráficos que exercitam ambos os caminhos. A preferência não
+é persistida.
 
 ## Contrato de mutação
 
@@ -463,12 +492,24 @@ conhece sua API. O formato e as decisões de retenção estão detalhados em
 
 ## Baseline técnica atual
 
-M0 a M7 estão concluídos. O catálogo compartilhado possui 47 ferramentas CAD,
+M0 a M7 estão concluídos. O catálogo compartilhado possui 90 ferramentas CAD,
 cinco receitas, nove ferramentas MCP, dois Resources e cinco Prompts. M6 fechou a
 integração MCP e a exportação STL/STEP; M7 acrescentou documentos, sketches
 constrangidos, revolução, loft, sweep, furos especiais, engrenagem helicoidal,
-roscas, espelho e padrões.
+roscas, espelho e padrões. A expansão fundamental acrescentou cone, esfera,
+toro, distância entre objetos, cópia independente, exclusão protegida e
+transformações relativas. O domínio de montagem acrescenta engrenagem interna
+involuta, porta-planetas, rolamento radial, backlash geométrico, alinhamento
+concêntrico transacional e análise par-a-par de interferência/folga.
+O domínio independente `bearings` acrescenta pistas profundas toroidais,
+rolamento axial, rolos cilíndricos, retenção print-in-place a 45 graus e bucha
+polimérica com folga, canais e alívio de primeira camada. Os schemas continuam
+neutros e somente o mixin `freecad/bearings.py` conhece as operações BRep.
+O ambiente de Sketch acrescenta 24 operações estruturadas e organiza a fronteira
+em `sketches.py`, `sketch_geometry.py` e `sketch_constraints.py`; o catálogo
+neutro fica em `core/tool_catalog/sketching.py`. Geometria, cotas e edições usam
+a mesma transação, validação e reversão das demais mutações.
 
 Trabalho futuro é manutenção ou incremento explicitamente aprovado e deve
-preservar a separação do FreeCAD, a confirmação humana, a
+preservar a separação do FreeCAD, a política de aprovação visível, a
 transação reversível, a auditoria e a mesma trilha de registro para chat e MCP.

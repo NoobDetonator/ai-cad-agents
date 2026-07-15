@@ -290,6 +290,112 @@ class MechanicalMixin:
             "valid": True,
         }
 
+    def create_internal_gear(
+        self,
+        teeth: int,
+        module: float,
+        thickness: float,
+        rim_thickness: float,
+        pressure_angle: float = 20,
+        phase: float = 0,
+        name: str = "InternalGear",
+    ) -> dict[str, Any]:
+        checked_teeth = int(teeth)
+        if (
+            isinstance(teeth, bool)
+            or checked_teeth != teeth
+            or not 12 <= checked_teeth <= 240
+        ):
+            raise ValueError("An internal gear requires between 12 and 240 whole teeth.")
+        checked_module, checked_thickness, checked_rim = self._positive_values(
+            module, thickness, rim_thickness
+        )
+        checked_pressure = float(pressure_angle)
+        checked_phase = self._checked_gear_phase(phase)
+        if not math.isfinite(checked_pressure) or not 14.5 <= checked_pressure <= 25:
+            raise ValueError("The pressure angle must be between 14.5 and 25 degrees.")
+        if checked_rim < checked_module:
+            raise ValueError("The internal gear rim must be at least one module thick.")
+        checked_name = self._validated_object_name(name)
+        pitch_radius = checked_module * checked_teeth / 2
+        dedendum = 1.25 * checked_module
+        outer_radius = pitch_radius + dedendum + checked_rim
+        app, part = self._modules()
+
+        def create(document: Any) -> Any:
+            self._ensure_new_name(document, checked_name)
+            profile_name = self._ensure_new_name(
+                document, f"{checked_name[:56]}Profile"
+            )
+            from PartDesign import InvoluteGearFeature
+
+            profile = InvoluteGearFeature.makeInvoluteGear(profile_name)
+            profile.Label = f"{checked_name} profile"
+            profile.NumberOfTeeth = checked_teeth
+            profile.Modules = checked_module
+            profile.PressureAngle = checked_pressure
+            # Internal-gear pockets are boolean-heavy; the single four-point
+            # involute keeps the exact pitch geometry while avoiding hundreds
+            # of B-spline fragments in later backlash and interference checks.
+            profile.HighPrecision = False
+            profile.ExternalGear = False
+            profile.AddendumCoefficient = 0.6
+            profile.DedendumCoefficient = 1.25
+            profile.RootFilletCoefficient = 0.38
+            document.recompute()
+            wire = profile.Shape
+            if wire.isNull() or not wire.isValid() or not wire.isClosed():
+                raise RuntimeError(
+                    "FreeCAD did not produce a valid closed internal gear profile."
+                )
+            if checked_phase:
+                wire = wire.copy()
+                wire.rotate(app.Vector(0, 0, 0), app.Vector(0, 0, 1), checked_phase)
+            pocket = part.Face(wire).extrude(app.Vector(0, 0, checked_thickness))
+            rim = part.makeCylinder(outer_radius, checked_thickness)
+            shape = rim.cut(pocket)
+            result = self._derived_feature(
+                document,
+                checked_name,
+                shape,
+                (profile,),
+                "involute_internal_gear",
+            )
+            result.addProperty("App::PropertyInteger", "NumberOfTeeth", "Gear")
+            result.NumberOfTeeth = checked_teeth
+            result.addProperty("App::PropertyLength", "GearModule", "Gear")
+            result.GearModule = checked_module
+            result.addProperty("App::PropertyAngle", "PressureAngle", "Gear")
+            result.PressureAngle = checked_pressure
+            result.addProperty("App::PropertyAngle", "PhaseAngle", "Gear")
+            result.PhaseAngle = checked_phase
+            result.addProperty("App::PropertyLength", "Thickness", "Gear")
+            result.Thickness = checked_thickness
+            result.addProperty("App::PropertyLength", "RimThickness", "Gear")
+            result.RimThickness = checked_rim
+            result.addProperty("App::PropertyBool", "InternalGear", "Gear")
+            result.InternalGear = True
+            return result
+
+        gear = self._run_transaction(f"create internal gear {checked_name}", create)
+        return {
+            "name": gear.Name,
+            "label": gear.Label,
+            "teeth": checked_teeth,
+            "module_mm": checked_module,
+            "pressure_angle_deg": checked_pressure,
+            "phase_deg": checked_phase,
+            "thickness_mm": checked_thickness,
+            "rim_thickness_mm": checked_rim,
+            "pitch_diameter_mm": checked_module * checked_teeth,
+            "inner_tip_diameter_mm": checked_module * (checked_teeth - 1.2),
+            "root_diameter_mm": checked_module * (checked_teeth + 2.5),
+            "outside_diameter_mm": 2 * outer_radius,
+            "mesh_phase_deg": 180 / checked_teeth,
+            "volume_mm3": float(gear.Shape.Volume),
+            "valid": True,
+        }
+
     def create_threaded_hole(
         self,
         object: str,

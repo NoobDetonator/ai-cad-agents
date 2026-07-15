@@ -1,5 +1,6 @@
 import pytest
 
+from aicad.core.tool_catalog import CATALOG_BUILDERS, default_tool_specs
 from aicad.core.tool_registry import (
     ToolConfirmationRequired,
     ToolInputError,
@@ -8,6 +9,27 @@ from aicad.core.tool_registry import (
     ToolSpec,
     build_default_registry,
 )
+
+
+EXPECTED_CATALOG_FAMILIES = {
+    "aicad.core.tool_catalog.assembly": {"analysis", "assembly"},
+    "aicad.core.tool_catalog.bearings": {"bearing"},
+    "aicad.core.tool_catalog.context": {"context", "measurement"},
+    "aicad.core.tool_catalog.documents": {"document", "export"},
+    "aicad.core.tool_catalog.editing": {"edit"},
+    "aicad.core.tool_catalog.governance": {"history", "validation"},
+    "aicad.core.tool_catalog.mechanical": {"mechanical"},
+    "aicad.core.tool_catalog.modeling": {
+        "boolean",
+        "feature",
+        "finish",
+        "sketch",
+    },
+    "aicad.core.tool_catalog.objects": {"object"},
+    "aicad.core.tool_catalog.patterns": {"pattern"},
+    "aicad.core.tool_catalog.primitives": {"primitive"},
+    "aicad.core.tool_catalog.sketching": {"sketch"},
+}
 
 
 def test_default_registry_has_unique_tools() -> None:
@@ -22,7 +44,7 @@ def test_default_registry_has_unique_tools() -> None:
     assert [spec.name for spec in specs if spec.essential] == [
         "cad.get_context_snapshot"
     ]
-    assert len(specs) == 47
+    assert len(specs) == 90
     audit_names = {"cad.get_audit_history", "cad.export_audit_history"}
     assert {spec.name for spec in specs if spec.name in audit_names} == audit_names
     export_names = {spec.name for spec in specs if spec.family == "export"}
@@ -43,13 +65,33 @@ def test_default_registry_has_unique_tools() -> None:
         "sketch",
         "boolean",
         "finish",
+        "assembly",
+        "analysis",
+        "bearing",
     }
     mechanical_specs = [
         spec for spec in specs if spec.family in mechanical_families
     ]
-    assert len(mechanical_specs) == 27
+    assert len(mechanical_specs) == 65
     assert all(spec.output_schema is not None for spec in mechanical_specs)
-    assert mechanical_specs[-1].name == "cad.create_external_thread"
+    assert any(
+        spec.name == "cad.create_external_thread" and spec.family == "mechanical"
+        for spec in specs
+    )
+
+
+def test_tool_catalog_is_split_into_domain_modules() -> None:
+    modules = {builder.__module__: builder for builder in CATALOG_BUILDERS}
+
+    assert modules.keys() == EXPECTED_CATALOG_FAMILIES.keys()
+    for module_name, builder in modules.items():
+        specs = builder()
+        assert specs
+        assert {spec.family for spec in specs} == EXPECTED_CATALOG_FAMILIES[module_name]
+
+    catalog_names = [spec.name for spec in default_tool_specs()]
+    registry_names = [spec.name for spec in build_default_registry().list_specs()]
+    assert catalog_names == registry_names
 
 
 def test_registry_executes_connected_handler() -> None:

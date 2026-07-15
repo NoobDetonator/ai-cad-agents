@@ -54,16 +54,17 @@ Peças mecânicas para impressão 3D e fabricação leve:
 O Workbench **AI CAD** abre um painel funcional dentro do FreeCAD. O modo local
 entende comandos fechados; o modo DeepSeek opcional interpreta linguagem natural,
 seleciona ferramentas PT/EN e pode executar leituras em um loop limitado. Ambos,
-assim como o MCP, usam o mesmo `ToolRegistry` com 47 ferramentas.
+assim como o MCP, usam o mesmo `ToolRegistry` com 90 ferramentas.
 
 O produto já consegue:
 
-- inspecionar documento, seleção, contexto, objetos, medidas e dependências;
+- inspecionar documento, seleção, contexto, objetos, medidas, distância e dependências;
 - resolver nomes e labels sem aceitar ambiguidades;
 - listar parâmetros editáveis e capturar a vista sob demanda;
 - criar e alternar documentos, salvar `.FCStd` e exportar STL/STEP;
-- criar caixa, cilindro, placa, sketches retangular e circular constrangidos e pad;
-- renomear, alterar dimensões permitidas, mover e rotacionar objetos;
+- criar caixa, cilindro, cone, esfera, toro, placa, sketches retangular e circular constrangidos e pad;
+- duplicar ou excluir com proteção de dependências, renomear, alterar dimensões
+  permitidas e aplicar transformações absolutas ou relativas;
 - criar furos passantes, com rebaixo, escareados e roscados, além de padrões de
   furos retangulares ou circulares;
 - executar união, corte e interseção com operandos explícitos;
@@ -71,6 +72,10 @@ O produto já consegue:
 - criar revolução, loft e sweep sobre trajetória controlada;
 - criar engrenagens retas e helicoidais com perfil involuto oficial, fase,
   módulo, dentes, ângulo de pressão, espessura e furo controlados;
+- criar coroa interna involuta, porta-planetas e rolamento radial, aplicar
+  backlash aos flancos, alinhar e analisar interferências da montagem;
+- criar rolamentos rígido de esferas, axial e de rolos cilíndricos, bem como
+  rolamento capturado e bucha com folgas explícitas para impressão 3D;
 - criar roscas externas e internas estilo ISO 60° voltadas a impressão 3D;
 - espelhar e repetir sólidos em padrões lineares e polares;
 - construir placa de fixação, flange, pad retangular, eixo escalonado e polia
@@ -82,14 +87,15 @@ O produto já consegue:
 - exportar um objeto sólido validado como STL ou STEP para um destino
   explícito, com confirmação, sem sobrescrita silenciosa e com checksum.
 
-Todas as mutações são chamadas estruturadas, confirmadas, transacionais,
+Todas as mutações são chamadas estruturadas, autorizadas pelo painel,
+transacionais,
 recalculadas e validadas. Texto do modelo nunca vira Python, macro ou shell. A
 chave DeepSeek só é solicitada para uso real e fica no cofre do Windows.
 
 No uso normal, o FreeCAD 1.1.1 instalado é aberto pelo próprio Windows e o
-Workbench **AI CAD** exige confirmação manual. Um lançador separado oferece
-confirmação automática visível e limitada à sessão apenas para desenvolvimento;
-ele preserva toda a validação e reversibilidade.
+Workbench **AI CAD** inicia com aceitação automática visível para mutações. O
+usuário pode desmarcá-la para exigir confirmação manual; exportações continuam
+manuais. Ambos os caminhos preservam validação, auditoria e reversibilidade.
 
 ## Limites honestos do corte atual
 

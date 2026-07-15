@@ -8,7 +8,8 @@ $FreeCadExeFile = Join-Path $Runtime "freecad-exe.txt"
 $FreeCadModule = Join-Path $ProjectRoot "src\freecad\AiCad"
 $UserConfig = Join-Path $Runtime "test-user.cfg"
 $SystemConfig = Join-Path $Runtime "test-system.cfg"
-$GuiSmokeTimeoutSeconds = 60
+$PytestTemp = Join-Path $Runtime ("pytest-" + $PID)
+$GuiSmokeTimeoutSeconds = 120
 $env:AICAD_VISUAL_CACHE = Join-Path $Runtime "visual-cache"
 $env:AICAD_AUDIT_DIR = Join-Path $Runtime "audit"
 $env:AICAD_QUICK_TEST_MODE = "0"
@@ -19,7 +20,8 @@ if (-not (Test-Path -LiteralPath $VenvPython)) {
 
 Push-Location $ProjectRoot
 try {
-    & $VenvPython -m pytest
+    New-Item -ItemType Directory -Force -Path $PytestTemp | Out-Null
+    & $VenvPython -m pytest --basetemp $PytestTemp -p no:cacheprovider
     if ($LASTEXITCODE -ne 0) {
         throw "Os testes unitarios falharam."
     }
@@ -35,6 +37,58 @@ try {
         $freeCadText = $freeCadOutput -join "`n"
         if ($LASTEXITCODE -ne 0 -or $freeCadText -notmatch "FREECAD_SMOKE_OK") {
             throw "O teste de integracao com o FreeCAD falhou."
+        }
+        $foundationOutput = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
+            -M $FreeCadModule `
+            -P $VenvSitePackages `
+            -P (Join-Path $ProjectRoot "src") `
+            (Join-Path $ProjectRoot "tests\freecad_foundation_smoke.py") 2>&1
+        $foundationOutput | ForEach-Object { Write-Host $_ }
+        $foundationText = $foundationOutput -join "`n"
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $foundationText -notmatch "FREECAD_FOUNDATION_SMOKE_OK"
+        ) {
+            throw "O teste fundamental do FreeCAD falhou."
+        }
+        $sketchOutput = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
+            -M $FreeCadModule `
+            -P $VenvSitePackages `
+            -P (Join-Path $ProjectRoot "src") `
+            (Join-Path $ProjectRoot "tests\freecad_sketch_smoke.py") 2>&1
+        $sketchOutput | ForEach-Object { Write-Host $_ }
+        $sketchText = $sketchOutput -join "`n"
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $sketchText -notmatch "FREECAD_SKETCH_SMOKE_OK"
+        ) {
+            throw "O teste completo do ambiente de Sketch falhou."
+        }
+        $assemblyOutput = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
+            -M $FreeCadModule `
+            -P $VenvSitePackages `
+            -P (Join-Path $ProjectRoot "src") `
+            (Join-Path $ProjectRoot "tests\freecad_assembly_smoke.py") 2>&1
+        $assemblyOutput | ForEach-Object { Write-Host $_ }
+        $assemblyText = $assemblyOutput -join "`n"
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $assemblyText -notmatch "FREECAD_ASSEMBLY_SMOKE_OK"
+        ) {
+            throw "O teste de montagem mecanica do FreeCAD falhou."
+        }
+        $bearingOutput = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
+            -M $FreeCadModule `
+            -P $VenvSitePackages `
+            -P (Join-Path $ProjectRoot "src") `
+            (Join-Path $ProjectRoot "tests\freecad_bearings_smoke.py") 2>&1
+        $bearingOutput | ForEach-Object { Write-Host $_ }
+        $bearingText = $bearingOutput -join "`n"
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $bearingText -notmatch "FREECAD_BEARINGS_SMOKE_OK"
+        ) {
+            throw "O teste especializado de rolamentos do FreeCAD falhou."
         }
         $m4Output = & $FreeCadCmd -u $UserConfig -s $SystemConfig `
             -M $FreeCadModule `
@@ -99,13 +153,8 @@ try {
         if (-not $guiText) {
             if (-not $process.HasExited) {
                 $process.Kill()
+                $process.WaitForExit(5000)
             }
-            Get-CimInstance Win32_Process |
-                Where-Object {
-                    $_.Name -eq "FreeCAD.exe" -and
-                    $_.CommandLine -like "*freecad_gui_smoke.py*"
-                } |
-                ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
             throw "O teste grafico do FreeCAD excedeu $GuiSmokeTimeoutSeconds segundos. Consulte $guiLog."
         }
         if ($guiText -ne "FREECAD_GUI_SMOKE_OK") {

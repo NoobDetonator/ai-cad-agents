@@ -122,7 +122,7 @@ dos limites falham fechados. A ação não é gravada parcialmente.
 
 O exportador é projetado como `cad.export_audit_history`, com risco `export`, no
 mesmo registro do chat e MCP. O chat exige um caminho absoluto e confirmação
-visual; o modo de teste rápido não o autoriza automaticamente. Depois da execução,
+visual; a aceitação automática de mutações não o autoriza. Depois da execução,
 o bundle é regravado para que a própria ação de exportação apareça em estado
 terminal no arquivo produzido.
 

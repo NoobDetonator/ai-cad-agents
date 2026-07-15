@@ -24,7 +24,7 @@ histórico das entregas; a baseline atual é M0–M7 concluída, sem próximo ma
 - **Estado do M3.6:** concluído com 126 testes, rollback real e planos via MCP.
 - **Estado do M4.1–M4.3:** concluído com 25 ferramentas, três receitas, seleção
   interativa, captura visual, projeções MCP e smoke mecânico real.
-- **Capacidades atuais:** 47 ferramentas CAD, cinco receitas, nove ferramentas
+- **Capacidades atuais:** 90 ferramentas CAD, cinco receitas, nove ferramentas
   MCP, dois Resources, cinco Prompts, planos compostos, seleção aguardada,
   captura visual e exportação STL/STEP.
 - **Extensão pós-M4:** engrenagem reta involuta exposta por ferramenta segura que
@@ -723,9 +723,11 @@ Adicionar primeiro:
 
 Essas leituras reduzem adivinhação e melhoram todas as mutações futuras.
 
-Entregue em `aicad.core.mechanical_tools` e `FreeCadAdapter`: detalhes,
-bounding box e medidas, dependências, resolução por nome/label/seleção e
-parâmetros editáveis permitidos. Resolução ambígua falha fechada.
+Originalmente entregue em `aicad.core.mechanical_tools` e `FreeCadAdapter`:
+detalhes, bounding box e medidas, dependências, resolução por
+nome/label/seleção e parâmetros editáveis permitidos. As specs hoje ficam nos
+módulos por domínio de `aicad.core.tool_catalog`; resolução ambígua continua
+falhando fechada.
 
 ### M4.2 — Ferramentas mecânicas prioritárias — concluído
 

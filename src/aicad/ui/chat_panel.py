@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from html import escape
 import os
@@ -49,6 +50,15 @@ from aicad.ui.bridge_controller import GuiBridgeController, get_or_start_gui_bri
 
 
 DOCK_NAME = "AICadChatDock"
+
+
+def automatic_approval_default(
+    environment: Mapping[str, str] | None = None,
+) -> bool:
+    """Return the visible session default, with an explicit opt-out for tests."""
+
+    values = os.environ if environment is None else environment
+    return values.get("AICAD_QUICK_TEST_MODE", "1") == "1"
 
 
 @dataclass(slots=True)
@@ -102,15 +112,15 @@ def show_chat_panel() -> None:
     use_deepseek.setChecked(False)
 
     quick_test_mode = QtWidgets.QCheckBox(
-        "Modo de teste rápido (confirmação automática)",
+        "Aceitar automaticamente as alterações",
         container,
     )
     quick_test_mode.setObjectName("AICadQuickTestMode")
     quick_test_mode.setToolTip(
-        "Aprova automaticamente mutações nesta sessão de desenvolvimento. "
+        "Aprova automaticamente mutações nesta sessão. "
         "Transações, validação e undo continuam ativos."
     )
-    quick_test_mode.setChecked(os.environ.get("AICAD_QUICK_TEST_MODE") == "1")
+    quick_test_mode.setChecked(automatic_approval_default())
 
     history = QtWidgets.QTextBrowser(container)
     history.setObjectName("AICadHistory")
@@ -179,7 +189,7 @@ def show_chat_panel() -> None:
             ),
         ]
         if quick_test_mode.isChecked():
-            parts.append("TESTE RÁPIDO: confirmação automática")
+            parts.append("ACEITAÇÃO AUTOMÁTICA ATIVA")
         if not credential_vault_available[0]:
             parts.append("cofre de credenciais indisponível")
         elif credential_configured[0] is True:
@@ -298,7 +308,7 @@ def show_chat_panel() -> None:
             and supports_quick_approval(command)
         ):
             append_assistant(
-                "<b>Modo de teste rápido:</b> operação aprovada "
+                "<b>Aceitação automática:</b> operação aprovada "
                 "automaticamente nesta sessão."
             )
             QtCore.QTimer.singleShot(0, confirm_pending)
@@ -1107,7 +1117,7 @@ def show_chat_panel() -> None:
         refresh_security_status()
         if enabled:
             append_assistant(
-                "<b>Atenção:</b> modo de teste rápido ativado. Mutações locais, "
+                "<b>Atenção:</b> aceitação automática ativada. Mutações locais, "
                 "da IA e do MCP serão aprovadas automaticamente nesta sessão; "
                 "transações, validação e undo permanecem obrigatórios."
             )
@@ -1115,13 +1125,13 @@ def show_chat_panel() -> None:
                 QtCore.QTimer.singleShot(0, confirm_pending)
         else:
             append_assistant(
-                "Modo de teste rápido desativado; confirmações visuais restauradas."
+                "Aceitação automática desativada; confirmações visuais restauradas."
             )
 
     refresh_security_status()
     if quick_test_mode.isChecked():
         append_assistant(
-            "<b>Atenção:</b> esta sessão iniciou em modo de teste rápido. "
+            "<b>Atenção:</b> esta sessão iniciou com aceitação automática. "
             "Mutações serão aprovadas automaticamente e continuarão "
             "transacionais, validadas e reversíveis."
         )

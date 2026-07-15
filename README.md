@@ -7,8 +7,9 @@ risco, receitas e orquestração permanecem independentes dele.
 
 Diferente dos MCPs de CAD que executam Python arbitrário dentro do aplicativo,
 aqui não existe caminho para executar código gerado: o agente chama ferramentas
-pequenas com schema, cada mutação é transacional, confirmada visualmente pelo
-usuário, auditada e reversível.
+pequenas com schema; cada mutação passa pela política visível do painel, é
+transacional, auditada e reversível. A aceitação automática inicia ligada, pode
+ser desmarcada a qualquer momento e nunca se aplica a exportações.
 
 O produto principal é o MCP; a IA vem do agente que o usuário já usa. O painel
 dentro do FreeCAD funciona como superfície de confirmação e inclui um modo de
@@ -19,16 +20,27 @@ chat local e um modo DeepSeek standalone opcional, ambos em manutenção.
 Os marcos M0 a M7 estão implementados. O corte funcional atual oferece:
 
 - Workbench **AI CAD** e painel lateral testados no FreeCAD 1.1.1;
-- um único `ToolRegistry`, com 47 ferramentas, usado pelo chat e pelo MCP;
+- um único `ToolRegistry`, com 90 ferramentas, usado pelo chat e pelo MCP;
 - chat local determinístico e modo DeepSeek opcional;
 - leituras de documento, seleção, contexto, objetos, medidas, dependências,
   parâmetros editáveis e imagem da vista;
-- criação e edição de primitivas, placas, furos, padrões, furos com rebaixo,
+- criação de caixa, cilindro, cone, esfera e toro; medição de distância mínima;
+- duplicação e exclusão segura, transformação absoluta e deslocamento/rotação relativos;
+- criação e edição de placas, furos, padrões, furos com rebaixo,
   escareado e roscados, sketch retangular e circular constrangidos, pad,
   booleanas, filetes e chanfros;
+- ambiente paramétrico de Sketch com 24 ferramentas dedicadas: planos XY/XZ/YZ,
+  linhas, polilinhas, arcos, círculos, elipses, retângulos, rasgos e polígonos;
+  geometria externa, construção, cotas, restrições geométricas, inspeção do
+  solver, mover, copiar, espelhar, aparar, estender, filetar e excluir;
 - trajetórias linha/arco e varredura de perfil (sweep) ao longo delas;
 - engrenagens retas e helicoidais com fase de dentes para engrenamento,
   roscas externas e internas;
+- engrenagem interna involuta, porta-planetas, rolamento de esferas, backlash
+  geométrico, alinhamento concêntrico e análise de interferências;
+- rolamentos rígido de esferas com pistas profundas, axial de esferas e de
+  rolos cilíndricos, além de rolamento print-in-place e bucha polimérica
+  preparados para folgas de fabricação aditiva;
 - espelhamento e padrões linear e polar de features;
 - cinco receitas confiáveis: placa de fixação, flange, pad retangular, eixo
   escalonado e polia plana;
@@ -61,18 +73,19 @@ Depois da vinculação, abra o FreeCAD normalmente pelo menu Iniciar e selecione
 Workbench **AI CAD**. O painel abrirá à direita e publicará a ponte MCP.
 
 Os scripts `setup.ps1` e `iniciar.ps1` permanecem somente como auxiliares para o
-ambiente portátil de desenvolvimento. Para testes descartáveis com aprovação
-automática visível, ainda existe:
+ambiente portátil de desenvolvimento. O modo explícito de desenvolvimento ainda
+existe:
 
 ```powershell
 .\scripts\iniciar_rapido.ps1
 ```
 
-Nesse lançador, **Modo de teste rápido** começa marcado e confirma automaticamente
-mutações locais, da IA e do MCP. O estado fica visível no painel e pode ser
-desmarcado a qualquer momento. O modo vale somente para a sessão; schemas,
-transações, validação, pós-condições e undo continuam obrigatórios. O lançador
-normal permanece com confirmação visual.
+O painel agora inicia com **Aceitar automaticamente as alterações** marcado tanto
+na abertura normal quanto nesse lançador. Mutações locais, da IA e do MCP passam
+pela mesma fila e recebem uma aprovação automática auditada. A opção pode ser
+desmarcada a qualquer momento; schemas, transações, validação, pós-condições e
+undo continuam obrigatórios. Exportações permanecem sempre manuais. Defina
+`AICAD_QUICK_TEST_MODE=0` para iniciar uma sessão em confirmação manual.
 
 ## Chat local
 
@@ -93,8 +106,9 @@ placa 100 x 60 x 8 nome Base
 desfazer
 ```
 
-Leituras são imediatas. Mutações mostram o plano e exigem **Confirmar operação**.
-Texto desconhecido recebe ajuda; nunca é avaliado como código.
+Leituras são imediatas. Mutações mostram o plano e, com a opção padrão marcada,
+são aceitas automaticamente; desmarque-a para exigir **Confirmar operação**.
+Texto desconhecido recebe ajuda e nunca é avaliado como código.
 
 ## IA DeepSeek
 
@@ -202,6 +216,10 @@ MCP, seleção e captura visual. Os marcadores esperados são:
 
 ```text
 FREECAD_SMOKE_OK
+FREECAD_FOUNDATION_SMOKE_OK
+FREECAD_SKETCH_SMOKE_OK
+FREECAD_ASSEMBLY_SMOKE_OK
+FREECAD_BEARINGS_SMOKE_OK
 FREECAD_M4_SMOKE_OK
 FREECAD_M6_SMOKE_OK
 FREECAD_M7_SMOKE_OK
@@ -215,17 +233,20 @@ O benchmark offline não usa rede, chave ou FreeCAD:
 ```
 
 No corpus mecânico M4, o seletor recupera 46/46 ferramentas esperadas. No corpus
-geral, envia um subconjunto pequeno das 47 ferramentas e economiza 96,0% dos bytes de
-schemas.
+geral, envia um subconjunto pequeno das 90 ferramentas. No corpus fundamental,
+recupera 16/16 ferramentas, não expõe mutações nos quatro pedidos inseguros e
+economiza 94,8% dos bytes de schemas. O corpus especializado distingue 10/10
+pedidos PT/EN de rolamentos e bloqueia os três pedidos inseguros. O corpus de
+Sketch recupera 24/24 capacidades e bloqueia quatro tentativas inseguras.
 
 ## Segurança
 
 - Chat e MCP passam pelo mesmo `ToolRegistry` e pelo mesmo adaptador.
 - O MCP usa TCP loopback autenticado e transfere execução para a thread Qt.
-- Toda mutação de IA ou MCP exige confirmação explícita.
-- A única exceção é o modo de desenvolvimento iniciado explicitamente por
-  `iniciar_rapido.ps1`; ele emite aprovações automáticas somente naquela sessão
-  descartável. A abertura normal pelo FreeCAD mantém confirmação manual.
+- Toda mutação de IA ou MCP passa pela política de aprovação visível no painel.
+- A aceitação automática inicia ligada e emite uma aprovação auditada para cada
+  operação exata; pode ser desmarcada para restaurar cliques manuais. Exportações
+  não recebem aprovação automática.
 - Não existe ferramenta de Python arbitrário, macro ou shell.
 - Chaves permanecem no cofre do Windows.
 - `.runtime`, `.tools`, `.downloads`, `.venv`, capturas, CAD gerado e segredos
@@ -236,7 +257,8 @@ schemas.
 O repositório traz um `.mcp.json` pronto: abrindo o Claude Code nesta pasta,
 o servidor `ai-cad` é oferecido automaticamente. Com o FreeCAD instalado aberto
 normalmente e o Workbench **AI CAD** ativo, o agente lê o documento, propõe planos
-que você confirma no painel e exporta STL/STEP. O passo a passo para Claude Code,
+que o painel autoriza conforme a opção visível e exporta STL/STEP somente após
+confirmação manual. O passo a passo para Claude Code,
 Codex e Cursor está em [docs/mcp-integration.md](docs/mcp-integration.md).
 
 ## Documentação
@@ -244,6 +266,8 @@ Codex e Cursor está em [docs/mcp-integration.md](docs/mcp-integration.md).
 - [Instalação com o FreeCAD do Windows](docs/installation.md)
 - [Integração MCP com agentes externos](docs/mcp-integration.md)
 - [Arquitetura](docs/architecture.md)
+- [Ambiente paramétrico de Sketch](docs/sketch-environment.md)
+- [Rolamentos convencionais e para impressão 3D](docs/bearings.md)
 - [Visão do produto](docs/product-vision.md)
 - [Marcos e transferência](docs/milestones.md)
 - [Plano de otimização do agente](docs/ai-agent-optimization-plan.md)
