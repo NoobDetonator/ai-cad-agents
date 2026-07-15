@@ -16,8 +16,10 @@ def mechanical_part_tool_specs() -> tuple[ToolSpec, ...]:
     return (
         _spec(
             "cad.create_plate",
-            "Create a rectangular plate at the global origin: length along X, "
-            "width along Y, thickness along Z, in millimeters.",
+            "Create a rectangular plate with its MINIMUM CORNER at the global "
+            "origin: it spans 0..length in X, 0..width in Y and "
+            "0..thickness in Z, in millimeters. Corner-anchored, unlike "
+            "cad.create_cylinder, which centres its axis on the origin.",
             ToolRisk.MODIFY,
             _object_schema(
                 {"length": POSITIVE, "width": POSITIVE, "thickness": POSITIVE, "name": NAME},

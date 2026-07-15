@@ -21,7 +21,11 @@ def modeling_tool_specs() -> tuple[ToolSpec, ...]:
             "Cut one vertical through hole (along Z, through the full solid) at "
             "GLOBAL document coordinates x, y in millimeters. Diameter in "
             "millimeters. The result is a new derived object linked to the "
-            "source.",
+            "source. WARNING: by default the cutter spans the whole solid's Z "
+            "extent, so on a fused body it drills EVERY feature sharing that "
+            "(x, y) column, not just the one you mean. To confine the hole to "
+            "one feature (for example boring only a raised boss), pass z_min "
+            "and z_max: the cutter then spans exactly that window.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -30,13 +34,18 @@ def modeling_tool_specs() -> tuple[ToolSpec, ...]:
                     "x": NUMBER,
                     "y": NUMBER,
                     "name": NAME,
+                    "z_min": NUMBER,
+                    "z_max": NUMBER,
                 },
                 ("object", "diameter", "x", "y"),
             ),
             family="feature",
             aliases=("furo passante", "furar", "through hole", "drill"),
             tags=("furo", "diâmetro", "posição", "hole", "diameter"),
-            examples=("Faça um furo passante de 8 mm no centro da placa.",),
+            examples=(
+                "Faça um furo passante de 8 mm no centro da placa.",
+                "Fure Ø40 apenas no ressalto entre z=90 e z=120.",
+            ),
             order=160,
             output_schema=OBJECT_RESULT,
         ),

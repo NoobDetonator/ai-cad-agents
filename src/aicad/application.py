@@ -31,7 +31,13 @@ class CadAdapter(Protocol):
 
     def get_editable_parameters(self, object: str) -> dict[str, Any]: ...
 
-    def capture_view(self, width: int = 960, height: int = 640) -> dict[str, Any]: ...
+    def capture_view(
+        self,
+        width: int = 960,
+        height: int = 640,
+        view: str = "current",
+        fit: bool = False,
+    ) -> dict[str, Any]: ...
 
     def create_box(
         self, length: float, width: float, height: float, name: str = "AIBox"
@@ -115,6 +121,8 @@ class CadAdapter(Protocol):
         x: float,
         y: float,
         name: str = "AIThroughHole",
+        z_min: float | None = None,
+        z_max: float | None = None,
     ) -> dict[str, Any]: ...
 
     def create_rectangular_hole_pattern(self, **arguments: Any) -> dict[str, Any]: ...

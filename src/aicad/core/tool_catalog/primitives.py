@@ -18,8 +18,11 @@ def primitive_tool_specs() -> tuple[ToolSpec, ...]:
         ToolSpec(
             name="cad.create_box",
             description=(
-                "Create a parametric box at the global origin: length along "
-                "X, width along Y, height along Z, in millimeters."
+                "Create a parametric box with its MINIMUM CORNER at the "
+                "global origin: it spans 0..length in X, 0..width in Y and "
+                "0..height in Z, in millimeters. Corner-anchored, unlike "
+                "cad.create_cylinder and cad.create_cone, which centre their "
+                "axis on the origin."
             ),
             risk=ToolRisk.MODIFY,
             input_schema={
@@ -66,9 +69,14 @@ def primitive_tool_specs() -> tuple[ToolSpec, ...]:
         ToolSpec(
             name="cad.create_cylinder",
             description=(
-                "Create a vertical parametric cylinder based at the global "
-                "origin, aligned with the Z axis, from its diameter and "
-                "height in millimeters."
+                "Create a vertical parametric cylinder whose base circle is "
+                "CENTRED on the global origin, aligned with the Z axis, from "
+                "its diameter and height in millimeters. It spans "
+                "-diameter/2..+diameter/2 in X and Y, and 0..height in Z. "
+                "Axis-anchored, unlike cad.create_box and cad.create_plate, "
+                "which put their minimum corner on the origin: to place the "
+                "axis at (x, y) translate by exactly (x, y), not by a corner "
+                "offset."
             ),
             risk=ToolRisk.MODIFY,
             input_schema={
@@ -114,9 +122,11 @@ def primitive_tool_specs() -> tuple[ToolSpec, ...]:
         ),
         _spec(
             "cad.create_cone",
-            "Create a parametric cone or truncated cone at the global origin, "
-            "aligned with +Z. Diameters are in millimeters; at least one end "
-            "diameter must be greater than zero.",
+            "Create a parametric cone or truncated cone whose base circle is "
+            "CENTRED on the global origin, aligned with +Z. Diameters are in "
+            "millimeters; at least one end diameter must be greater than "
+            "zero. Axis-anchored like cad.create_cylinder, not "
+            "corner-anchored like cad.create_box.",
             ToolRisk.MODIFY,
             _object_schema(
                 {

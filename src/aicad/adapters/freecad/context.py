@@ -19,6 +19,20 @@ from aicad.core.visual_cache import (
 )
 
 
+# "current" keeps whatever camera the user left in the GUI; the rest are the
+# standard orientations, so a caller can ask for a reproducible framing.
+_CAPTURE_VIEWS = {
+    "current": None,
+    "isometric": "viewAxonometric",
+    "top": "viewTop",
+    "bottom": "viewBottom",
+    "front": "viewFront",
+    "rear": "viewRear",
+    "left": "viewLeft",
+    "right": "viewRight",
+}
+
+
 class ContextReadsMixin:
     """Read-only document, selection, measurement and visual context."""
 
@@ -415,9 +429,24 @@ class ContextReadsMixin:
             "parameters": self._editable_parameter_records(item),
         }
 
-    def capture_view(self, width: int = 960, height: int = 640) -> dict[str, Any]:
+    def capture_view(
+        self,
+        width: int = 960,
+        height: int = 640,
+        view: str = "current",
+        fit: bool = False,
+    ) -> dict[str, Any]:
         if not 320 <= int(width) <= 1920 or not 240 <= int(height) <= 1080:
             raise ValueError("Visual capture dimensions are outside the safe limits.")
+        checked_view = str(view).strip().lower()
+        if checked_view not in _CAPTURE_VIEWS:
+            raise ValueError(
+                "Capture view must be one of: "
+                + ", ".join(sorted(_CAPTURE_VIEWS))
+                + "."
+            )
+        if not isinstance(fit, bool):
+            raise ValueError("Capture fit must be a boolean value.")
         try:
             import FreeCADGui as Gui
         except ImportError as exc:
@@ -426,7 +455,13 @@ class ContextReadsMixin:
         if gui_document is None:
             raise RuntimeError("No active GUI document is available.")
         capture_id, path = new_capture_path()
-        gui_document.activeView().saveImage(str(path), int(width), int(height), "Current")
+        active_view = gui_document.activeView()
+        orientation = _CAPTURE_VIEWS[checked_view]
+        if orientation is not None:
+            getattr(active_view, orientation)()
+        if fit:
+            active_view.fitAll()
+        active_view.saveImage(str(path), int(width), int(height), "Current")
         payload = read_capture(capture_id)
         if len(payload) > MAX_CAPTURE_BYTES:
             path.unlink(missing_ok=True)
@@ -437,6 +472,8 @@ class ContextReadsMixin:
             "mime_type": "image/png",
             "width": int(width),
             "height": int(height),
+            "view": checked_view,
+            "fit": fit,
             "bytes": len(payload),
             "resource_uri": f"aicad://view/{capture_id}",
         }

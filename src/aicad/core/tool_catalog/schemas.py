@@ -180,6 +180,8 @@ CAPTURE_RESULT = {
         "mime_type": {"type": "string", "enum": ["image/png"]},
         "width": {"type": "integer"},
         "height": {"type": "integer"},
+        "view": {"type": "string"},
+        "fit": {"type": "boolean"},
         "bytes": {"type": "integer"},
         "resource_uri": {"type": "string"},
     },

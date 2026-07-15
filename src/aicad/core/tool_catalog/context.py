@@ -231,19 +231,41 @@ def context_tool_specs() -> tuple[ToolSpec, ...]:
             "cad.capture_view",
             "Capture the active 3D view as PNG. The result contains a capture_id "
             "and a resource_uri (aicad://view/{capture_id}) to fetch the "
-            "image as an MCP resource.",
+            "image as an MCP resource. By default it shoots whatever camera "
+            "the user left in the GUI, which may be zoomed somewhere else "
+            "entirely: pass view (isometric, top, bottom, front, rear, left, "
+            "right) and fit=true to get a reproducible framing of the whole "
+            "model. Both move the user's camera, so prefer the default when "
+            "you only want to see what they see.",
             ToolRisk.READ,
             _object_schema(
                 {
                     "width": {"type": "integer", "minimum": 320, "maximum": 1920},
                     "height": {"type": "integer", "minimum": 240, "maximum": 1080},
+                    "view": {
+                        "type": "string",
+                        "enum": [
+                            "current",
+                            "isometric",
+                            "top",
+                            "bottom",
+                            "front",
+                            "rear",
+                            "left",
+                            "right",
+                        ],
+                    },
+                    "fit": {"type": "boolean"},
                 },
                 (),
             ),
             family="context",
             aliases=("capturar vista", "screenshot", "imagem do modelo"),
             tags=("visual", "imagem", "vista", "screenshot", "view"),
-            examples=("Capture a vista atual do modelo.",),
+            examples=(
+                "Capture a vista atual do modelo.",
+                "Capture o modelo inteiro em isométrico enquadrado.",
+            ),
             order=90,
             output_schema=CAPTURE_RESULT,
         ),
