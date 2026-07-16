@@ -1,515 +1,129 @@
-# Arquitetura atual
+# Arquitetura
 
-## Princípio
+## Princípios
 
-A IA planeja, a camada de ferramentas autoriza, o FreeCAD executa e o validador verifica.
+1. O servidor MCP é o produto principal.
+2. O FreeCAD é um adaptador geométrico, não a camada de regras.
+3. Chat e MCP chamam o mesmo `ToolRegistry`.
+4. Toda mutação é validada, transacional, auditada e reversível.
+5. Texto do agente nunca é executado como Python, macro ou shell.
 
 ## Componentes
 
-1. **Interface** — painel lateral dentro do FreeCAD. O modo atual interpreta um
-   vocabulário local fechado e não executa texto como código.
-2. **Orquestrador de IA** — planeja por um contrato neutro; o primeiro adaptador concreto usa a DeepSeek.
-3. **ToolRegistry** — catálogo único, schemas, handlers, validação de argumentos
-   e bloqueio de ferramentas de risco sem uma aprovação exata do painel.
-4. **Application** — conecta todas as especificações a uma única interface de
-   adaptador CAD, sem importar FreeCAD.
-5. **FreeCadAdapter** — camada que importa o FreeCAD sob demanda, lê o documento
-   e executa mutações transacionais.
-6. **Runtime** — fornece a mesma instância do registro ao chat e ao MCP dentro de
-   cada processo.
-7. **MCP** — publica o catálogo compartilhado e envia leituras e solicitações de
-   mutação para a mesma fila segura da GUI.
-8. **Validação** — recomputa e verifica estados de erro e validade das formas.
-9. **Avaliação offline** — corpus versionado e runner medem compreensão e
-   segurança sem FreeCAD ou provedor.
-
-## Catálogo de ferramentas por domínio
-
-`aicad.core.tool_registry` contém somente os contratos `ToolSpec`, `ToolRisk`,
-a política de validação/execução e a montagem do registro. As 47 especificações
-neutras ficam em `aicad.core.tool_catalog`, separadas em nove módulos:
-
-| Módulo | Famílias |
+| Camada | Responsabilidade |
 | --- | --- |
-| `context` | contexto e medição |
-| `primitives` | primitivas básicas |
-| `editing` | edição de objetos |
-| `objects` | cópia independente e exclusão protegida |
-| `modeling` | sketches, features, booleanas e acabamento |
-| `patterns` | espelho e padrões lineares, polares ou de furos |
-| `mechanical` | componentes mecânicos especializados |
-| `governance` | validação, undo e auditoria |
-| `documents` | documentos, salvamento e exportação |
-
-`tool_catalog.__init__` agrega esses módulos em uma ordem pública estável e
-recusa nomes duplicados. Schemas e resultados reutilizáveis ficam em
-`tool_catalog.schemas`. O antigo `aicad.core.mechanical_tools` permanece apenas
-como uma vista de compatibilidade, sem ser a fonte das definições. Essa divisão
-permite ampliar uma família sem aumentar o arquivo de política nem criar um
-catálogo paralelo.
-
-## Carregamento pelo FreeCAD instalado
-
-O uso normal abre o FreeCAD 1.1.1 instalado pelo Windows. Um junction em
-`%APPDATA%\FreeCAD\v1-1\Mod\AiCad` aponta para `src/freecad/AiCad`. Durante o registro
-do Workbench, `InitGui.py` resolve o destino do próprio módulo, encontra a raiz do
-checkout e acrescenta `src` e `.venv\Lib\site-packages` ao `sys.path` somente
-quando esses diretórios existem.
-
-`AICAD_PROJECT_ROOT` continua aceito como override explícito para testes e para os
-lançadores portáteis, mas não é necessário no uso diário. A descoberta só aceita
-uma raiz que contenha `pyproject.toml` e `src/aicad`; ela não baixa dependências,
-não executa código gerado e não altera a política do `ToolRegistry`.
-
-## Protocolo da ponte local
-
-O primeiro bloco do M2 define envelopes versionados em
-`aicad.bridge.protocol`, independentemente do transporte local. Uma request
-carrega `protocol_version`, `request_id`, `tool_name`, `arguments` e `source`.
-Uma response carrega um resultado estruturado, o estado
-`pending_confirmation` ou um erro categorizado.
-
-O envelope rejeita campos extras, versões desconhecidas e nomes que não tenham
-o formato de ferramenta CAD. Depois do parse, nome e argumentos passam pelo
-mesmo `ToolRegistry` usado pelo chat e pelo MCP. Essa validação não executa o
-handler e não substitui a confirmação exigida para ferramentas de risco.
-
-O protocolo não importa FreeCAD, Qt, transporte ou servidor MCP.
-
-## Transporte local da ponte
-
-O transporte inicial do M2 usa TCP em loopback IPv4, com `127.0.0.1` como host
-padrão. O listener recusa endereços externos e usa uma porta efêmera escolhida
-pelo sistema operacional. A escolha mantém o protótipo testável no Windows com
-a biblioteca padrão e sem acoplar o protocolo a uma API exclusiva do sistema.
-
-Cada sessão gera um token aleatório de alta entropia, mantido fora de logs e
-oculto na representação do endpoint. O token é comparado antes de qualquer
-request chegar ao handler. A descoberta do endpoint usa um registro efêmero no
-diretório de runtime local do usuário, fora do repositório.
-
-As mensagens usam JSON UTF-8 precedido por um tamanho de 32 bits, com limite de
-1 MiB e timeout configurável. JSON inválido, valores não finitos, frames vazios
-ou grandes demais são recusados. O servidor pode receber conexões em threads de
-transporte, mas o handler da GUI somente enfileira requests. Um timer do Qt
-transfere toda execução CAD para a thread principal.
-
-## Descoberta da sessão
-
-A GUI publica o endpoint autenticado como `bridge-session.json` no runtime do usuário. O
-registro contém versão do protocolo, ID da sessão, host, porta, token, PID e
-timestamp UTC. A escrita usa arquivo temporário, `fsync` e substituição atômica;
-o arquivo recebe permissões restritas conforme o suporte do sistema operacional.
-
-Diretório ou arquivo de sessão em symlink são recusados. No encerramento, a GUI
-remove o registro somente se o `session_id` ainda corresponder à sua sessão. Se
-outra instância já tiver publicado um endpoint novo, ele é preservado.
-
-`AICAD_RUNTIME_DIR` permite informar diretamente o diretório de descoberta.
-Sem essa variável, a pasta de runtime do usuário fornecida por `platformdirs` é
-usada. Ausência ou corrupção do registro produz erro controlado e nunca inicia
-instalações automaticamente.
-
-## Dispatcher da GUI
-
-O transporte entrega requests ao `BridgeDispatcher`, que pode ser chamado por
-workers, mas pertence à thread em que foi criado. `process_next`, confirmação,
-expiração e fechamento só podem ocorrer nessa thread, que é a thread principal
-do Qt na integração com o painel.
-
-Leituras aguardam na fila até `process_next` executá-las pelo `ToolRegistry`.
-Mutações retornam `pending_confirmation` sem executar e são apresentadas uma por
-vez. `resolve_confirmation` confere novamente estado e prazo antes de chamar o
-registro com autorização explícita.
-
-Repetir a mesma request com o mesmo ID funciona como polling idempotente. Reusar
-o ID com conteúdo diferente é rejeitado. Requests expiradas permanecem
-inexecutáveis, inclusive se uma confirmação antiga chegar depois do timeout.
-
-## Planejamento independente de provedor
-
-`aicad.orchestration` define o núcleo do M3 sem importar FreeCAD, Qt ou qualquer
-SDK de IA. O contrato `ProviderRequest` envia mensagem atual, contexto JSON
-limitado, ferramentas permitidas e histórico tipado e limitado do turno.
-
-A resposta exige intenção, suposições, passos ordenados e chamadas estruturadas.
-`AiOrchestrator` rejeita respostas malformadas, IDs duplicados, ferramentas fora
-da allowlist, argumentos inválidos e chamadas acima do limite configurado.
-
-Cada chamada aceita passa novamente por `ToolRegistry.validate_arguments` e
-recebe o risco autoritativo do registro. O plano marca se haverá confirmação,
-mas não executa handlers; texto retornado pelo provedor nunca vira código.
-
-O primeiro adaptador concreto chama o endpoint de chat da DeepSeek por HTTP,
-traduz temporariamente os nomes de ferramenta para o formato aceito pela API e
-restaura os nomes canônicos antes da validação. O modelo padrão é
-**deepseek-v4-flash**, com thinking desabilitado, resposta não streaming, timeout
-de 30 segundos e no máximo duas ferramentas propostas por rodada no painel.
-
-A resposta da API nunca é executável por si só. Argumentos JSON inválidos,
-ferramentas desconhecidas, limites excedidos e respostas incompletas são
-recusados antes de chegar a um handler.
-
-## Resultado estruturado e medição do agente
-
-O M3.1 introduz `ToolResultEnvelope` como contrato neutro e versionado para o
-futuro executor compartilhado. Ele separa status, resumo, resultado JSON, objetos
-afetados, validações, duração e erro categorizado. Falha ou cancelamento não pode
-carregar resultado parcial. Metadados com nomes de campos sensíveis, valores não
-finitos e payloads acima dos limites são recusados.
-
-`TurnMetricsRecorder` mede etapas com relógio monotônico e mantém eventos somente
-em memória. Ele não grava horário de parede, prompt, credencial ou exceção. O
-controlador e o painel já usam esses eventos para progresso, cancelamento,
-aprovação e espera por seleção.
-
-O corpus `benchmarks/agent-corpus-v1.json` contém 30 pedidos em português:
-20 chamadas de ferramenta, cinco pedidos que exigem esclarecimento e cinco
-pedidos perigosos que devem ser rejeitados. O runner em `aicad.evaluation` usa o
-parser local atual como baseline reproduzível, sem rede e sem FreeCAD.
-
-## Contexto versionado do documento
-
-O M3.2 adiciona contratos neutros em `aicad.core.context`. `DocumentStateToken`
-identifica sessão local, documento, revisão, fingerprint do documento e
-fingerprint da seleção. O ID da sessão é identidade de contexto, não é o token de
-autenticação da ponte.
-
-`ContextStateTracker` não importa FreeCAD. Ele mantém uma revisão monotônica por
-documento e compara fingerprints de cada objeto. Uma leitura repetida sem mudança
-mantém o token. Alterar geometria, propriedade, label, placement, objetos ou
-seleção produz outra revisão. Objetos novos ou alterados entram na lista limitada
-de recentes.
-
-`FreeCadAdapter.get_context_snapshot` projeta o documento para `ContextSnapshot`:
-
-- L0 `minimal`: identidade, unidade interna, revisão e contagens;
-- L1 `work`: seleção, página de objetos, parâmetros geométricos comuns, placement,
-  bounding box, volume, área, validade e objetos recentes;
-- no máximo 100 objetos por página e 64 KiB por snapshot;
-- cursor inválido, valor não finito e contrato inconsistente são recusados.
-
-A ferramenta `cad.get_context_snapshot` pertence ao mesmo `ToolRegistry` e chega
-ao MCP pela ponte autenticada. O modo DeepSeek usa essa leitura no lugar do resumo
-simples e pode pedir novas leituras dentro dos limites do turno. Nenhuma permissão
-de mutação foi ampliada.
-
-## Recuperação local de ferramentas
-
-O M3.3 adiciona metadados opcionais ao `ToolSpec`: família, aliases, tags,
-exemplos, essencialidade e ordem canônica. Esses campos continuam independentes
-de FreeCAD e são a fonte única para `ToolSelector`; não existe catálogo paralelo.
-
-Antes da chamada DeepSeek, o seletor:
-
-1. normaliza caixa e acentos em português e inglês;
-2. pontua nome, aliases, tags, família, descrição e exemplos;
-3. considera referências relativas e a presença de seleção no snapshot;
-4. mantém a leitura de contexto essencial e retorna no máximo quatro ferramentas;
-5. reorganiza o subconjunto pela ordem canônica, estabilizando o prefixo enviado;
-6. usa somente o catálogo de leitura em baixa confiança ou pedido inseguro.
-
-Pontuações e motivos ficam disponíveis para o benchmark, mas não autorizam
-execução. O provedor só pode chamar nomes do subconjunto recebido e cada argumento
-continua revalidado contra o schema original do `ToolRegistry`. No corpus v1, o
-seletor obteve recall 20/20, exposição de mutações 0/5 nos casos perigosos e
-economia superior a 90% dos bytes de schemas com o catálogo ampliado. No corpus
-mecânico M4, recuperou 30/30 capacidades, com média de 2,97 ferramentas e
-economia de 87,6%, sem dependência ou chamada de IA extra.
-
-## Loop controlado somente leitura
-
-O M3.4 adiciona `AgentTurnController` em `aicad.orchestration`, sem importar Qt ou
-FreeCAD. O controlador usa o `AiOrchestrator` e o mesmo `ToolRegistry`, com os
-limites iniciais de quatro rodadas, oito chamadas totais, seis leituras, uma
-ou duas propostas de mutação, 45 segundos e 64 KiB de resultados por turno.
-
-Cada resposta validada segue uma destas rotas:
-
-- sem chamada: encerra com resposta final;
-- somente leituras: executa pelo `read_executor` injetado, forma um resultado
-  seguro e devolve ao provedor preservando o `call_id`;
-- qualquer mutação: para em `awaiting_approval` sem chamar nenhum handler;
-- seleção ausente ou ambígua: para em `awaiting_selection` sem chamar novamente
-  o provedor e sem alterar o documento;
-- mistura de leitura e mutação, ID repetido ou orçamento excedido: falha fechada.
-
-No painel, o controlador roda no worker de rede, mas seu `read_executor` coloca a
-leitura em uma fila consumida pelo timer Qt. Assim, somente a thread principal
-chama o adaptador FreeCAD. O worker aguarda o resultado limitado e continua a
-conversa. O botão de cancelamento usa um token cooperativo verificado antes e
-depois de cada ponto seguro.
-
-`AgentSessionMemory` mantém apenas resultados compactos em RAM, no máximo oito e
-32 KiB. A identidade do `DocumentStateToken` vincula a memória à revisão; qualquer
-mudança relevante limpa os fatos anteriores. Nada é persistido e nenhuma chave,
-exceção ou caminho interno entra no histórico do provedor.
-
-`ProviderRequest.history` representa mensagens de assistente e ferramenta. O
-adaptador DeepSeek traduz esse histórico para o protocolo de tool calls e reutiliza
-um único `httpx.Client` durante o turno, evitando um novo handshake por rodada.
-
-## Plano imutável para uma mutação
-
-O M3.5 adiciona `ValidatedPlan`, `ApprovalGrant` e
-`SingleMutationPlanExecutor`, também sem dependência de Qt ou FreeCAD. Somente um
-`PlannedToolCall` registrado como `modify` pode ser congelado. O hash SHA-256
-canônico cobre ID do plano, `DocumentStateToken`, intenção, suposições, passos,
-ID da chamada, ferramenta, argumentos, risco e validações esperadas.
-
-Ao clicar em confirmar, a UI emite um `ApprovalGrant` em memória que contém o hash
-e o único `call_id` autorizado, origem `ui` e prazo monotônico padrão de 30
-segundos. O executor então:
-
-1. confere prazo, ID, hash e chamada autorizada;
-2. relê o snapshot e exige igualdade exata com o estado-base;
-3. revalida schema e risco no `ToolRegistry`;
-4. executa exatamente uma chamada com confirmação;
-5. valida o documento;
-6. relê o contexto e exige avanço do estado.
-
-Mudança manual, seleção diferente, hash alterado ou autorização expirada bloqueia
-antes do handler. O adaptador continua responsável pela transação e pela validação
-da própria geometria. O M3.5 não executa planos compostos nem repete uma mutação
-automaticamente em erro.
-
-## Planos compostos por rollback compensatório
-
-O M3.6 adiciona `CompositeValidatedPlan`, `CompositeApprovalGrant`,
-`CompositePlanExecutor` e `PlanService`. Um plano contém de duas a oito mutações,
-IDs únicos, um estado-base e um único hash. Documento ativo é obrigatório e
-`cad.undo` não pode ser etapa, pois ainda não existe compensação segura por redo.
-
-Antes da primeira alteração, todas as ferramentas, handlers, riscos, argumentos e
-a disponibilidade de rollback são verificados. A execução continua serial na
-thread Qt. Depois de cada transação, `cad.validate_document` precisa passar. Se uma
-etapa falhar ou houver cancelamento entre etapas, o executor chama `cad.undo`
-exatamente uma vez para cada transação já confirmada, em ordem inversa, e exige:
-
-- documento válido;
-- mesmo ID de documento;
-- mesmo fingerprint do documento;
-- mesmo fingerprint da seleção.
-
-`PlanService` mantém em RAM estados `awaiting_approval`, `running`, `completed`,
-`rolled_back`, `cancelled` e `failed`. Submeter novamente o mesmo ID/hash,
-consultar status e cancelar são idempotentes. Chat e controlador GUI recebem a
-mesma instância do serviço pelo runtime. O MCP projeta `submit`, `status` e
-`cancel` em envelopes autenticados; ele pode montar e congelar um plano, mas não
-possui handlers CAD nem um serviço paralelo. A confirmação, execução serial,
-progresso e rollback permanecem na thread Qt.
-
-## Modelagem mecânica do M4
-
-O M4 acrescentou 18 contratos ao catálogo, totalizando 25 ferramentas. Naquele
-corte, specs, schemas de entrada e saída, aliases PT/EN, risco e ordem canônica
-ficavam em `aicad.core.mechanical_tools`. Hoje essas definições estão divididas
-por domínio em `aicad.core.tool_catalog`, que continua sem importar FreeCAD.
-
-As seis leituras novas resolvem um objeto por nome interno, label inequívoca ou
-seleção; expõem detalhes, medidas, bounding box, dependências, parâmetros
-editáveis e captura visual. Ausência ou ambiguidade não é resolvida por palpite.
-
-As doze mutações cobrem renomear, alterar parâmetros permitidos, transformar,
-criar placa, furos e padrões, sketch retangular, pad, booleanas, filete e chanfro.
-O adaptador usa uma única fronteira transacional que:
-
-1. exige documento ativo e habilita undo;
-2. abre uma transação nomeada;
-3. aplica somente argumentos já validados;
-4. recalcula e valida formas e documento;
-5. confirma e registra o resultado, ou aborta e recalcula em qualquer erro.
-
-Furos, padrões, pad, booleanas, filetes e chanfros geram features BRep derivadas
-com `SourceObjects` e `FeatureKind`. Essa rastreabilidade ajuda inspeção e undo,
-mas não promete recomputação paramétrica automática de toda a cadeia nesta fase.
-No corte original do M4, o sketch retangular ainda não era totalmente
-constrangido. O M7 substituiu esse comportamento por sketches retangular e
-circular totalmente constrangidos; o registro e o adaptador continuam separados.
-
-Filete e chanfro não recebem `Edge1`, `Edge2` ou outro índice topológico externo.
-`cad.get_object_details` calcula uma assinatura a partir do tipo de curva,
-comprimento, centro e vértices; a mutação resolve novamente essa assinatura no
-estado corrente e falha se ela não for única.
-
-## Receitas e contexto visual
-
-`RecipeCatalog`, em `aicad.orchestration.recipes`, contém parâmetros Pydantic e
-compiladores confiáveis. Ele não executa código nem possui handlers paralelos:
-produz somente `PlannedToolCall` que é revalidado pelo registro e submetido ao
-mesmo `PlanService`.
-
-O catálogo atual contém placa de fixação, flange, pad retangular, eixo escalonado
-e polia plana. Cada receita valida previamente relações geométricas impossíveis,
-como furos fora da peça, e produz um plano composto legível antes da confirmação.
-
-`cad.capture_view` salva PNG somente sob demanda no cache local do usuário. O
-contrato retorna um UUID opaco e `aicad://view/{capture_id}`; nunca retorna o
-caminho. O cache aceita até 8 MiB por imagem, mantém no máximo oito capturas e
-fica fora do repositório.
-
-O MCP projeta esses serviços como `available_cad_recipes`, `submit_cad_recipe`,
-recurso `aicad://recipes`, template de imagem e cinco prompts guiados. Ferramentas,
-receitas, chat e MCP continuam convergindo no mesmo registro e no mesmo executor.
-
-Após o fechamento do M4, `cad.create_spur_gear` elevou o catálogo a 26 ferramentas.
-O contrato apenas parametriza o gerador involuto oficial já distribuído com o
-FreeCAD, transforma o perfil fechado em sólido, corta um furo opcional e conserva
-o perfil como fonte. A operação inteira permanece em uma transação e pode ser
-desfeita sem expor macro ou execução genérica de Python.
-
-O M5 acrescenta as duas ferramentas de consulta e exportação de auditoria, levando
-o catálogo compartilhado a 28 sem mover regras de histórico para o adaptador CAD.
-
-## Credenciais de provedor
-
-CredentialStore mantém identificadores de provedor separados das chaves e usa
-keyring como única fronteira de persistência. A chave DeepSeek é associada à
-conta do provedor dentro do serviço ai-cad-workbench no cofre do sistema.
-
-O painel oferece configuração ou substituição em campo mascarado e remoção
-explícita. Abrir o painel não acessa o cofre nem bloqueia a thread Qt. O segredo
-só é recuperado pelo worker quando o usuário envia um pedido com **Usar IA
-DeepSeek** marcado. O valor não aparece em widgets, logs ou mensagens de erro.
-
-O retorno programático usa SecretStr. Salvar a chave não ativa rede; a chamada
-externa depende da opção visível e de um novo envio do usuário.
-
-## Fluxo do modo DeepSeek
-
-1. A thread Qt lê um snapshot limitado e versionado pelo ToolRegistry.
-2. O seletor local escolhe até quatro ferramentas e fixa a ordem canônica.
-3. Um worker recupera a chave do cofre e chama o adaptador DeepSeek.
-4. AiOrchestrator revalida ferramenta, argumentos, risco e limites sem executar.
-5. Leituras entram na fila Qt, executam pelo registro e voltam ao mesmo turno.
-6. O modelo pode revisar a resposta dentro dos orçamentos do controlador.
-7. O timer Qt recebe somente o resultado final e o apresenta com dados escapados.
-8. Mutações encerram o loop sem execução e continuam exigindo confirmação visual.
-9. A execução confirmada segue para o FreeCadAdapter transacional e reversível.
-
-A fila de confirmações MCP não é substituída por uma resposta de IA. Enquanto
-uma consulta externa está em andamento, pedidos remotos aguardam; depois dela,
-uma única operação pendente volta a controlar os botões de confirmar e cancelar.
-
-## Regra de dependência
-
-`aicad.core` não importa FreeCAD ou Qt. A UI, o MCP e os provedores dependem do núcleo. Somente o pacote `aicad.adapters.freecad` conversa diretamente com o FreeCAD: `freecad_adapter.py` expõe o `FreeCadAdapter` compondo mixins por domínio (base, context, primitives, objects, edits, sketch foundations, sketch geometry, sketch constraints, features, sweeps, mechanical, bearings, assembly, patterns, documents, export), e o caminho de import público continua `aicad.adapters.freecad_adapter`.
-
-## Fluxo atual do chat
-
-1. O texto é convertido por um parser local em nome de ferramenta e argumentos
-   estruturados.
-2. O `ToolRegistry` confere ferramenta, schema, campos extras, tipos, limites e
-   risco.
-3. Ferramentas de leitura são executadas imediatamente.
-4. Ferramentas `modify` só são executadas depois de uma aprovação emitida pelo
-   painel; por padrão ela é automática e auditada, e o usuário pode exigir clique.
-5. O handler conectado chama o `FreeCadAdapter`.
-6. O resultado estruturado volta ao painel para apresentação.
-
-Não existe ferramenta de Python genérico e o parser não possui caminho para
-avaliar código.
-
-## Aceitação automática visível
-
-Sem override, o painel inicia com **Aceitar automaticamente as alterações**
-marcado. Quando uma mutação local, um plano da IA ou uma solicitação MCP entra na
-fila normal de confirmação, um timer Qt aciona o mesmo `confirm_pending` que o
-botão usaria e registra a decisão como aprovação automática. O usuário pode
-desmarcar a opção; `AICAD_QUICK_TEST_MODE=0` força o início manual em testes ou
-sessões controladas.
-
-A aceitação automática não chama handlers diretamente, não altera o risco da
-ferramenta e não pode ser ativada pelo texto do modelo. `ApprovalGrant`, validação
-de estado, transação, pós-condição e rollback continuam no caminho. Exportações
-permanecem fora dessa política e exigem clique. A suíte automatizada força o modo
-desligado nos testes gráficos que exercitam ambos os caminhos. A preferência não
-é persistida.
+| `core/tool_catalog` | nomes, schemas, risco, busca, exemplos e schemas de saída |
+| `core/tool_registry.py` | validação e despacho único das ferramentas |
+| `application.py` | protocolo do adaptador e associação dos handlers |
+| `adapters/freecad` | operações geométricas e transações no FreeCAD |
+| `bridge` | protocolo autenticado, fila, confirmação e dispatcher da GUI |
+| `orchestration` | planos imutáveis, receitas, aprovação e rollback |
+| `mcp_server.py` | projeção do catálogo, planos, recursos e prompts pelo MCP |
+| `audit` | eventos locais, redaction, retenção e exportação controlada |
+| `ui` | painel, estado visível de aprovação e integração Qt |
+
+Dependências apontam para dentro: catálogo e orquestração não importam FreeCAD.
+O código importável fora do aplicativo permanece testável com adaptadores falsos.
+
+## Fluxo MCP
+
+```text
+agente externo
+  → servidor MCP por stdio
+  → ponte TCP loopback autenticada
+  → dispatcher na thread Qt
+  → ToolRegistry
+  → adaptador FreeCAD
+  → transação, recompute e validação
+  → resultado estruturado
+```
+
+A GUI cria uma sessão efêmera com host loopback, porta e token fortes. O arquivo
+de descoberta fica no runtime local, fora do Git. O cliente MCP aguarda por mais
+tempo que o dispatcher da GUI, permitindo operações CAD longas sem falso timeout.
+
+## Risco e aprovação
+
+As ferramentas são classificadas como:
+
+- `read`: leitura imediata;
+- `modify`: mutação reversível submetida à política visível do painel;
+- `export`: gravação externa sempre confirmada manualmente.
+
+A aceitação automática inicia ligada para mutações, mas pode ser desmarcada.
+Ela não remove validação, auditoria, transação ou undo e nunca vale para exportar.
 
 ## Contrato de mutação
 
-Todas as mutações geométricas usam a mesma rotina transacional do adaptador:
+Uma mutação válida:
 
-1. validam dimensões finitas, positivas e o nome;
-2. garantem que o histórico de desfazer esteja habilitado;
-3. abrem uma transação nomeada;
-4. criam ou editam o objeto permitido;
-5. recalculam e validam forma e documento dentro da transação;
-6. confirmam em caso de sucesso ou abortam e recalculam em qualquer falha.
+1. valida o schema e resolve referências sem ambiguidade;
+2. registra o estado-base do documento;
+3. abre uma transação nomeada;
+4. executa apenas a operação registrada;
+5. recalcula e valida forma, documento e pós-condições;
+6. confirma a transação ou aborta integralmente.
 
-Os testes exigem propriedades e medidas reais, falha segura, transações
-independentes e restauração do fingerprint por `undo`.
+Features derivadas guardam links para as fontes. Elas são BReps controlados e
+reversíveis, mas ainda não formam uma árvore Part Design totalmente paramétrica.
 
-## Fluxo atual do MCP
+## Planos
 
-O servidor MCP e a GUI usam a mesma composição do registro em seus processos.
-`request_cad_tool` valida a chamada, descobre a sessão gráfica e envia o envelope
-para a fila pertencente à GUI.
+Uma mutação pode ser autorizada isoladamente ou em um plano de duas a oito
+chamadas. O plano é congelado com hash e estado-base. Mudanças no documento,
+argumentos diferentes ou autorização expirada invalidam a execução.
 
-Leituras retornam o resultado executado na thread Qt. Mutações retornam
-`pending_confirmation`, aparecem no painel e só usam `confirmed=True` depois do
-clique do usuário. Repetir a request com o mesmo ID consulta o resultado.
+Planos compostos validam cada passo. Se um passo falhar, o executor desfaz os
+passos anteriores e confirma que o fingerprint voltou ao estado inicial.
 
-Para planos compostos, `submit_cad_plan` primeiro lê a baseline pela mesma
-ferramenta de contexto, valida cada chamada no registro local e envia o contrato
-imutável à GUI. A resposta do comando de controle contém o estado
-`awaiting_approval`; o painel apresenta todas as etapas em uma única confirmação.
-`get_cad_plan_status` faz polling sem efeito colateral e `cancel_cad_plan` é
-idempotente. Somente o `PlanBridgeDispatcher` da GUI emite a autorização MCP e
-chama o executor compartilhado.
+## Contexto e referências
 
-Receitas são listadas e compiladas localmente pelo catálogo confiável. A
-submissão passa pelo mesmo caminho de plano composto. Recursos visuais só leem
-capturas previamente produzidas pela ferramenta registrada; o template MCP não
-aceita caminhos de arquivo.
+O agente deve ler o contexto antes de editar. O snapshot inclui documento,
+seleção, objetos recentes e token de estado. Resolução por nome ou label nunca
+escolhe silenciosamente entre candidatos ambíguos.
 
-## Auditoria local do M5
+Operações por aresta usam assinaturas geométricas, não índices topológicos crus.
+Sketches expõem índices limitados e devem ser consultados novamente após trim ou
+exclusão, pois o Sketcher pode renumerar geometria.
 
-`aicad.audit` define o núcleo do M5 sem importar FreeCAD, Qt, MCP ou SDK
-de provedor. `AuditActionRecord` versiona uma ação e suas revisões; registra o
-pedido isolado, entendimento, plano, chamadas validadas, risco, autorização,
-resultado, duração, validações e referências de transação.
+## Geometria e coordenadas
 
-`AuditStore` grava um arquivo JSON por ação na pasta de dados do usuário, fora do
-Git. A escrita é atômica, recusa links simbólicos, limita o tamanho e aplica
-retenção por idade, sessões e ações. Toda gravação e exportação passa pelo mesmo
-redaction recursivo; segredos, tokens, credenciais Bearer, binários e caminhos de
-usuário são removidos antes de chegar ao disco.
+- caixa e placa usam o canto mínimo na origem;
+- cilindro e cone usam o eixo central na origem;
+- coordenadas de furos são globais;
+- `cad.create_through_hole` atravessa toda a altura por padrão;
+- `z_min` e `z_max` limitam o furo a uma faixa vertical;
+- pads seguem a normal do plano XY, XZ ou YZ do Sketch.
 
-`AuditService` é compartilhado pela sessão gráfica. Chat local, leituras e planos
-da IA, `BridgeDispatcher` e `PlanService` registram o ciclo pendente, autorizado e
-terminal antes de devolver o resultado. As ferramentas
-`cad.get_audit_history` e `cad.export_audit_history` estão no mesmo
-`ToolRegistry`; a exportação tem risco `export`, exige confirmação e nunca recebe
-aprovação automática do modo rápido.
+Essas convenções aparecem nas descrições do catálogo e evitam compensações
+implícitas no agente.
 
-Um contexto neutro de transação leva `action_id` e `call_id` até o adaptador. O
-`FreeCadAdapter` inclui um `transaction_id` na transação real, marca commit ou
-abort e relaciona o undo de compensação à transação original. Assim o núcleo de
-produto continua testável sem FreeCAD e o adaptador permanece a única camada que
-conhece sua API. O formato e as decisões de retenção estão detalhados em
-`docs/audit.md`.
+## Captura visual
 
-## Baseline técnica atual
+`cad.capture_view` grava um PNG sob demanda e retorna um ID opaco e o recurso
+`aicad://view/{capture_id}`. Use `view="isometric"` e `fit=true` para uma captura
+reprodutível do modelo inteiro; `current` preserva a câmera atual.
 
-M0 a M7 estão concluídos. O catálogo compartilhado possui 90 ferramentas CAD,
-cinco receitas, nove ferramentas MCP, dois Resources e cinco Prompts. M6 fechou a
-integração MCP e a exportação STL/STEP; M7 acrescentou documentos, sketches
-constrangidos, revolução, loft, sweep, furos especiais, engrenagem helicoidal,
-roscas, espelho e padrões. A expansão fundamental acrescentou cone, esfera,
-toro, distância entre objetos, cópia independente, exclusão protegida e
-transformações relativas. O domínio de montagem acrescenta engrenagem interna
-involuta, porta-planetas, rolamento radial, backlash geométrico, alinhamento
-concêntrico transacional e análise par-a-par de interferência/folga.
-O domínio independente `bearings` acrescenta pistas profundas toroidais,
-rolamento axial, rolos cilíndricos, retenção print-in-place a 45 graus e bucha
-polimérica com folga, canais e alívio de primeira camada. Os schemas continuam
-neutros e somente o mixin `freecad/bearings.py` conhece as operações BRep.
-O ambiente de Sketch acrescenta 24 operações estruturadas e organiza a fronteira
-em `sketches.py`, `sketch_geometry.py` e `sketch_constraints.py`; o catálogo
-neutro fica em `core/tool_catalog/sketching.py`. Geometria, cotas e edições usam
-a mesma transação, validação e reversão das demais mutações.
+O cache aceita até 8 MiB por imagem, mantém quantidade limitada de capturas e
+fica fora do Git. A ferramenta altera a câmera apenas quando uma orientação ou
+enquadramento é solicitado.
 
-Trabalho futuro é manutenção ou incremento explicitamente aprovado e deve
-preservar a separação do FreeCAD, a política de aprovação visível, a
-transação reversível, a auditoria e a mesma trilha de registro para chat e MCP.
+## Erros e auditoria
+
+Erros de domínio, como referência inexistente ou raio incompatível, chegam ao
+cliente em texto curto para permitir autocorreção. Exceções internas continuam
+ocultas. Mensagens passam por redaction e limite de tamanho.
+
+A auditoria registra pedido, plano, risco, aprovação, argumentos validados,
+resultado, duração, transações e undo. Segredos e caminhos pessoais são removidos
+antes da gravação. Veja [audit.md](audit.md).
+
+## Baseline de testes
+
+- testes unitários sem FreeCAD;
+- adaptadores falsos para transação e orquestração;
+- smokes no FreeCADCmd para geometria real;
+- smoke gráfico para painel, MCP, seleção e captura;
+- benchmarks offline para recuperação segura de ferramentas.
+
+O comando obrigatório é `scripts/testar.ps1`.

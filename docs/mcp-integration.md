@@ -1,49 +1,33 @@
-# Integração MCP com agentes externos
+# Integração MCP
 
-Este guia conecta um agente de IA — Claude Code, Codex, Cursor ou qualquer
-cliente MCP — ao FreeCAD por meio do servidor `aicad-mcp`. O agente é o
-cérebro; o servidor expõe apenas ferramentas estruturadas, validadas e
-reversíveis. Nenhum texto do modelo é executado como código.
+O agente externo é a IA. O servidor `aicad-mcp` expõe ferramentas estruturadas e
+envia a execução para o Workbench aberto no FreeCAD.
 
 ## Pré-requisitos
 
-1. FreeCAD 1.1.1 instalado no Windows.
-2. `.venv` do projeto criada e Workbench vinculado uma única vez conforme
-   [installation.md](installation.md).
-3. FreeCAD aberto normalmente pelo menu Iniciar, com o Workbench **AI CAD**
-   ativo.
+- FreeCAD 1.1.1 aberto com o Workbench **AI CAD** ativo;
+- `.venv` preparada conforme [installation.md](installation.md);
+- executável `.venv\Scripts\aicad-mcp.exe` disponível.
 
-A GUI publica a sessão autenticada da ponte no runtime local do usuário. Sem a
-GUI aberta, as leituras e mutações retornam um erro controlado ("The FreeCAD GUI
-bridge is unavailable"); apenas `health`, `available_cad_tools` e
-`available_cad_recipes` funcionam offline.
+Sem a GUI, apenas `health`, `available_cad_tools` e `available_cad_recipes`
+funcionam. Operações CAD retornam erro controlado de ponte indisponível.
 
-O executável `.venv\Scripts\aicad-mcp.exe` é criado pela instalação editável do
-projeto e conversa por stdio. Os scripts de inicialização do repositório não são
-necessários para o uso normal.
+## Configuração
 
-## Claude Code
-
-O repositório já contém um `.mcp.json` na raiz. Abrindo o Claude Code dentro
-da pasta do projeto, o servidor `ai-cad` é oferecido automaticamente
-(aprove-o quando solicitado). Para registrar manualmente em outro diretório:
+O repositório já contém `.mcp.json` para Claude Code. Registro manual:
 
 ```powershell
-claude mcp add ai-cad -- <caminho-do-projeto>\.venv\Scripts\aicad-mcp.exe
+claude mcp add ai-cad -- <projeto>\.venv\Scripts\aicad-mcp.exe
 ```
 
-## Codex
-
-Adicione ao `~/.codex/config.toml`:
+Codex, em `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.ai-cad]
 command = "C:\\caminho\\do\\projeto\\.venv\\Scripts\\aicad-mcp.exe"
 ```
 
-## Cursor
-
-Crie (ou complemente) `.cursor/mcp.json` no projeto que usará o CAD:
+Cursor, em `.cursor/mcp.json`:
 
 ```json
 {
@@ -55,56 +39,44 @@ Crie (ou complemente) `.cursor/mcp.json` no projeto que usará o CAD:
 }
 ```
 
-## Como o agente deve trabalhar
+## Fluxo recomendado
 
-1. **Descobrir capacidades**: `available_cad_tools` lista as 90 ferramentas
-   com schema, risco, aliases e exemplos; `available_cad_recipes` lista as
-   receitas confiáveis com parâmetros tipados.
-2. **Ler antes de agir**: `execute_cad_read_tool` executa qualquer ferramenta
-   de risco `read` imediatamente — comece por
-   `cad.get_context_snapshot` para obter o estado versionado do documento.
-3. **Uma mutação**: `request_cad_tool` com uma ferramenta `modify` retorna
-   `pending_confirmation`; com a opção padrão marcada, o painel emite a aprovação
-   automática auditada, ou aguarda clique quando ela estiver desmarcada. Repita a
-   chamada com o mesmo `request_id` para consultar o desfecho (polling idempotente).
-4. **Plano de 2 a 8 mutações**: `submit_cad_plan` congela o plano com hash e
-   estado-base e o usuário aprova tudo com uma única confirmação;
-   `get_cad_plan_status` acompanha o progresso e `cancel_cad_plan` desiste.
-   Falha no meio do plano dispara rollback compensatório verificado.
-5. **Receitas**: `submit_cad_recipe` compila `mounting_plate`, `flange`,
-   `rectangular_pad`, `stepped_shaft` ou `flat_pulley` em um plano revisável —
-   prefira uma receita quando ela cobre o pedido.
-6. **Verificar o resultado**: `cad.measure_object` confere dimensões e
-   `cad.capture_view` devolve um `capture_id`; o PNG sai pelo resource
-   `aicad://view/{capture_id}`. Use esse loop para se autocorrigir.
-7. **Exportar**: `cad.export_stl` ou `cad.export_step` via `request_cad_tool`,
-   com destino absoluto escolhido pelo usuário. A exportação valida o
-   documento antes, nunca sobrescreve sem `overwrite=true`, exige confirmação
-   visual e devolve tamanho e SHA-256 do arquivo.
+1. Liste capacidades com `available_cad_tools` ou receitas com
+   `available_cad_recipes`.
+2. Leia `cad.get_context_snapshot` por `execute_cad_read_tool`.
+3. Resolva objetos e meça o que for relevante.
+4. Para uma mutação, use `request_cad_tool` e repita o mesmo `request_id` até o
+   estado terminal.
+5. Para duas a oito mutações, prefira `submit_cad_plan` e acompanhe com
+   `get_cad_plan_status`.
+6. Valide o documento e meça o resultado.
+7. Capture com `cad.capture_view`; use `view="isometric"` e `fit=true` para
+   enquadrar o modelo inteiro.
+8. Exporte STL ou STEP somente para um destino autorizado pelo usuário.
 
-Um fluxo completo típico: contexto → plano aprovado (placa + furos) → medidas
-→ captura → `cad.export_stl` → arquivo pronto para fatiar.
+Receitas disponíveis: `mounting_plate`, `flange`, `rectangular_pad`,
+`stepped_shaft` e `flat_pulley`.
 
-## Comportamentos que o agente deve esperar
+## Comportamentos importantes
 
-- Toda mutação e exportação entra na fila visível do painel. Mutações podem
-  receber aprovação automática auditada; exportações sempre aguardam decisão
-  humana. Avise o usuário se `pending_confirmation` permanecer pendente.
-- Argumentos fora do schema falham antes de qualquer execução, com mensagem
-  explícita — corrija e reenvie.
-- Referências ambíguas de objeto retornam erro ou `awaiting_selection` em vez
-  de adivinhar.
-- `cad.undo` desfaz a última transação; features derivadas guardam seus
-  objetos de origem.
-- Todas as ações ficam registradas no histórico auditável local, com
-  redaction de segredos e caminhos pessoais.
+- mutações seguem a opção de aprovação visível no painel;
+- exportações são sempre manuais;
+- argumentos inválidos falham antes da geometria;
+- referências ambíguas nunca são escolhidas por palpite;
+- erros de domínio retornam uma causa curta e redigida;
+- operações longas podem levar mais de um minuto;
+- `cad.undo` desfaz a última transação confirmada;
+- toda ação entra na auditoria local.
 
-## Solução de problemas
+`cad.create_through_hole` atravessa o sólido inteiro por padrão. Para furar
+somente um ressalto, informe `z_min` e `z_max` em coordenadas globais.
 
-| Sintoma | Causa provável | Ação |
-| --- | --- | --- |
-| "The FreeCAD GUI bridge is unavailable" | FreeCAD fechado ou Workbench AI CAD inativo | Abrir o FreeCAD normalmente e ativar o Workbench **AI CAD** |
-| **AI CAD** não aparece na lista | Junction do Workbench ausente ou apontando para outro checkout | Refazer a vinculação descrita em `docs/installation.md` |
-| `pending_confirmation` nunca conclui | Confirmação não respondida no painel | Decidir no painel; requests expiram com timeout controlado |
-| Exportação recusada com destino existente | Proteção de sobrescrita | Repetir com `overwrite: true` somente com autorização do usuário |
-| Ferramenta desconhecida | Catálogo desatualizado no agente | Rechamar `available_cad_tools` |
+## Problemas comuns
+
+| Sintoma | Ação |
+| --- | --- |
+| Ponte indisponível | abrir o FreeCAD e ativar **AI CAD** |
+| `pending_confirmation` parado | responder no painel ou habilitar aceitação automática |
+| Ferramenta desconhecida | atualizar `available_cad_tools` |
+| Objeto ambíguo | selecionar ou informar nome único |
+| Arquivo de exportação existente | usar `overwrite=true` apenas com autorização |

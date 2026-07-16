@@ -1,23 +1,12 @@
-# Instalação local com o FreeCAD do Windows
+# Instalação
 
-O fluxo normal usa o FreeCAD 1.1.1 instalado no computador. Depois da vinculação
-única do Workbench, o aplicativo pode ser aberto pelo menu Iniciar ou pelo atalho
-normal do FreeCAD; `scripts/iniciar.ps1` não é necessário no uso diário.
+O uso normal depende do FreeCAD 1.1.1 instalado no Windows. Depois de vincular o
+Workbench uma vez, abra o FreeCAD pelo menu Iniciar; scripts de inicialização são
+apenas auxiliares de desenvolvimento.
 
-## Instalação validada neste computador
+## 1. Criar o ambiente Python
 
-- FreeCAD: `C:\Program Files\FreeCAD 1.1\bin\FreeCAD.exe`;
-- FreeCADCmd: `C:\Program Files\FreeCAD 1.1\bin\FreeCADCmd.exe`;
-- Python do FreeCAD: 3.11;
-- projeto: `C:\Users\HRBASSIST55\Downloads\Ai-Cad Agents`.
-
-Os caminhos são exemplos da máquina validada. O código não depende deles: o
-Workbench descobre a raiz do checkout a partir da própria instalação vinculada.
-
-## Preparar as dependências Python
-
-O servidor MCP usa o ambiente `.venv` do projeto. Se ele ainda não existir,
-execute uma vez, na raiz do repositório:
+Na raiz do projeto:
 
 ```powershell
 & "C:\Program Files\FreeCAD 1.1\bin\python.exe" -m venv .venv
@@ -25,13 +14,11 @@ execute uma vez, na raiz do repositório:
 .\.venv\Scripts\python.exe -m pip install --no-build-isolation -e ".[dev]"
 ```
 
-O antigo `scripts/setup.ps1` continua disponível somente como alternativa de
-desenvolvimento reproduzível com uma cópia portátil do FreeCAD. Ele não é
-necessário quando o FreeCAD instalado e a `.venv` já existem.
+O caminho pode variar conforme a instalação do FreeCAD.
 
-## Vincular o Workbench uma única vez
+## 2. Vincular o Workbench
 
-Feche o FreeCAD e execute na raiz do projeto:
+Feche o FreeCAD e execute:
 
 ```powershell
 $project = (Resolve-Path .).Path
@@ -42,33 +29,29 @@ New-Item -ItemType Junction -Path $workbench `
   -Target (Join-Path $project "src\freecad\AiCad")
 ```
 
-O comando cria apenas um vínculo de diretório; não duplica o projeto. Se já
-existir algo em `AiCad`, confira o destino antes de substituir ou remover.
+Se `AiCad` já existir, confira seu destino antes de remover ou substituir.
 
-## Abrir normalmente
+## 3. Abrir
 
-1. Abra **FreeCAD 1.1.1** pelo menu Iniciar.
-2. Escolha o Workbench **AI CAD** na lista.
-3. O painel lateral deve abrir à direita e publicar a ponte MCP automaticamente.
-4. Teste `resumo` no chat local ou chame `health` pelo cliente MCP.
+1. Abra o FreeCAD 1.1.1.
+2. Selecione o Workbench **AI CAD**.
+3. Confirme que o painel apareceu à direita.
+4. Teste `resumo` no chat ou `health` pelo MCP.
 
-O painel inicia com **Aceitar automaticamente as alterações** marcado para
-mutações locais, da IA e do MCP. A opção é visível e pode ser desmarcada para
-restaurar confirmação manual. Exportações sempre exigem confirmação visual. O
-`scripts/iniciar_rapido.ps1` permanece como auxiliar do ambiente portátil.
+O painel inicia com aceitação automática de mutações. Desmarque a opção para
+exigir confirmação manual. Exportações sempre exigem confirmação.
 
-## Atualizar ou remover
+## Atualização
 
-Como o Workbench é um vínculo para o checkout, atualizar o repositório atualiza o
-código usado na próxima abertura do FreeCAD. Para remover a integração, feche o
-FreeCAD e remova somente o junction `%APPDATA%\FreeCAD\v1-1\Mod\AiCad`; os arquivos do
-repositório permanecem intactos.
+O junction aponta para o checkout atual. Depois de atualizar o Git, reinicie o
+FreeCAD para carregar o novo código. Para remover a integração, feche o FreeCAD
+e remova somente `%APPDATA%\FreeCAD\v1-1\Mod\AiCad`.
 
 ## Diagnóstico
 
-| Sintoma | Verificação |
+| Problema | Verificação |
 | --- | --- |
-| **AI CAD** não aparece | Confirmar que `%APPDATA%\FreeCAD\v1-1\Mod\AiCad\InitGui.py` existe pelo junction |
-| Erro ao importar `aicad` | Confirmar `src\aicad` no projeto e a `.venv` criada com Python 3.11 |
-| Dependência ausente | Repetir a instalação editável na `.venv` |
-| Ponte MCP indisponível | Ativar o Workbench **AI CAD** e manter o FreeCAD aberto |
+| Workbench não aparece | conferir o junction e `InitGui.py` |
+| Falha ao importar `aicad` | recriar a `.venv` com Python 3.11 e reinstalar o projeto |
+| Ponte indisponível | ativar o Workbench **AI CAD** e manter o FreeCAD aberto |
+| Dependência ausente | repetir a instalação editável na `.venv` |
