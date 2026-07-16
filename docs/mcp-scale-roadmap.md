@@ -479,6 +479,15 @@ Testes adicionais:
 
 ## Ondas de entrega
 
+| Onda | Estado |
+| --- | --- |
+| E1.1 — descoberta escalável | concluída |
+| E1.2 — percepção visual | pendente |
+| E1.3 — CAD-IR | pendente |
+| E1.4 — parametricidade nativa | pendente |
+| E1.5 — pacotes de Workbench | pendente |
+| E1.6 — robustez contínua | pendente |
+
 ### E1.1 — descoberta escalável
 
 - busca compacta e paginada;

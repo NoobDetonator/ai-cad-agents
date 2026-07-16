@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from aicad import mcp_server
@@ -5,8 +7,10 @@ from aicad.bridge.dispatcher import GUI_REQUEST_TIMEOUT_SECONDS
 from aicad.bridge.protocol import BridgeResponse, BridgeResponseStatus
 from aicad.mcp_server import (
     available_cad_tools,
+    describe_cad_capabilities,
     execute_cad_read_tool,
     request_cad_tool,
+    search_cad_capabilities,
     tool_registry,
 )
 from aicad.runtime import get_tool_registry
@@ -24,6 +28,31 @@ def test_mcp_uses_the_shared_runtime_registry() -> None:
     assert [tool["name"] for tool in available_cad_tools()] == [
         spec.name for spec in tool_registry.list_specs()
     ]
+
+
+def test_mcp_exposes_compact_discovery_and_on_demand_contracts() -> None:
+    search = search_cad_capabilities("crie um cilindro", limit=4)
+    names = [item["name"] for item in search["capabilities"]]
+
+    assert "cad.create_cylinder" in names
+    details = describe_cad_capabilities(["cad.create_cylinder"])
+    assert details["capabilities"][0]["name"] == "cad.create_cylinder"
+    assert "input_schema" in details["capabilities"][0]
+
+    published = {
+        tool.name: tool for tool in asyncio.run(mcp_server.mcp.list_tools())
+    }
+    assert published["search_cad_capabilities"].outputSchema["properties"]
+    assert published["describe_cad_capabilities"].outputSchema["properties"]
+
+    _, structured = asyncio.run(
+        mcp_server.mcp.call_tool(
+            "search_cad_capabilities",
+            {"query": "crie um cilindro", "limit": 4},
+        )
+    )
+    assert structured is not None
+    assert structured["capabilities"][0]["name"] == "cad.create_cylinder"
 
 
 def test_read_entrypoint_directs_modifications_to_confirmed_bridge_tool() -> None:

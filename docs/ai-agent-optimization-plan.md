@@ -39,9 +39,11 @@ O agente não recebe as 90 ferramentas em toda chamada. Um seletor local procura
 termos PT/EN, famílias, aliases e tags e envia um conjunto pequeno. Pedidos
 inseguros não recuperam mutações.
 
-O catálogo completo permanece disponível por `available_cad_tools`. A descrição
-da ferramenta é o contrato operacional; documentação narrativa não deve duplicar
-todos os schemas.
+O fluxo normal usa `search_cad_capabilities` para cartões compactos e
+`describe_cad_capabilities` para schemas sob demanda. O catálogo completo
+permanece disponível por `available_cad_tools` apenas para compatibilidade e
+auditoria. A descrição da ferramenta é o contrato operacional; documentação
+narrativa não deve duplicar todos os schemas.
 
 ## Contexto eficiente
 

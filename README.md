@@ -45,8 +45,9 @@ FreeCAD por script.
 | Rolamentos | modelos convencionais e adaptados à impressão 3D |
 | Saída | salvamento `.FCStd`, exportação STL e STEP |
 
-Use `available_cad_tools` para obter nomes e schemas atualizados. As descrições
-do catálogo são a referência operacional das ferramentas.
+Use `search_cad_capabilities` para encontrar cartões compactos e
+`describe_cad_capabilities` para carregar somente os schemas escolhidos.
+`available_cad_tools` permanece como compatibilidade e auditoria completa.
 
 ## Exemplo validado
 
@@ -75,7 +76,7 @@ uma alteração:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\testar.ps1
 ```
 
-A suíte cobre 216 testes unitários, FreeCADCmd e a interface gráfica real. Para
+A suíte cobre mais de 200 testes unitários, FreeCADCmd e a interface gráfica real. Para
 medir a seleção de ferramentas sem rede ou FreeCAD:
 
 ```powershell

@@ -18,6 +18,11 @@ from aicad.bridge.protocol import (
 from aicad.bridge.dispatcher import GUI_REQUEST_TIMEOUT_SECONDS
 from aicad.bridge.session import BridgeSessionError, default_session_store
 from aicad.bridge.transport import BridgeTransportError, TcpBridgeClient
+from aicad.core.capabilities import (
+    CapabilityCatalog,
+    CapabilityDescriptions,
+    CapabilitySearchResult,
+)
 from aicad.core.tool_registry import ToolRisk
 from aicad.core.context import DocumentStateToken
 from aicad.core.visual_cache import read_capture
@@ -29,6 +34,7 @@ from aicad.runtime import get_tool_registry
 
 mcp = FastMCP("AI CAD Workbench")
 tool_registry = get_tool_registry()
+capability_catalog = CapabilityCatalog(tool_registry)
 recipe_catalog = default_recipe_catalog()
 
 # The GUI dispatcher works a request for GUI_REQUEST_TIMEOUT_SECONDS before it
@@ -47,14 +53,51 @@ def health() -> dict[str, str]:
 
 @mcp.tool()
 def available_cad_tools() -> list[dict[str, object]]:
-    """List the CAD tool catalog: names, schemas, risk and usage examples.
+    """Compatibility endpoint for the complete CAD tool catalog.
 
-    Call this first. Tools with risk "read" run immediately through
-    execute_cad_read_tool; tools with risk "modify" or "export" go through
-    request_cad_tool and follow the visible approval policy in FreeCAD. Automatic
-    approval is the panel default for mutations; exports remain manual.
+    Prefer search_cad_capabilities and describe_cad_capabilities so normal turns
+    load only relevant contracts. This full result remains available for older
+    clients, diagnostics and complete catalog audits.
     """
     return [asdict(spec) for spec in tool_registry.list_specs()]
+
+
+@mcp.tool()
+def search_cad_capabilities(
+    query: str = "",
+    families: list[str] | None = None,
+    risks: list[str] | None = None,
+    limit: int = 8,
+    cursor: int = 0,
+) -> CapabilitySearchResult:
+    """Search compact CAD capability cards without loading every schema.
+
+    Use this instead of available_cad_tools for normal discovery. Results are
+    ranked locally, safety-filtered, optionally restricted by family or risk,
+    and paginated. An empty query lists the catalog in stable order. Pass the
+    selected names to describe_cad_capabilities before planning a call.
+    """
+
+    return capability_catalog.search(
+        query,
+        families=families,
+        risks=risks,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
+@mcp.tool()
+def describe_cad_capabilities(names: list[str]) -> CapabilityDescriptions:
+    """Load complete contracts for up to 16 selected CAD capabilities.
+
+    Names should come from search_cad_capabilities. The result preserves input
+    order and includes descriptions, input and output schemas, risk, aliases,
+    tags and examples. The complete catalog remains available only as a
+    compatibility and diagnostic endpoint.
+    """
+
+    return capability_catalog.describe(names)
 
 
 @mcp.tool()

@@ -1,5 +1,6 @@
 """Provider- and CAD-independent domain logic."""
 
+from aicad.core.capabilities import CapabilityCatalog
 from aicad.core.context import (
     ContextDetailLevel,
     ContextSnapshot,
@@ -24,6 +25,7 @@ from aicad.core.tool_results import (
 
 __all__ = [
     "AffectedObjects",
+    "CapabilityCatalog",
     "ContextDetailLevel",
     "ContextSnapshot",
     "ContextStateTracker",
