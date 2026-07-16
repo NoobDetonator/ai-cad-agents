@@ -270,6 +270,11 @@ def format_tool_result(tool_name: str, result: Any) -> str:
             "Vista 3D capturada no cache local seguro: "
             f"<code>{escape(str(result['capture_id']))}</code>."
         )
+    if tool_name == "cad.capture_views":
+        return (
+            f"{int(result['count'])} vistas 3D capturadas no cache local seguro; "
+            "a câmera original foi restaurada."
+        )
     if tool_name == "cad.create_box":
         dimensions = " × ".join(f"{value:g}" for value in result["dimensions_mm"])
         label = escape(str(result["label"]))

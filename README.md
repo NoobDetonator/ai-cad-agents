@@ -11,7 +11,7 @@ regras do produto permanecem independentes dele.
 
 - FreeCAD 1.1.1 instalado no Windows;
 - Workbench **AI CAD** com painel lateral e ponte MCP local;
-- 90 ferramentas no mesmo `ToolRegistry` para chat e MCP;
+- 91 ferramentas no mesmo `ToolRegistry` para chat e MCP;
 - M0 a M7 concluídos; E1 — MCP em escala em execução;
 - modelagem básica e avançada, Sketch, montagens, rolamentos e exportação;
 - mutações transacionais, validadas, auditadas e reversíveis;
@@ -37,7 +37,7 @@ FreeCAD por script.
 
 | Área | Capacidades principais |
 | --- | --- |
-| Contexto | documentos, seleção, objetos, medidas, dependências e captura visual |
+| Contexto | documentos, seleção, medidas e capturas independentes em vários ângulos |
 | Primitivas | caixa, cilindro, cone, esfera, toro e placas |
 | Sketch | 24 ferramentas de geometria, restrições, cotas, edição e inspeção |
 | Features | pad, revolução, loft, sweep, furos, booleanas, filetes e chanfros |

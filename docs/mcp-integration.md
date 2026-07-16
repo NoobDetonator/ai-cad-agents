@@ -51,8 +51,8 @@ Cursor, em `.cursor/mcp.json`:
 6. Para duas a oito mutações, prefira `submit_cad_plan` e acompanhe com
    `get_cad_plan_status`.
 7. Valide o documento e meça o resultado.
-8. Capture com `cad.capture_view`; use `view="isometric"` e `fit=true` para
-   enquadrar o modelo inteiro.
+8. Capture `isometric`, `front`, `top` e `right` de uma vez com
+   `cad.capture_views`. Use `cad.capture_view` apenas quando uma vista basta.
 9. Exporte STL ou STEP somente para um destino autorizado pelo usuário.
 
 `search_cad_capabilities` aceita consulta vazia para paginação estável, filtros
@@ -73,6 +73,7 @@ Receitas disponíveis: `mounting_plate`, `flange`, `rectangular_pad`,
   `suggested_actions`;
 - `safe_state_restored=null` exige reler o contexto antes de qualquer nova
   mutação;
+- capturas orientadas restauram a câmera e a preferência de animação ao final;
 - operações longas podem levar mais de um minuto;
 - `cad.undo` desfaz a última transação confirmada;
 - toda ação entra na auditoria local.

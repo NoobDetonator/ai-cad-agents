@@ -32,7 +32,7 @@ em [mcp-scale-roadmap.md](mcp-scale-roadmap.md).
 - cinco receitas confiáveis;
 - captura visual enquadrada e erros de domínio úteis ao cliente MCP.
 
-O catálogo atual possui 90 ferramentas no mesmo `ToolRegistry`.
+O catálogo atual possui 91 ferramentas no mesmo `ToolRegistry`.
 
 ## Critérios permanentes
 

@@ -36,7 +36,7 @@ def test_sketch_environment_is_a_complete_catalog_family() -> None:
     registry = build_default_registry()
     specs = {spec.name: spec for spec in registry.list_specs()}
 
-    assert len(registry.list_specs()) == 90
+    assert len(registry.list_specs()) == 91
     assert SKETCH_ENVIRONMENT_TOOLS <= specs.keys()
     assert len(SKETCH_ENVIRONMENT_TOOLS) == 24
     for name in SKETCH_ENVIRONMENT_TOOLS:

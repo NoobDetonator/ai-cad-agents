@@ -11,6 +11,7 @@ from platformdirs import user_cache_path
 CAPTURE_ID_PATTERN = re.compile(r"^[a-f0-9]{32}$")
 MAX_CAPTURE_BYTES = 8 * 1024 * 1024
 MAX_CACHED_CAPTURES = 8
+MAX_CAPTURE_BATCH_BYTES = 32 * 1024 * 1024
 
 
 def visual_cache_directory() -> Path:

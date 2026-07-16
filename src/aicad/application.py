@@ -39,6 +39,14 @@ class CadAdapter(Protocol):
         fit: bool = False,
     ) -> dict[str, Any]: ...
 
+    def capture_views(
+        self,
+        views: list[str] | None = None,
+        width: int = 640,
+        height: int = 480,
+        fit: bool = True,
+    ) -> dict[str, Any]: ...
+
     def create_box(
         self, length: float, width: float, height: float, name: str = "AIBox"
     ) -> dict[str, Any]: ...
@@ -430,6 +438,7 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.resolve_object": "resolve_object",
         "cad.get_editable_parameters": "get_editable_parameters",
         "cad.capture_view": "capture_view",
+        "cad.capture_views": "capture_views",
         "cad.create_box": "create_box",
         "cad.create_cylinder": "create_cylinder",
         "cad.create_cone": "create_cone",

@@ -100,13 +100,15 @@ implícitas no agente.
 
 ## Captura visual
 
-`cad.capture_view` grava um PNG sob demanda e retorna um ID opaco e o recurso
-`aicad://view/{capture_id}`. Use `view="isometric"` e `fit=true` para uma captura
-reprodutível do modelo inteiro; `current` preserva a câmera atual.
+`cad.capture_view` grava um PNG sob demanda. `cad.capture_views` produz até oito
+vistas independentes em uma chamada; o conjunto padrão é isométrica, frente,
+topo e direita. Cada imagem retorna um ID opaco e o recurso
+`aicad://view/{capture_id}`.
 
 O cache aceita até 8 MiB por imagem, mantém quantidade limitada de capturas e
-fica fora do Git. A ferramenta altera a câmera apenas quando uma orientação ou
-enquadramento é solicitado.
+fica fora do Git. As capturas desativam animações temporariamente, estabilizam o
+viewport, ocultam overlays e restauram o estado visual original mesmo em falha.
+A imagem vem do framebuffer visível, evitando diferenças do render off-screen.
 
 ## Erros e auditoria
 

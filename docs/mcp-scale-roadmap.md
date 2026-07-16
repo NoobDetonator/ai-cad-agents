@@ -19,8 +19,8 @@ pacotes de capacidade por domínio do FreeCAD.
 
 A baseline possui:
 
-- 90 ferramentas no `ToolRegistry`;
-- 15 ferramentas de leitura, 71 de modificação e quatro de exportação;
+- 91 ferramentas no `ToolRegistry`;
+- 16 ferramentas de leitura, 71 de modificação e quatro de exportação;
 - aproximadamente 102 KiB no catálogo completo serializado;
 - um snapshot de contexto versionado e paginado;
 - seleção local PT/EN;
@@ -176,14 +176,14 @@ evidências.
 
 ### Captura em lote
 
-`cad.capture_views` gera várias vistas em uma chamada, com câmera e estado visual
-restaurados ao final:
+`cad.capture_views` já gera até oito vistas padrão em uma chamada, com câmera e
+preferência de animação restauradas ao final:
 
 - isométrica;
 - frente, traseira, topo e inferior;
-- direita e esquerda;
-- direção personalizada;
-- folha de contato e imagens individuais.
+- direita e esquerda.
+
+Direção personalizada e folha de contato permanecem incrementos desta frente.
 
 ### Vista em corte
 
@@ -483,7 +483,7 @@ Testes adicionais:
 | --- | --- |
 | E1.1 — descoberta escalável | concluída |
 | Base transversal — erros recuperáveis | concluída |
-| E1.2 — percepção visual | pendente |
+| E1.2 — percepção visual | em execução |
 | E1.3 — CAD-IR | pendente |
 | E1.4 — parametricidade nativa | pendente |
 | E1.5 — pacotes de Workbench | pendente |
@@ -506,7 +506,7 @@ Testes adicionais:
 
 ### E1.2 — percepção visual
 
-- captura em lote;
+- captura em lote; **concluída**
 - vista em corte;
 - transparência e isolamento;
 - folha de contato;
@@ -545,7 +545,7 @@ Testes adicionais:
 1. `search_cad_capabilities`;
 2. `describe_cad_capabilities`;
 3. erros estruturados; **concluído**
-4. `cad.capture_views`;
+4. `cad.capture_views`; **concluído**
 5. `cad.capture_section_view`;
 6. transparência, isolamento e restauração da câmera;
 7. `cad.inspect_model`;

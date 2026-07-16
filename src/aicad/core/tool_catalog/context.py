@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from aicad.core.tool_catalog.schemas import (
     CAPTURE_RESULT,
+    CAPTURES_RESULT,
     DEPENDENCY_RESULT,
     DETAIL_RESULT,
     DISTANCE_RESULT,
@@ -235,8 +236,10 @@ def context_tool_specs() -> tuple[ToolSpec, ...]:
             "the user left in the GUI, which may be zoomed somewhere else "
             "entirely: pass view (isometric, top, bottom, front, rear, left, "
             "right) and fit=true to get a reproducible framing of the whole "
-            "model. Both move the user's camera, so prefer the default when "
-            "you only want to see what they see.",
+            "model. Orientation and fit move the camera temporarily, so prefer "
+            "the default when "
+            "you only want to see what they see. The original camera is restored "
+            "before the tool returns.",
             ToolRisk.READ,
             _object_schema(
                 {
@@ -268,5 +271,60 @@ def context_tool_specs() -> tuple[ToolSpec, ...]:
             ),
             order=90,
             output_schema=CAPTURE_RESULT,
+        ),
+        _spec(
+            "cad.capture_views",
+            "Capture one to eight independent standard views as PNG resources in "
+            "a single call. Defaults to isometric, front, top and right. Every "
+            "view starts from the same camera snapshot, optional fit is applied, "
+            "and the user's original camera is restored even when capture fails.",
+            ToolRisk.READ,
+            _object_schema(
+                {
+                    "views": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "current",
+                                "isometric",
+                                "top",
+                                "bottom",
+                                "front",
+                                "rear",
+                                "left",
+                                "right",
+                            ],
+                        },
+                        "minItems": 1,
+                        "maxItems": 8,
+                        "uniqueItems": True,
+                    },
+                    "width": {"type": "integer", "minimum": 320, "maximum": 1920},
+                    "height": {"type": "integer", "minimum": 240, "maximum": 1080},
+                    "fit": {"type": "boolean"},
+                },
+                (),
+            ),
+            family="context",
+            aliases=(
+                "capturar vistas",
+                "múltiplos ângulos",
+                "multi view screenshot",
+            ),
+            tags=(
+                "visual",
+                "vistas",
+                "ângulos",
+                "inspeção",
+                "views",
+                "camera",
+            ),
+            examples=(
+                "Capture vistas isométrica, frontal, superior e direita.",
+                "Show this part from several standard angles.",
+            ),
+            order=95,
+            output_schema=CAPTURES_RESULT,
         ),
     )

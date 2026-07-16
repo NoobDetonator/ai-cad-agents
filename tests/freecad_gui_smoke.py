@@ -364,13 +364,45 @@ def inspect() -> None:
             BridgeRequest(
                 request_id=uuid4(),
                 tool_name="cad.capture_view",
-                arguments={"width": 800, "height": 600},
+                arguments={
+                    "width": 640,
+                    "height": 480,
+                    "view": "top",
+                    "fit": True,
+                },
                 source="mcp",
             ),
         )
         assert visual_context.status is BridgeResponseStatus.COMPLETED
         assert visual_context.result["resource_uri"].startswith("aicad://view/")
         assert read_capture(visual_context.result["capture_id"]).startswith(b"\x89PNG")
+        camera_before_views = Gui.activeDocument().activeView().getCamera()
+        visual_views = run_bridge_request(
+            bridge_client,
+            BridgeRequest(
+                request_id=uuid4(),
+                tool_name="cad.capture_views",
+                arguments={
+                    "views": ["isometric", "front", "top", "right"],
+                    "width": 640,
+                    "height": 480,
+                    "fit": True,
+                },
+                source="mcp",
+            ),
+        )
+        assert visual_views.status is BridgeResponseStatus.COMPLETED
+        assert visual_views.result["count"] == 4
+        assert visual_views.result["camera_restored"] is True
+        assert visual_views.result["views"] == [
+            "isometric",
+            "front",
+            "top",
+            "right",
+        ]
+        for capture in visual_views.result["captures"]:
+            assert read_capture(capture["capture_id"]).startswith(b"\x89PNG")
+        assert Gui.activeDocument().activeView().getCamera() == camera_before_views
         assert main_window.grab().save(str(screenshot_path), "PNG")
 
         for _ in range(2):

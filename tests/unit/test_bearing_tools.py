@@ -18,7 +18,7 @@ BEARING_TOOLS = (
 def test_bearing_specs_are_complete_and_modifying() -> None:
     registry = build_default_registry()
 
-    assert len(registry.list_specs()) == 90
+    assert len(registry.list_specs()) == 91
     for name in BEARING_TOOLS:
         spec = registry.get_spec(name)
         assert spec.family == "bearing"

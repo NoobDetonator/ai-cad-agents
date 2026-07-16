@@ -44,7 +44,7 @@ def test_default_registry_has_unique_tools() -> None:
     assert [spec.name for spec in specs if spec.essential] == [
         "cad.get_context_snapshot"
     ]
-    assert len(specs) == 90
+    assert len(specs) == 91
     audit_names = {"cad.get_audit_history", "cad.export_audit_history"}
     assert {spec.name for spec in specs if spec.name in audit_names} == audit_names
     export_names = {spec.name for spec in specs if spec.family == "export"}

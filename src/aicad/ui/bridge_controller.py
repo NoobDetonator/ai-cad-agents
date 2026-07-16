@@ -61,6 +61,7 @@ class GuiBridgeController:
         self._session_store = session_store or default_session_store()
         self._session_record: BridgeSessionRecord | None = None
         self._timer: object | None = None
+        self._tick_running = False
 
     @property
     def is_running(self) -> bool:
@@ -163,9 +164,15 @@ class GuiBridgeController:
             self._session_store.clear(record.session_id)
 
     def _tick(self) -> None:
-        self._dispatcher.expire_requests()
-        self._dispatcher.process_next()
-        self._plan_dispatcher.process_next()
+        if self._tick_running:
+            return
+        self._tick_running = True
+        try:
+            self._dispatcher.expire_requests()
+            self._dispatcher.process_next()
+            self._plan_dispatcher.process_next()
+        finally:
+            self._tick_running = False
 
     def _submit(self, payload: Mapping[str, Any]) -> BridgeResponse:
         if "operation" in payload:

@@ -173,7 +173,7 @@ PARAMETERS_RESULT = {
     "required": ["name", "label", "parameters"],
 }
 
-CAPTURE_RESULT = {
+CAPTURE_ITEM_RESULT = {
     "type": "object",
     "properties": {
         "capture_id": {"type": "string"},
@@ -190,8 +190,46 @@ CAPTURE_RESULT = {
         "mime_type",
         "width",
         "height",
+        "view",
+        "fit",
         "bytes",
         "resource_uri",
+    ],
+}
+
+CAPTURE_RESULT = {
+    "type": "object",
+    "properties": {
+        **CAPTURE_ITEM_RESULT["properties"],
+        "camera_restored": {"type": "boolean"},
+    },
+    "required": [
+        *CAPTURE_ITEM_RESULT["required"],
+        "camera_restored",
+    ],
+}
+
+CAPTURES_RESULT = {
+    "type": "object",
+    "properties": {
+        "views": {"type": "array", "items": {"type": "string"}},
+        "count": {"type": "integer"},
+        "width": {"type": "integer"},
+        "height": {"type": "integer"},
+        "fit": {"type": "boolean"},
+        "total_bytes": {"type": "integer"},
+        "camera_restored": {"type": "boolean"},
+        "captures": {"type": "array", "items": CAPTURE_ITEM_RESULT},
+    },
+    "required": [
+        "views",
+        "count",
+        "width",
+        "height",
+        "fit",
+        "total_bytes",
+        "camera_restored",
+        "captures",
     ],
 }
 

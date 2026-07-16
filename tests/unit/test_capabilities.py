@@ -33,7 +33,7 @@ def test_compact_search_finds_expected_tool_without_loading_schemas(
     encoded = json.dumps(result, ensure_ascii=False).encode("utf-8")
 
     assert names[0] == "cad.create_spur_gear"
-    assert result["catalog_size"] == 90
+    assert result["catalog_size"] == 91
     assert result["returned"] <= 8
     assert len(encoded) < 20 * 1024
     assert all("input_schema" not in item for item in result["capabilities"])
@@ -44,13 +44,24 @@ def test_empty_search_pages_the_stable_catalog(catalog: CapabilityCatalog) -> No
     first = catalog.search(limit=5)
     second = catalog.search(limit=5, cursor=first["next_cursor"])
 
-    assert first["matched"] == 90
+    assert first["matched"] == 91
     assert first["returned"] == 5
     assert first["next_cursor"] == 5
     assert second["cursor"] == 5
     assert {
         item["name"] for item in first["capabilities"]
     }.isdisjoint(item["name"] for item in second["capabilities"])
+
+
+def test_search_finds_multiview_capture_for_visual_inspection(
+    catalog: CapabilityCatalog,
+) -> None:
+    result = catalog.search(
+        "Tire prints da peça em diferentes ângulos para inspecionar.",
+        limit=4,
+    )
+
+    assert result["capabilities"][0]["name"] == "cad.capture_views"
 
 
 def test_search_applies_family_and_risk_filters(catalog: CapabilityCatalog) -> None:

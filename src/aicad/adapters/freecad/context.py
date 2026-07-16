@@ -12,6 +12,7 @@ from aicad.core.context import (
     ContextSummary,
 )
 from aicad.core.visual_cache import (
+    MAX_CAPTURE_BATCH_BYTES,
     MAX_CAPTURE_BYTES,
     new_capture_path,
     prune_visual_cache,
@@ -31,6 +32,7 @@ _CAPTURE_VIEWS = {
     "left": "viewLeft",
     "right": "viewRight",
 }
+_DEFAULT_CAPTURE_VIEWS = ("isometric", "front", "top", "right")
 
 
 class ContextReadsMixin:
@@ -436,8 +438,148 @@ class ContextReadsMixin:
         view: str = "current",
         fit: bool = False,
     ) -> dict[str, Any]:
-        if not 320 <= int(width) <= 1920 or not 240 <= int(height) <= 1080:
+        checked_width, checked_height = self._capture_dimensions(width, height)
+        checked_view = self._capture_view_name(view)
+        self._validate_capture_fit(fit)
+        active_view = self._active_gui_view()
+        original_camera = active_view.getCamera()
+        animation_enabled = bool(active_view.isAnimationEnabled())
+        overlay_state = None
+        capture_path = None
+        try:
+            active_view.setAnimationEnabled(False)
+            overlay_state = self._hide_capture_overlays(active_view)
+            self._restore_camera(active_view, original_camera)
+            self._apply_capture_view(active_view, checked_view, fit)
+            result, capture_path = self._capture_active_view(
+                active_view,
+                width=checked_width,
+                height=checked_height,
+                view=checked_view,
+                fit=fit,
+            )
+        finally:
+            restore_error = None
+            try:
+                self._restore_camera(active_view, original_camera)
+            except Exception as exc:
+                restore_error = exc
+            if overlay_state is not None:
+                try:
+                    self._restore_capture_overlays(active_view, overlay_state)
+                except Exception as exc:
+                    restore_error = restore_error or exc
+            try:
+                active_view.setAnimationEnabled(animation_enabled)
+            except Exception as exc:
+                restore_error = restore_error or exc
+            if restore_error is not None:
+                if capture_path is not None:
+                    capture_path.unlink(missing_ok=True)
+                raise RuntimeError(
+                    "The original FreeCAD visual state could not be restored."
+                ) from restore_error
+        prune_visual_cache()
+        return {**result, "camera_restored": True}
+
+    def capture_views(
+        self,
+        views: list[str] | None = None,
+        width: int = 640,
+        height: int = 480,
+        fit: bool = True,
+    ) -> dict[str, Any]:
+        """Capture independent standard views and restore the user's camera."""
+
+        checked_width, checked_height = self._capture_dimensions(width, height)
+        self._validate_capture_fit(fit)
+        if views is None:
+            checked_views = _DEFAULT_CAPTURE_VIEWS
+        else:
+            if not isinstance(views, list) or not 1 <= len(views) <= 8:
+                raise ValueError("Capture views requires between one and eight views.")
+            checked_views = tuple(self._capture_view_name(view) for view in views)
+            if len(set(checked_views)) != len(checked_views):
+                raise ValueError("Capture views must be unique.")
+
+        active_view = self._active_gui_view()
+        original_camera = active_view.getCamera()
+        animation_enabled = bool(active_view.isAnimationEnabled())
+        overlay_state = None
+        captures: list[dict[str, Any]] = []
+        paths = []
+        try:
+            active_view.setAnimationEnabled(False)
+            overlay_state = self._hide_capture_overlays(active_view)
+            for checked_view in checked_views:
+                self._restore_camera(active_view, original_camera)
+                self._apply_capture_view(active_view, checked_view, fit)
+                result, path = self._capture_active_view(
+                    active_view,
+                    width=checked_width,
+                    height=checked_height,
+                    view=checked_view,
+                    fit=fit,
+                )
+                captures.append(result)
+                paths.append(path)
+                if sum(int(item["bytes"]) for item in captures) > (
+                    MAX_CAPTURE_BATCH_BYTES
+                ):
+                    raise RuntimeError("The visual capture batch exceeded its size limit.")
+        except Exception:
+            for path in paths:
+                path.unlink(missing_ok=True)
+            raise
+        finally:
+            restore_error = None
+            try:
+                self._restore_camera(active_view, original_camera)
+            except Exception as exc:
+                restore_error = exc
+            if overlay_state is not None:
+                try:
+                    self._restore_capture_overlays(active_view, overlay_state)
+                except Exception as exc:
+                    restore_error = restore_error or exc
+            try:
+                active_view.setAnimationEnabled(animation_enabled)
+            except Exception as exc:
+                restore_error = restore_error or exc
+            if restore_error is not None:
+                for path in paths:
+                    path.unlink(missing_ok=True)
+                raise RuntimeError(
+                    "The original FreeCAD visual state could not be restored."
+                ) from restore_error
+
+        prune_visual_cache()
+        return {
+            "views": list(checked_views),
+            "count": len(captures),
+            "width": checked_width,
+            "height": checked_height,
+            "fit": fit,
+            "total_bytes": sum(int(item["bytes"]) for item in captures),
+            "camera_restored": True,
+            "captures": captures,
+        }
+
+    @staticmethod
+    def _capture_dimensions(width: int, height: int) -> tuple[int, int]:
+        if (
+            isinstance(width, bool)
+            or not isinstance(width, int)
+            or isinstance(height, bool)
+            or not isinstance(height, int)
+            or not 320 <= width <= 1920
+            or not 240 <= height <= 1080
+        ):
             raise ValueError("Visual capture dimensions are outside the safe limits.")
+        return width, height
+
+    @staticmethod
+    def _capture_view_name(view: str) -> str:
         checked_view = str(view).strip().lower()
         if checked_view not in _CAPTURE_VIEWS:
             raise ValueError(
@@ -445,8 +587,15 @@ class ContextReadsMixin:
                 + ", ".join(sorted(_CAPTURE_VIEWS))
                 + "."
             )
+        return checked_view
+
+    @staticmethod
+    def _validate_capture_fit(fit: bool) -> None:
         if not isinstance(fit, bool):
             raise ValueError("Capture fit must be a boolean value.")
+
+    @staticmethod
+    def _active_gui_view() -> Any:
         try:
             import FreeCADGui as Gui
         except ImportError as exc:
@@ -454,26 +603,175 @@ class ContextReadsMixin:
         gui_document = Gui.activeDocument()
         if gui_document is None:
             raise RuntimeError("No active GUI document is available.")
-        capture_id, path = new_capture_path()
-        active_view = gui_document.activeView()
-        orientation = _CAPTURE_VIEWS[checked_view]
+        return gui_document.activeView()
+
+    @staticmethod
+    def _apply_capture_view(active_view: Any, view: str, fit: bool) -> None:
+        orientation = _CAPTURE_VIEWS[view]
         if orientation is not None:
             getattr(active_view, orientation)()
         if fit:
             active_view.fitAll()
-        active_view.saveImage(str(path), int(width), int(height), "Current")
-        payload = read_capture(capture_id)
-        if len(payload) > MAX_CAPTURE_BYTES:
+        active_view.redraw()
+        ContextReadsMixin._sync_gui()
+
+    @staticmethod
+    def _restore_camera(active_view: Any, camera: str) -> None:
+        active_view.setCamera(camera)
+        active_view.redraw()
+        ContextReadsMixin._sync_gui()
+
+    @staticmethod
+    def _hide_capture_overlays(
+        active_view: Any,
+    ) -> tuple[Any, bool | None, bool | None, bool | None]:
+        viewer = None
+        navi_cube_visible = None
+        axis_cross_visible = None
+        corner_cross_visible = None
+        get_viewer = getattr(active_view, "getViewer", None)
+        if get_viewer is not None:
+            viewer = get_viewer()
+            is_navi_enabled = getattr(viewer, "isEnabledNaviCube", None)
+            if is_navi_enabled is not None:
+                navi_cube_visible = bool(is_navi_enabled())
+        has_axis_cross = getattr(active_view, "hasAxisCross", None)
+        if has_axis_cross is not None:
+            axis_cross_visible = bool(has_axis_cross())
+        is_corner_cross_visible = getattr(active_view, "isCornerCrossVisible", None)
+        if is_corner_cross_visible is not None:
+            corner_cross_visible = bool(is_corner_cross_visible())
+        state = (
+            viewer,
+            navi_cube_visible,
+            axis_cross_visible,
+            corner_cross_visible,
+        )
+        try:
+            if viewer is not None and navi_cube_visible is not None:
+                viewer.setEnabledNaviCube(False)
+            if axis_cross_visible is not None:
+                active_view.setAxisCross(False)
+            if corner_cross_visible is not None:
+                active_view.setCornerCrossVisible(False)
+            active_view.redraw()
+            ContextReadsMixin._sync_gui()
+        except Exception:
+            ContextReadsMixin._restore_capture_overlays(active_view, state)
+            raise
+        return state
+
+    @staticmethod
+    def _restore_capture_overlays(
+        active_view: Any,
+        state: tuple[Any, bool | None, bool | None, bool | None],
+    ) -> None:
+        (
+            viewer,
+            navi_cube_visible,
+            axis_cross_visible,
+            corner_cross_visible,
+        ) = state
+        if viewer is not None and navi_cube_visible is not None:
+            viewer.setEnabledNaviCube(navi_cube_visible)
+        if axis_cross_visible is not None:
+            active_view.setAxisCross(axis_cross_visible)
+        if corner_cross_visible is not None:
+            active_view.setCornerCrossVisible(corner_cross_visible)
+        active_view.redraw()
+        ContextReadsMixin._sync_gui()
+
+    @staticmethod
+    def _sync_gui() -> None:
+        import FreeCADGui as Gui
+
+        Gui.updateGui()
+
+    @staticmethod
+    def _capture_active_view(
+        active_view: Any,
+        *,
+        width: int,
+        height: int,
+        view: str,
+        fit: bool,
+    ) -> tuple[dict[str, Any], Any]:
+        capture_id, path = new_capture_path()
+        try:
+            ContextReadsMixin._save_viewport_image(
+                active_view,
+                path=path,
+                width=width,
+                height=height,
+            )
+            payload = read_capture(capture_id)
+            if len(payload) > MAX_CAPTURE_BYTES:
+                raise RuntimeError("The visual capture exceeded the size limit.")
+        except Exception:
             path.unlink(missing_ok=True)
-            raise RuntimeError("The visual capture exceeded the size limit.")
-        prune_visual_cache()
-        return {
-            "capture_id": capture_id,
-            "mime_type": "image/png",
-            "width": int(width),
-            "height": int(height),
-            "view": checked_view,
-            "fit": fit,
-            "bytes": len(payload),
-            "resource_uri": f"aicad://view/{capture_id}",
-        }
+            raise
+        return (
+            {
+                "capture_id": capture_id,
+                "mime_type": "image/png",
+                "width": width,
+                "height": height,
+                "view": view,
+                "fit": fit,
+                "bytes": len(payload),
+                "resource_uri": f"aicad://view/{capture_id}",
+            },
+            path,
+        )
+
+    @staticmethod
+    def _save_viewport_image(
+        active_view: Any,
+        *,
+        path: Any,
+        width: int,
+        height: int,
+    ) -> None:
+        """Save the visible OpenGL framebuffer, centered at the target ratio."""
+
+        get_viewer = getattr(active_view, "getViewer", None)
+        if get_viewer is None:
+            # Small neutral adapters used outside FreeCAD expose saveImage only.
+            active_view.saveImage(str(path), width, height, "Current")
+            return
+
+        image = get_viewer().grabFramebuffer()
+        if image.isNull() or image.width() <= 0 or image.height() <= 0:
+            raise RuntimeError("The FreeCAD viewport framebuffer is unavailable.")
+
+        source_width = int(image.width())
+        source_height = int(image.height())
+        target_ratio = width / height
+        source_ratio = source_width / source_height
+        if source_ratio > target_ratio:
+            crop_width = max(1, round(source_height * target_ratio))
+            image = image.copy(
+                (source_width - crop_width) // 2,
+                0,
+                crop_width,
+                source_height,
+            )
+        elif source_ratio < target_ratio:
+            crop_height = max(1, round(source_width / target_ratio))
+            image = image.copy(
+                0,
+                (source_height - crop_height) // 2,
+                source_width,
+                crop_height,
+            )
+
+        from PySide import QtCore
+
+        image = image.scaled(
+            width,
+            height,
+            QtCore.Qt.IgnoreAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
+        if not image.save(str(path), "PNG"):
+            raise RuntimeError("The FreeCAD viewport image could not be saved.")

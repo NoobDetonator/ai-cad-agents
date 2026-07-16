@@ -12,6 +12,7 @@ _LEGACY_MECHANICAL_TOOL_NAMES = frozenset(
         "cad.resolve_object",
         "cad.get_editable_parameters",
         "cad.capture_view",
+        "cad.capture_views",
         "cad.rename_object",
         "cad.set_parameter",
         "cad.transform_object",

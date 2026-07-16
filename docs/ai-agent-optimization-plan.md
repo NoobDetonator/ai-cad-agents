@@ -19,7 +19,7 @@ pedido
   → plano imutável
   → aprovação visível
   → execução transacional
-  → validação, medida e captura
+  → validação, medida e captura multivista
 ```
 
 ## Contratos entregues
@@ -35,7 +35,7 @@ pedido
 
 ## Estratégia de seleção
 
-O agente não recebe as 90 ferramentas em toda chamada. Um seletor local procura
+O agente não recebe as 91 ferramentas em toda chamada. Um seletor local procura
 termos PT/EN, famílias, aliases e tags e envia um conjunto pequeno. Pedidos
 inseguros não recuperam mutações.
 
@@ -67,6 +67,10 @@ mutação ambígua nem gerar Python como fuga.
 Leituras simples executam imediatamente. Mutações podem ser agrupadas em planos
 de duas a oito chamadas, reduzindo confirmações sem ampliar a autorização. O
 cliente MCP aguarda operações CAD longas por mais tempo que o dispatcher da GUI.
+
+Para inspeção visual, `cad.capture_views` entrega isométrica e vistas ortogonais
+em uma chamada e restaura a câmera. Isso reduz viagens MCP e evita que uma vista
+dependa do estado deixado pela anterior.
 
 ## Métricas permanentes
 
