@@ -12,7 +12,7 @@ regras do produto permanecem independentes dele.
 - FreeCAD 1.1.1 instalado no Windows;
 - Workbench **AI CAD** com painel lateral e ponte MCP local;
 - 90 ferramentas no mesmo `ToolRegistry` para chat e MCP;
-- M0 a M7 concluídos;
+- M0 a M7 concluídos; E1 — MCP em escala em execução;
 - modelagem básica e avançada, Sketch, montagens, rolamentos e exportação;
 - mutações transacionais, validadas, auditadas e reversíveis;
 - aceitação automática visível por padrão; exportações sempre manuais.
@@ -102,3 +102,4 @@ medir a seleção de ferramentas sem rede ou FreeCAD:
 - [Visão do produto](docs/product-vision.md)
 - [Baseline M0–M7](docs/milestones.md)
 - [Otimização do agente](docs/ai-agent-optimization-plan.md)
+- [E1 — MCP em escala](docs/mcp-scale-roadmap.md)

@@ -1,7 +1,13 @@
-# Baseline M0–M7
+# Marcos do projeto
 
 Os marcos M0 a M7 estão concluídos. Este arquivo registra somente o resultado
 atual; o histórico detalhado permanece no Git.
+
+## Próximo marco aprovado
+
+**E1 — MCP em escala** está em execução. Ele amplia descoberta, composição,
+inspeção e pacotes de capacidades sem criar um marco M8. O plano completo está
+em [mcp-scale-roadmap.md](mcp-scale-roadmap.md).
 
 ## Resumo
 
@@ -40,10 +46,10 @@ Qualquer incremento deve:
 6. atualizar documentação e descrições do catálogo;
 7. passar por `scripts/testar.ps1`.
 
-## Estado de manutenção
+## Estado de manutenção da baseline
 
-Não existe próximo marco automático. Trabalho novo entra como correção ou
-incremento explicitamente aprovado. O servidor MCP, o catálogo e a integração
+E1 foi explicitamente aprovado. Trabalho fora de seu plano continua entrando
+como correção ou incremento aprovado. O servidor MCP, o catálogo e a integração
 com o FreeCAD recebem a prioridade.
 
 DeepSeek, seletor e loop interno permanecem funcionais, mas em manutenção. Não
