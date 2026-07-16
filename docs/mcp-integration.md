@@ -1,6 +1,6 @@
 # Integração MCP
 
-O agente externo é a IA. O servidor `aicad-mcp` expõe ferramentas estruturadas e
+No TALOS, o agente externo é a IA. O servidor `aicad-mcp` expõe ferramentas estruturadas e
 envia a execução para o Workbench aberto no FreeCAD.
 
 ## Pré-requisitos

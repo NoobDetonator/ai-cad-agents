@@ -30,7 +30,11 @@ em [mcp-scale-roadmap.md](mcp-scale-roadmap.md).
 - engrenagens, alinhamento, interferência e componentes de montagem;
 - rolamentos convencionais e modelos para impressão 3D;
 - cinco receitas confiáveis;
-- captura visual enquadrada e erros de domínio úteis ao cliente MCP.
+- descoberta compacta, paginada e com schemas sob demanda;
+- erros recuperáveis com categoria, próxima ação e estado seguro explícito;
+- captura multivista com câmera e overlays restaurados;
+- corte visual XY/XZ/YZ por offset, sem alterar a geometria;
+- framebuffer estabilizado antes da captura para impedir quadros parciais.
 
 O catálogo atual possui 92 ferramentas no mesmo `ToolRegistry`.
 

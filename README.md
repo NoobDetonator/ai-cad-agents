@@ -1,6 +1,12 @@
-# AI CAD Workbench
+<p align="center">
+  <img src="docs/images/logo.png" alt="TALOS — FreeCAD MCP" width="1000">
+</p>
 
-Servidor MCP para controlar o FreeCAD com ferramentas CAD estruturadas. Agentes
+<h1 align="center">TALOS</h1>
+
+<p align="center"><strong>FreeCAD MCP seguro, estruturado e orientado a agentes.</strong></p>
+
+TALOS é um servidor MCP para controlar o FreeCAD com ferramentas CAD estruturadas. Agentes
 como Codex, Claude Code e Cursor podem inspecionar, modelar, validar e exportar
 peças sem executar Python, macros ou comandos arbitrários.
 
@@ -16,10 +22,20 @@ regras do produto permanecem independentes dele.
 - modelagem básica e avançada, Sketch, montagens, rolamentos e exportação;
 - mutações transacionais, validadas, auditadas e reversíveis;
 - erros MCP categorizados, recuperáveis e com estado seguro explícito;
+- descoberta compacta e paginada, com schemas completos somente sob demanda;
+- captura multivista e vistas em corte XY/XZ/YZ com restauração do viewport;
 - aceitação automática visível por padrão; exportações sempre manuais.
 
 A IA interna com DeepSeek continua disponível, mas está em manutenção. O foco do
 produto é o uso por agentes externos via MCP.
+
+### Atualizações recentes
+
+- E1.1 concluída com busca escalável de capacidades e schemas sob demanda;
+- erros recuperáveis compartilhados entre chat, ponte e MCP;
+- capturas independentes de vários ângulos em uma única chamada;
+- corte visual não destrutivo por plano e offset;
+- framebuffer estabilizado antes da captura para evitar imagens parciais.
 
 ## Início rápido
 

@@ -1,6 +1,6 @@
 # Visão do produto
 
-O AI CAD Workbench é um servidor MCP seguro para modelagem mecânica no FreeCAD.
+TALOS é um servidor MCP seguro para modelagem mecânica no FreeCAD.
 O agente externo interpreta o pedido; o projeto fornece ferramentas pequenas,
 validadas, reversíveis e observáveis.
 
@@ -50,6 +50,8 @@ validação conforme material, processo, carga e tolerância reais.
 
 ## Evolução
 
-M0 a M7 estão concluídos. Não há próximo marco automático. Novos incrementos
-devem responder a casos reais e preservar catálogo único, schemas pequenos,
-aprovação, transação, validação, auditoria e testes reproduzíveis.
+M0 a M7 estão concluídos e E1 está em execução. A descoberta escalável, os erros
+recuperáveis, a captura multivista e o corte visual por plano já foram entregues.
+Os próximos incrementos devem responder a casos reais e preservar catálogo
+único, schemas pequenos, aprovação, transação, validação, auditoria e testes
+reproduzíveis.
