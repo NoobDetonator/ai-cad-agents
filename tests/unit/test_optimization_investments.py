@@ -159,11 +159,11 @@ def test_unified_model_inspection_batches_reads_and_checks_state(
         views=["isometric"],
     )
 
-    assert result["status"] == "completed"
-    assert result["state_consistent"] is True
-    assert result["bridge_calls"] == 7
-    assert result["object_source"] == "explicit"
-    assert result["inspected_objects"][0]["reference"] == "Part"
+    assert result.status == "completed"
+    assert result.state_consistent is True
+    assert result.bridge_calls == 7
+    assert result.object_source == "explicit"
+    assert result.inspected_objects[0].reference == "Part"
     assert calls == [
         "cad.get_context_snapshot",
         "cad.validate_document",

@@ -351,8 +351,12 @@ class McpTelemetryRecorder:
     def _result_status(result: object) -> str:
         if isinstance(result, Mapping):
             status = result.get("status")
-            if isinstance(status, str) and status:
-                return status
+        else:
+            # Pydantic results (e.g. CadModelInspection) expose status as an
+            # attribute instead of a mapping key.
+            status = getattr(result, "status", None)
+        if isinstance(status, str) and status:
+            return status
         return "completed"
 
     @staticmethod

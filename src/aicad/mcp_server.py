@@ -6,7 +6,6 @@ from time import perf_counter
 from uuid import UUID, uuid4
 
 from mcp.server.fastmcp import FastMCP
-from typing_extensions import TypedDict
 
 from aicad.bridge.protocol import (
     BridgeError,
@@ -27,6 +26,7 @@ from aicad.core.capabilities import (
     CapabilityDescriptions,
     CapabilitySearchResult,
 )
+from aicad.core.inspection import CadModelInspection, inspect_model
 from aicad.core.tool_registry import ToolRisk
 from aicad.core.context import DocumentStateToken
 from aicad.core.tool_results import (
@@ -57,21 +57,6 @@ recipe_catalog = default_recipe_catalog()
 # before that and report the bridge as unavailable while FreeCAD is still busy
 # succeeding, so wait at least as long as the far side is willing to work.
 BRIDGE_CLIENT_TIMEOUT_SECONDS = GUI_REQUEST_TIMEOUT_SECONDS + 15.0
-
-
-class CadModelInspection(TypedDict, total=False):
-    status: str
-    phase: str
-    bridge_calls: int
-    state_consistent: bool
-    initial_state_token: object
-    final_state_token: object
-    context: object
-    validation: object
-    object_source: str
-    inspected_objects: list[dict[str, object]]
-    visuals: object
-    response: object
 
 
 @mcp.tool()
@@ -466,139 +451,21 @@ def inspect_cad_model(
     the multi-read inspection.
     """
 
-    if isinstance(max_objects, bool) or not isinstance(max_objects, int):
-        raise ValueError("The inspection object limit must be an integer.")
-    if not 1 <= max_objects <= 8:
-        raise ValueError("The inspection object limit must be between 1 and 8.")
-    if objects is not None:
-        if not objects or len(objects) > max_objects:
-            raise ValueError(
-                "Inspection objects must contain between one and max_objects items."
-            )
-        if any(not isinstance(item, str) or not item.strip() for item in objects):
-            raise ValueError("Inspection object references must be non-empty strings.")
-        if len(objects) != len(set(objects)):
-            raise ValueError("Inspection object references must be unique.")
-    if views is not None:
-        if not views or len(views) > 4 or len(views) != len(set(views)):
-            raise ValueError("Inspection views must contain one to four unique views.")
-
-    bridge_calls = 0
-    partial = False
-
     def read(name: str, arguments: dict[str, object]) -> tuple[bool, object]:
-        nonlocal bridge_calls
-        bridge_calls += 1
         response = _send_bridge_request(_build_bridge_request(name, arguments))
         if response.status is BridgeResponseStatus.COMPLETED:
             return True, response.result
         return False, response.model_dump(mode="json")
 
-    context_ok, context_payload = read(
-        "cad.get_context_snapshot",
-        {
-            "detail_level": "work",
-            "max_objects": max_objects,
-            "cursor": 0,
-        },
+    return inspect_model(
+        read,
+        objects=objects,
+        max_objects=max_objects,
+        include_details=include_details,
+        include_dependencies=include_dependencies,
+        include_visuals=include_visuals,
+        views=views,
     )
-    if not context_ok or not isinstance(context_payload, dict):
-        return {
-            "status": "failed",
-            "phase": "context",
-            "bridge_calls": bridge_calls,
-            "response": context_payload,
-        }
-
-    initial_token = context_payload.get("state_token")
-    selected = context_payload.get("selection", [])
-    recent = context_payload.get("recent_objects", [])
-    context_objects = context_payload.get("objects", [])
-    if objects is not None:
-        targets = list(objects)
-        object_source = "explicit"
-    elif isinstance(selected, list) and selected:
-        targets = [
-            item["name"]
-            for item in selected
-            if isinstance(item, dict) and isinstance(item.get("name"), str)
-        ]
-        object_source = "selection"
-    elif isinstance(recent, list) and recent:
-        targets = [item for item in recent if isinstance(item, str)]
-        object_source = "recent"
-    else:
-        targets = [
-            item["name"]
-            for item in context_objects
-            if isinstance(item, dict) and isinstance(item.get("name"), str)
-        ] if isinstance(context_objects, list) else []
-        object_source = "context"
-    targets = list(dict.fromkeys(targets))[:max_objects]
-
-    validation_ok, validation = read("cad.validate_document", {})
-    partial = partial or not validation_ok
-    inspections: list[dict[str, object]] = []
-    for reference in targets:
-        record: dict[str, object] = {"reference": reference}
-        measurement_ok, measurement = read(
-            "cad.measure_object",
-            {"object": reference},
-        )
-        record["measurement"] = measurement
-        partial = partial or not measurement_ok
-        if include_details:
-            details_ok, details = read(
-                "cad.get_object_details",
-                {"object": reference},
-            )
-            record["details"] = details
-            partial = partial or not details_ok
-        if include_dependencies:
-            dependencies_ok, dependencies = read(
-                "cad.get_dependencies",
-                {"object": reference},
-            )
-            record["dependencies"] = dependencies
-            partial = partial or not dependencies_ok
-        inspections.append(record)
-
-    visuals: object | None = None
-    if include_visuals:
-        visuals_ok, visuals = read(
-            "cad.capture_views",
-            {
-                "views": views or ["isometric", "front", "top", "right"],
-                "width": 640,
-                "height": 480,
-                "fit": True,
-            },
-        )
-        partial = partial or not visuals_ok
-
-    final_ok, final_context = read(
-        "cad.get_context_snapshot",
-        {"detail_level": "minimal", "max_objects": 1, "cursor": 0},
-    )
-    final_token = (
-        final_context.get("state_token")
-        if final_ok and isinstance(final_context, dict)
-        else None
-    )
-    state_consistent = initial_token == final_token
-    partial = partial or not final_ok or not state_consistent
-    return {
-        "status": "partial" if partial else "completed",
-        "bridge_calls": bridge_calls,
-        "state_consistent": state_consistent,
-        "initial_state_token": initial_token,
-        "final_state_token": final_token,
-        "context": context_payload,
-        "validation": validation,
-        "object_source": object_source,
-        "inspected_objects": inspections,
-        "visuals": visuals,
-    }
 
 
 @mcp.tool()

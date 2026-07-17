@@ -33,6 +33,7 @@ jobs:
       - name: Check core types
         run: >-
           python -m mypy
+          src/aicad/core/inspection.py
           src/aicad/core/schema_validation.py
           src/aicad/core/tool_registry.py
           src/aicad/core/transactions.py
