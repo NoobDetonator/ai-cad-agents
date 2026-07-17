@@ -179,6 +179,60 @@ MEASUREMENT_RESULT = {
     "required": ["name", "label", "bounds_mm", "valid"],
 }
 
+MASS_PROPERTIES_RESULT = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "label": {"type": "string"},
+        "density_g_cm3": {"type": "number"},
+        "volume_mm3": {"type": "number"},
+        "mass_g": {"type": "number"},
+        "mass_kg": {"type": "number"},
+        "center_of_mass_mm": {"type": "array"},
+        "solids": {"type": "integer"},
+        "valid": {"type": "boolean"},
+    },
+    "required": [
+        "name",
+        "label",
+        "density_g_cm3",
+        "volume_mm3",
+        "mass_g",
+        "center_of_mass_mm",
+        "valid",
+    ],
+}
+
+PRINT_READINESS_RESULT = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "label": {"type": "string"},
+        "valid": {"type": "boolean"},
+        "solids": {"type": "integer"},
+        "closed_solids": {"type": "integer"},
+        "build_direction": {"type": "string"},
+        "max_overhang_angle_deg": {"type": "number"},
+        "bed_z_mm": {"type": "number"},
+        "bed_contact_area_mm2": {"type": "number"},
+        "overhang_area_mm2": {"type": "number"},
+        "overhang_faces": {"type": "array"},
+        "overhang_faces_truncated": {"type": "boolean"},
+        "floating_solids": {"type": "array"},
+        "needs_support": {"type": "boolean"},
+        "normals_sampled_at_face_center": {"type": "boolean"},
+    },
+    "required": [
+        "name",
+        "label",
+        "valid",
+        "solids",
+        "needs_support",
+        "overhang_faces",
+        "bed_contact_area_mm2",
+    ],
+}
+
 DISTANCE_RESULT = {
     "type": "object",
     "properties": {

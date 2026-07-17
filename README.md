@@ -17,7 +17,7 @@ regras do produto permanecem independentes dele.
 
 - FreeCAD 1.1.1 instalado no Windows;
 - Workbench **TALOS MCP** com painel de ponte, capacidades, aprovações e atividade;
-- 115 ferramentas no mesmo `ToolRegistry` para a ponte e o servidor MCP;
+- 117 ferramentas no mesmo `ToolRegistry` para a ponte e o servidor MCP;
 - núcleo Part Design paramétrico (P1): Body, sketches anexados aos planos de
   origem, pad/pocket/revolução/groove/padrões por reflexão governada, edição
   por cota e status de restrições do sketch;
@@ -66,7 +66,7 @@ FreeCAD por script. O painel também oferece a configuração MCP pronta para co
 
 | Área | Capacidades principais |
 | --- | --- |
-| Contexto | documentos, seleção, medidas, vistas múltiplas e cortes visuais |
+| Contexto | documentos, seleção, medidas, massa/CG por densidade, prontidão de impressão 3D, vistas múltiplas e cortes visuais |
 | Primitivas | caixa, cilindro, cone, esfera, toro e placas |
 | Sketch | 24 ferramentas de geometria, restrições, cotas, edição e inspeção |
 | Part Design | Body paramétrico, sketch anexado (plano ou face), pad, pocket, furos com counterbore, revolução, groove, padrões, fillet, chanfro, edição por cota e graus de liberdade |

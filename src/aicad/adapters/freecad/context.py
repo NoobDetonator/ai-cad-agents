@@ -328,6 +328,125 @@ class ContextReadsMixin:
             "valid": bool(shape.isValid()),
         }
 
+    def measure_mass_properties(self, object: str, density: float) -> dict[str, Any]:
+        item = self._resolve_document_object(object)
+        shape = self._shape_or_error(item)
+        solids = shape.Solids
+        if not solids:
+            raise ValueError(
+                "Mass properties require at least one solid; "
+                f"{item.Label} has none."
+            )
+        total_volume = sum(float(solid.Volume) for solid in solids)
+        if total_volume <= 0:
+            raise ValueError(
+                f"Mass properties require positive volume; {item.Label} "
+                f"reports {total_volume:.6f} mm³."
+            )
+        # CenterOfMass em compostos não é definido de forma uniforme; a média
+        # ponderada por volume dos sólidos vale para peça única e composto.
+        center = [0.0, 0.0, 0.0]
+        for solid in solids:
+            weight = float(solid.Volume)
+            solid_center = solid.CenterOfMass
+            center[0] += float(solid_center.x) * weight
+            center[1] += float(solid_center.y) * weight
+            center[2] += float(solid_center.z) * weight
+        center = [axis / total_volume for axis in center]
+        mass_g = total_volume / 1000.0 * float(density)
+        return {
+            "name": item.Name,
+            "label": item.Label,
+            "density_g_cm3": float(density),
+            "volume_mm3": total_volume,
+            "mass_g": mass_g,
+            "mass_kg": mass_g / 1000.0,
+            "center_of_mass_mm": center,
+            "solids": len(solids),
+            "valid": bool(shape.isValid()),
+        }
+
+    def analyze_print_readiness(
+        self,
+        object: str,
+        max_overhang_angle_deg: float = 45.0,
+    ) -> dict[str, Any]:
+        item = self._resolve_document_object(object)
+        shape = self._shape_or_error(item)
+        solids = shape.Solids
+        if not solids:
+            raise ValueError(
+                "Print readiness requires at least one solid; "
+                f"{item.Label} has none."
+            )
+        bounds = shape.BoundBox
+        bed_z = float(bounds.ZMin)
+        bed_tolerance = 0.01
+        # Impressão em pé no plano da mesa: precisa de suporte a face voltada
+        # para baixo mais rasa que o limite (normal amostrada no meio do domínio
+        # UV — em faces curvas isso é uma heurística, não um veredicto).
+        support_threshold = math.cos(math.radians(max_overhang_angle_deg))
+        bed_contact_area = 0.0
+        overhang_area = 0.0
+        overhang_faces: list[dict[str, Any]] = []
+        for index, face in enumerate(shape.Faces, start=1):
+            u_min, u_max, v_min, v_max = face.ParameterRange
+            normal = face.normalAt((u_min + u_max) / 2, (v_min + v_max) / 2)
+            length = float(normal.Length)
+            if length <= 0:
+                continue
+            downward = -float(normal.z) / length
+            if downward <= 0:
+                continue
+            face_bounds = face.BoundBox
+            on_bed = (
+                downward > 0.999
+                and float(face_bounds.ZMax) <= bed_z + bed_tolerance
+            )
+            if on_bed:
+                bed_contact_area += float(face.Area)
+                continue
+            if downward > support_threshold:
+                area = float(face.Area)
+                overhang_area += area
+                overhang_faces.append(
+                    {
+                        "face": f"Face{index}",
+                        "area_mm2": area,
+                        "downward_angle_deg": math.degrees(math.acos(downward)),
+                        "center_mm": [
+                            float(face_bounds.Center.x),
+                            float(face_bounds.Center.y),
+                            float(face_bounds.Center.z),
+                        ],
+                    }
+                )
+        overhang_faces.sort(key=lambda entry: entry["area_mm2"], reverse=True)
+        floating_solids = []
+        for index, solid in enumerate(solids, start=1):
+            gap = float(solid.BoundBox.ZMin) - bed_z
+            if gap > bed_tolerance:
+                floating_solids.append(
+                    {"solid": index, "gap_mm": gap}
+                )
+        return {
+            "name": item.Name,
+            "label": item.Label,
+            "valid": bool(shape.isValid()),
+            "solids": len(solids),
+            "closed_solids": sum(bool(solid.isClosed()) for solid in solids),
+            "build_direction": "+z",
+            "max_overhang_angle_deg": float(max_overhang_angle_deg),
+            "bed_z_mm": bed_z,
+            "bed_contact_area_mm2": bed_contact_area,
+            "overhang_area_mm2": overhang_area,
+            "overhang_faces": overhang_faces[:16],
+            "overhang_faces_truncated": len(overhang_faces) > 16,
+            "floating_solids": floating_solids[:16],
+            "needs_support": bool(overhang_faces),
+            "normals_sampled_at_face_center": True,
+        }
+
     def measure_distance(self, left: str, right: str) -> dict[str, Any]:
         left_item = self._resolve_document_object(left)
         right_item = self._resolve_document_object(right)

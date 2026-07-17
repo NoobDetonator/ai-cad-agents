@@ -17,7 +17,7 @@ ASSEMBLY_TOOLS = (
 def test_assembly_specs_are_complete_and_safely_classified() -> None:
     registry = build_default_registry()
 
-    assert len(registry.list_specs()) == 115
+    assert len(registry.list_specs()) == 117
     for name in ASSEMBLY_TOOLS:
         spec = registry.get_spec(name)
         assert spec.output_schema is not None

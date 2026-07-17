@@ -25,6 +25,16 @@ class CadAdapter(Protocol):
 
     def measure_object(self, object: str) -> dict[str, Any]: ...
 
+    def measure_mass_properties(
+        self, object: str, density: float
+    ) -> dict[str, Any]: ...
+
+    def analyze_print_readiness(
+        self,
+        object: str,
+        max_overhang_angle_deg: float = 45.0,
+    ) -> dict[str, Any]: ...
+
     def measure_distance(self, left: str, right: str) -> dict[str, Any]: ...
 
     def get_dependencies(self, object: str) -> dict[str, Any]: ...
@@ -446,6 +456,8 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.get_context_snapshot": "get_context_snapshot",
         "cad.get_object_details": "get_object_details",
         "cad.measure_object": "measure_object",
+        "cad.measure_mass_properties": "measure_mass_properties",
+        "cad.analyze_print_readiness": "analyze_print_readiness",
         "cad.measure_distance": "measure_distance",
         "cad.get_dependencies": "get_dependencies",
         "cad.resolve_object": "resolve_object",

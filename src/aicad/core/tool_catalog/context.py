@@ -8,7 +8,9 @@ from aicad.core.tool_catalog.schemas import (
     DETAIL_RESULT,
     DISTANCE_RESULT,
     EMPTY_OBJECT,
+    MASS_PROPERTIES_RESULT,
     MEASUREMENT_RESULT,
+    PRINT_READINESS_RESULT,
     SELECTION_RESULT,
     PARAMETERS_RESULT,
     REFERENCE,
@@ -164,6 +166,86 @@ def context_tool_specs() -> tuple[ToolSpec, ...]:
             examples=("Meça a caixa e informe o bounding box.",),
             order=50,
             output_schema=MEASUREMENT_RESULT,
+        ),
+        _spec(
+            "cad.measure_mass_properties",
+            "Measure mass, volume and volume-weighted center of gravity of one "
+            "solid object from an explicit material density in g/cm3. Example "
+            'call: {"object": "Body", "density": 1.24}. Common densities: '
+            "PLA 1.24, PETG 1.27, ABS 1.04, aluminium 2.70, steel 7.85.",
+            ToolRisk.READ,
+            _object_schema(
+                {
+                    "object": REFERENCE,
+                    "density": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 30,
+                    },
+                },
+                ("object", "density"),
+            ),
+            family="measurement",
+            aliases=(
+                "massa",
+                "peso da peça",
+                "centro de gravidade",
+                "mass properties",
+                "weight",
+                "center of gravity",
+            ),
+            tags=(
+                "massa",
+                "densidade",
+                "gravidade",
+                "inércia",
+                "mass",
+                "density",
+                "weight",
+            ),
+            examples=("Qual a massa da peça em PLA?",),
+            order=56,
+            output_schema=MASS_PROPERTIES_RESULT,
+        ),
+        _spec(
+            "cad.analyze_print_readiness",
+            "Analyze one solid for upright FDM printing along +Z: closed solids, "
+            "bed contact area, floating solids and downward faces steeper than "
+            "the printable overhang limit (normals sampled at face centers). "
+            'Example call: {"object": "Body", "max_overhang_angle_deg": 45}.',
+            ToolRisk.READ,
+            _object_schema(
+                {
+                    "object": REFERENCE,
+                    "max_overhang_angle_deg": {
+                        "type": "number",
+                        "minimum": 20,
+                        "maximum": 85,
+                    },
+                },
+                ("object",),
+            ),
+            family="analysis",
+            aliases=(
+                "prontidão de impressão",
+                "análise de impressão 3d",
+                "overhang",
+                "print readiness",
+                "printability",
+                "support analysis",
+            ),
+            tags=(
+                "impressão 3d",
+                "fdm",
+                "suporte",
+                "balanço",
+                "printing",
+                "overhang",
+                "support",
+            ),
+            examples=("A peça imprime sem suporte?",),
+            order=57,
+            output_schema=PRINT_READINESS_RESULT,
         ),
         _spec(
             "cad.measure_distance",

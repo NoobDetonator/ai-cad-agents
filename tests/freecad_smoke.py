@@ -190,5 +190,46 @@ assert (
     restored_context["state_token"]["document_fingerprint"]
     == rollback_base["state_token"]["document_fingerprint"]
 )
+# P5 — massa com densidade e prontidão de impressão em geometria conhecida.
+mass_box = adapter.create_box(10, 20, 30, "MassSampleBox")
+assert mass_box["valid"] is True
+mass = adapter.measure_mass_properties("MassSampleBox", 2.0)
+assert math.isclose(mass["volume_mm3"], 6000.0, rel_tol=1e-9)
+assert math.isclose(mass["mass_g"], 12.0, rel_tol=1e-9)
+assert math.isclose(mass["mass_kg"], 0.012, rel_tol=1e-9)
+assert math.isclose(mass["center_of_mass_mm"][0], 5.0, abs_tol=1e-6)
+assert math.isclose(mass["center_of_mass_mm"][1], 10.0, abs_tol=1e-6)
+assert math.isclose(mass["center_of_mass_mm"][2], 15.0, abs_tol=1e-6)
+assert mass["solids"] == 1 and mass["valid"] is True
+
+readiness = adapter.analyze_print_readiness("MassSampleBox")
+assert readiness["needs_support"] is False, readiness
+assert readiness["closed_solids"] == 1
+assert math.isclose(readiness["bed_contact_area_mm2"], 200.0, rel_tol=1e-9)
+assert readiness["overhang_faces"] == []
+assert readiness["floating_solids"] == []
+
+floating_box = adapter.create_box(10, 10, 10, "FloatingSampleBox")
+assert floating_box["valid"] is True
+adapter.translate_object("FloatingSampleBox", dz=40)
+fused = adapter.boolean_operation(
+    "MassSampleBox", "FloatingSampleBox", "fuse", "PrintSample"
+)
+assert fused["valid"] is True
+floating_readiness = adapter.analyze_print_readiness("PrintSample")
+assert floating_readiness["needs_support"] is True, floating_readiness
+assert floating_readiness["solids"] == 2
+assert len(floating_readiness["floating_solids"]) == 1
+assert math.isclose(
+    floating_readiness["floating_solids"][0]["gap_mm"], 40.0, abs_tol=1e-6
+)
+assert math.isclose(
+    floating_readiness["overhang_area_mm2"], 100.0, rel_tol=1e-9
+), floating_readiness
+assert floating_readiness["overhang_faces"][0]["downward_angle_deg"] < 1e-6
+compound_mass = adapter.measure_mass_properties("PrintSample", 1.24)
+assert math.isclose(compound_mass["volume_mm3"], 7000.0, rel_tol=1e-9)
+assert math.isclose(compound_mass["mass_g"], 8.68, rel_tol=1e-9)
+
 print("FREECAD_SMOKE_OK")
 App.closeDocument("AICadSmokeTest")

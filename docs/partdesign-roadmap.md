@@ -156,14 +156,17 @@ junto com o CAD-IR completo (E1.3), se a prática mostrar necessidade.
 - ✅ guia como recurso MCP (`aicad://guides/partdesign`), carregado sob
   demanda, fora do payload normal.
 
-### P5 — Biblioteca de partes e validação de engenharia
+### P5 — Biblioteca de partes e validação de engenharia (validação entregue)
 
-- `cad.list_library_parts` / `cad.insert_library_part` sobre o addon
-  parts_library quando instalado — com caminho validado (sem path traversal,
-  ao contrário do concorrente), mutação compensável normal;
-- massa e centro de gravidade com densidade de material informada;
-- perfil de impressão 3D no inspetor: espessura mínima de parede, overhang
-  para direção de impressão dada, volume fechado;
+- ✅ `cad.measure_mass_properties`: massa, volume e centro de gravidade
+  ponderado por volume a partir de densidade explícita em g/cm³;
+- ✅ `cad.analyze_print_readiness`: sólidos fechados, contato com a mesa,
+  sólidos flutuantes e faces em balanço além do limite imprimível (+Z,
+  normais amostradas no centro da face); espessura mínima de parede
+  permanece pendente por exigir análise de offset;
+- adiado: `cad.list_library_parts` / `cad.insert_library_part` — o addon
+  parts_library não está instalado neste ambiente; quando entrar, o caminho
+  será validado (sem path traversal, ao contrário do concorrente);
 - FEM permanece adiado; a cadeia guiada do concorrente vira receita futura.
 
 ### P6 — Prova ponta a ponta

@@ -14,7 +14,7 @@ from aicad.core.tool_registry import (
 EXPECTED_CATALOG_FAMILIES = {
     "aicad.core.tool_catalog.assembly": {"analysis", "assembly"},
     "aicad.core.tool_catalog.bearings": {"bearing"},
-    "aicad.core.tool_catalog.context": {"context", "measurement"},
+    "aicad.core.tool_catalog.context": {"analysis", "context", "measurement"},
     "aicad.core.tool_catalog.documents": {"document", "export"},
     "aicad.core.tool_catalog.editing": {"edit"},
     "aicad.core.tool_catalog.governance": {"history", "validation"},
@@ -46,7 +46,7 @@ def test_default_registry_has_unique_tools() -> None:
     assert [spec.name for spec in specs if spec.essential] == [
         "cad.get_context_snapshot"
     ]
-    assert len(specs) == 115
+    assert len(specs) == 117
     audit_names = {"cad.get_audit_history", "cad.export_audit_history"}
     assert {spec.name for spec in specs if spec.name in audit_names} == audit_names
     export_names = {spec.name for spec in specs if spec.family == "export"}
@@ -74,7 +74,7 @@ def test_default_registry_has_unique_tools() -> None:
     mechanical_specs = [
         spec for spec in specs if spec.family in mechanical_families
     ]
-    assert len(mechanical_specs) == 65
+    assert len(mechanical_specs) == 67
     assert all(spec.output_schema is not None for spec in mechanical_specs)
     assert any(
         spec.name == "cad.create_external_thread" and spec.family == "mechanical"
