@@ -58,7 +58,12 @@ class BearingMixin:
     ) -> None:
         chord = 2 * pitch_radius * math.sin(math.pi / count)
         if chord <= element_diameter + separation:
-            raise ValueError("The rolling elements overlap around the pitch circle.")
+            raise ValueError(
+                "The rolling elements overlap around the pitch circle: "
+                f"{count} elements leave {chord:.2f} mm between centers, but "
+                f"each needs more than {element_diameter + separation:.2f} mm. "
+                "Reduce the element count or diameter, or enlarge the bearing."
+            )
 
     def _bearing_feature(
         self,
@@ -545,24 +550,41 @@ class BearingMixin:
         clearance = self._positive_values(print_clearance)[0]
         axial = self._positive_values(axial_clearance)[0]
         if roller + 2 * clearance >= outer_radius - bore_radius:
-            raise ValueError("Rollers and print clearances do not fit between the races.")
+            raise ValueError(
+                "Rollers and print clearances do not fit between the races: "
+                f"roller {roller:.2f} mm plus two clearances of {clearance:.2f} mm "
+                f"needs less than the {outer_radius - bore_radius:.2f} mm of radial "
+                "space between bore and outer wall."
+            )
         self._check_circumferential_spacing(pitch_radius, count, roller, clearance)
         roller_radius = roller / 2
         lip_depth = clearance + roller_radius * 0.25
         lip_height = lip_depth
         if axial <= lip_height + clearance:
             raise ValueError(
-                "Axial clearance must exceed the retaining-rim height plus print clearance."
+                "Axial clearance must exceed the retaining-rim height plus print "
+                f"clearance: the {lip_height:.2f} mm rim plus the {clearance:.2f} mm "
+                f"clearance requires more than {lip_height + clearance:.2f} mm, but "
+                f"axial_clearance is {axial:.2f} mm."
             )
         roller_length = checked_width - 2 * axial
         if roller_length <= 0:
-            raise ValueError("Axial clearances leave no printable roller length.")
+            raise ValueError(
+                "Axial clearances leave no printable roller length: width "
+                f"{checked_width:.2f} mm minus two ends of {axial:.2f} mm leaves "
+                f"{roller_length:.2f} mm."
+            )
         inner_outer_radius = pitch_radius - roller_radius - clearance
         outer_inner_radius = pitch_radius + roller_radius + clearance
         lip_inner_radius = outer_inner_radius - lip_depth
         face_opening = lip_inner_radius - inner_outer_radius
         if face_opening >= roller:
-            raise ValueError("Retaining rims do not capture the requested rollers.")
+            raise ValueError(
+                "Retaining rims do not capture the requested rollers: the "
+                f"{face_opening:.2f} mm face opening must stay below the "
+                f"{roller:.2f} mm roller diameter. Use larger rollers or a "
+                "smaller print clearance."
+            )
         checked_name = self._validated_object_name(name)
         app, part = self._modules()
 
