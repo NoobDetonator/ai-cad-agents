@@ -16,7 +16,13 @@ from aicad.ui.bridge_controller import GuiBridgeController, get_or_start_gui_bri
 def automatic_approval_default(
     environment: dict[str, str] | os._Environ[str] = os.environ,
 ) -> bool:
-    return environment.get("AICAD_QUICK_TEST_MODE", "1").strip() == "1"
+    """Auto-approval starts OFF unless TALOS_AUTO_APPROVE=1 asks for it.
+
+    The visible-confirmation default is the product's core safety promise;
+    development sessions opt in explicitly (scripts/iniciar_rapido.ps1).
+    """
+
+    return environment.get("TALOS_AUTO_APPROVE", "0").strip() == "1"
 
 
 def mcp_configuration() -> dict[str, object]:

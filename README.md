@@ -26,7 +26,7 @@ regras do produto permanecem independentes dele.
 - captura multivista e vistas em corte XY/XZ/YZ com restauração do viewport;
 - `inspect_cad_model` para contexto, validação, medidas e imagens em uma chamada;
 - telemetria em memória para bytes/tokens estimados, bridge, GUI e confirmação;
-- aprovação automática ligada por padrão apenas para mutações compensáveis; exportações e operações não reversíveis sempre manuais.
+- confirmação visível por padrão; `TALOS_AUTO_APPROVE=1` aprova automaticamente apenas mutações compensáveis, e exportações são sempre manuais.
 
 O painel não expõe chat interno, seletor de provedor nem campo de chave. A IA
 embutida foi removida: o modelo é sempre escolhido pelo agente externo que

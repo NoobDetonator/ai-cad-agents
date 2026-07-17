@@ -38,9 +38,10 @@ Se `AiCad` já existir, confira seu destino antes de remover ou substituir.
 3. Confirme que o painel apareceu à direita.
 4. Confirme "Ponte MCP ativa" no painel e teste `health` pelo MCP.
 
-A aprovação automática inicia ativada, mas vale apenas para mutações marcadas
-como compensáveis; exportações e operações não reversíveis
-continuam exigindo confirmação manual.
+O painel inicia exigindo confirmação visual de cada mutação. Defina
+`TALOS_AUTO_APPROVE=1` (ou marque a opção no painel) para aprovar
+automaticamente apenas mutações compensáveis; exportações e operações não
+reversíveis continuam exigindo confirmação manual.
 
 ## Atualização
 

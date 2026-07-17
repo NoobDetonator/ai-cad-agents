@@ -100,6 +100,6 @@ def test_adapter_rejects_invalid_foundation_arguments_before_freecad() -> None:
 
 
 def test_automatic_approval_is_the_visible_default_with_explicit_opt_out() -> None:
-    assert automatic_approval_default({}) is True
-    assert automatic_approval_default({"AICAD_QUICK_TEST_MODE": "1"}) is True
-    assert automatic_approval_default({"AICAD_QUICK_TEST_MODE": "0"}) is False
+    assert automatic_approval_default({}) is False
+    assert automatic_approval_default({"TALOS_AUTO_APPROVE": "1"}) is True
+    assert automatic_approval_default({"TALOS_AUTO_APPROVE": "0"}) is False
