@@ -20,4 +20,3 @@ def register_commands() -> None:
             return True
 
     Gui.addCommand("Talos_ShowMcpPanel", ShowMcpPanelCommand())
-    Gui.addCommand("AICad_ShowChat", ShowMcpPanelCommand())

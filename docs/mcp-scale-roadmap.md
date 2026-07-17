@@ -514,7 +514,7 @@ Testes adicionais:
 
 ### Base transversal — erros recuperáveis
 
-- categorias e ações de recuperação compartilhadas por chat e MCP;
+- categorias e ações de recuperação compartilhadas pela ponte e pelo MCP;
 - estado seguro explícito para falhas anteriores à execução e rollback;
 - transporte interrompido marcado como estado desconhecido;
 - erros de leitura preservados como resposta estruturada;

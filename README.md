@@ -28,9 +28,9 @@ regras do produto permanecem independentes dele.
 - telemetria em memória para bytes/tokens estimados, bridge, GUI e confirmação;
 - aprovação automática ligada por padrão apenas para mutações compensáveis; exportações e operações não reversíveis sempre manuais.
 
-O painel não expõe chat interno, seletor de provedor nem campo de chave. O backend
-legado da IA interna permanece somente em manutenção, sem fazer parte do fluxo
-principal do produto.
+O painel não expõe chat interno, seletor de provedor nem campo de chave. A IA
+embutida foi removida: o modelo é sempre escolhido pelo agente externo que
+conecta ao MCP.
 
 ### Atualizações recentes
 
@@ -109,8 +109,8 @@ A suíte cobre mais de 200 testes unitários, FreeCADCmd e a interface gráfica 
 medir a seleção de ferramentas sem rede ou FreeCAD:
 
 ```powershell
-.\scripts\benchmark_agent.ps1 -Strategy selector
-.\scripts\benchmark_agent.ps1 -Strategy selector -Corpus benchmarks\agent-corpus-heldout-v1.json
+.\scripts\benchmark_agent.ps1
+.\scripts\benchmark_agent.ps1 -Corpus benchmarks\agent-corpus-heldout-v1.json
 ```
 
 Os corpora históricos verificam regressões conhecidas. O corpus `heldout` não

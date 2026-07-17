@@ -4,7 +4,7 @@
 
 1. O servidor MCP é o produto principal.
 2. O FreeCAD é um adaptador geométrico, não a camada de regras.
-3. Chat e MCP chamam o mesmo `ToolRegistry`.
+3. Painel e MCP chamam o mesmo `ToolRegistry`.
 4. Toda mutação é validada, transacional, auditada e reversível.
 5. Texto do agente nunca é executado como Python, macro ou shell.
 

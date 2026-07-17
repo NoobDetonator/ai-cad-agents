@@ -8,14 +8,13 @@ validadas, reversíveis e observáveis.
 
 - MCP primeiro;
 - FreeCAD como adaptador geométrico;
-- um único catálogo para chat e agentes externos;
+- um único catálogo para o painel e os agentes externos;
 - confirmação humana visível;
 - nenhuma execução de Python, macro ou shell gerado;
 - operação local e auditável.
 
-A IA interna com DeepSeek permanece opcional e em manutenção. Não haverá camada
-multi-provedor dentro do Workbench: o usuário escolhe o modelo pelo agente que
-conecta ao MCP.
+Não existe IA embutida nem camada multi-provedor dentro do Workbench: o usuário
+escolhe o modelo pelo agente que conecta ao MCP.
 
 ## Público inicial
 

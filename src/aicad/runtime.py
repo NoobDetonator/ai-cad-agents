@@ -29,7 +29,7 @@ def get_tool_registry() -> ToolRegistry:
 
 @lru_cache(maxsize=1)
 def get_plan_service() -> PlanService:
-    """Return the authoritative in-process service shared by chat and GUI bridge."""
+    """Return the authoritative in-process plan service shared with the GUI bridge."""
 
     return PlanService(
         audit_service=get_audit_service(),

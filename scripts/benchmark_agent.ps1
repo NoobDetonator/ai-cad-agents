@@ -2,8 +2,6 @@
 param(
     [ValidateSet("markdown", "json")]
     [string]$Format = "markdown",
-    [ValidateSet("baseline", "selector")]
-    [string]$Strategy = "baseline",
     [string]$Corpus
 )
 
@@ -22,8 +20,7 @@ $env:PYTHONUTF8 = "1"
 
 $PythonArguments = @(
     "-m", "aicad.evaluation.benchmark",
-    "--format", $Format,
-    "--strategy", $Strategy
+    "--format", $Format
 )
 if ($Corpus) {
     $PythonArguments += @("--corpus", $Corpus)

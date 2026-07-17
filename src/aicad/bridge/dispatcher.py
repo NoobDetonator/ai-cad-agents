@@ -699,7 +699,7 @@ class BridgeDispatcher:
         "Unknown CAD object: Sun2"); anything else is an implementation
         detail and stays suppressed. Without the reason a caller cannot tell
         a bad argument from a GUI failure, and the GUI already shows it to
-        the human via chat_panel.
+        the human via the TALOS panel.
         """
 
         if not isinstance(error, _DOMAIN_ERRORS):
