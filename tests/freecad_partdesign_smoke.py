@@ -393,6 +393,43 @@ bound_datum = modify(
 )
 assert bound_datum["value"] == 30, bound_datum
 
+# Ancoragem na origem (geometry -1): o retangulo dimensionado fecha em 0 DoF.
+modify(
+    "cad.add_sketch_dimensional_constraint",
+    {
+        "sketch": "ParamBase",
+        "constraint_type": "length",
+        "geometry": 1,
+        "value": 15,
+    },
+)
+modify(
+    "cad.add_sketch_geometric_constraint",
+    {
+        "sketch": "ParamBase",
+        "constraint_type": "coincident",
+        "first_geometry": 0,
+        "first_position": "start",
+        "second_geometry": -1,
+        "second_position": "start",
+    },
+)
+anchored_status = read("cad.get_sketch_status", {"sketch": "ParamBase"})
+assert anchored_status["fully_constrained"] is True, anchored_status
+try:
+    modify(
+        "cad.add_sketch_geometric_constraint",
+        {
+            "sketch": "ParamBase",
+            "constraint_type": "horizontal",
+            "first_geometry": -1,
+        },
+    )
+except Exception:
+    pass
+else:
+    raise AssertionError("A origem aceitou uma restricao sem sentido.")
+
 param_pad = modify(
     "cad.add_pad",
     {"body": "ParamBody", "sketch": "ParamBase", "length": 6, "name": "ParamPad"},

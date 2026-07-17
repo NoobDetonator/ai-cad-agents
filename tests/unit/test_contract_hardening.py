@@ -90,6 +90,50 @@ def test_enum_errors_echo_the_allowed_values() -> None:
         )
 
 
+def test_constraint_contracts_accept_the_sketch_origin_anchor() -> None:
+    registry = build_default_registry()
+
+    anchored = registry.validate_arguments(
+        "cad.add_sketch_geometric_constraint",
+        {
+            "sketch": "Base",
+            "constraint_type": "coincident",
+            "first_geometry": 0,
+            "first_position": "start",
+            "second_geometry": -1,
+            "second_position": "start",
+        },
+    )
+    assert anchored["second_geometry"] == -1
+
+    measured = registry.validate_arguments(
+        "cad.add_sketch_dimensional_constraint",
+        {
+            "sketch": "Base",
+            "constraint_type": "distance_x",
+            "geometry": -1,
+            "position": "start",
+            "second_geometry": 2,
+            "second_position": "center",
+            "value": 10,
+        },
+    )
+    assert measured["geometry"] == -1
+
+    with pytest.raises(ToolInputError, match="at least -1"):
+        registry.validate_arguments(
+            "cad.add_sketch_geometric_constraint",
+            {
+                "sketch": "Base",
+                "constraint_type": "coincident",
+                "first_geometry": -2,
+                "first_position": "start",
+                "second_geometry": 0,
+                "second_position": "start",
+            },
+        )
+
+
 def test_registry_rejects_invalid_published_schemas_at_registration() -> None:
     registry = ToolRegistry()
 

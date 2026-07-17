@@ -169,10 +169,21 @@ junto com o CAD-IR completo (E1.3), se a prática mostrar necessidade.
   será validado (sem path traversal, ao contrário do concorrente);
 - FEM permanece adiado; a cadeia guiada do concorrente vira receita futura.
 
-### P6 — Prova ponta a ponta
+### P6 — Prova ponta a ponta (primeiro canônico entregue)
 
-- Projetos canônicos remodelados como Bodies paramétricos: case com tampa,
-  suporte, flange, estágio planetário;
+- ✅ **Placa de montagem paramétrica** dirigida inteiramente via MCP em uma
+  sessão (65 mutações, 12 leituras): VarSet com sete parâmetros, sketch base
+  ancorado na origem com 0 DoF, furos com counterbore em sketch anexado à
+  face superior com centros dirigidos por expressões
+  (`Params.comprimento - Params.margem`), chanfro semântico, e duas mudanças
+  de parâmetro recalculando a árvore inteira com volume exato. Massa e
+  prontidão de impressão verificadas pelas ferramentas do P5. Baseline de
+  telemetria versionada em `benchmarks/mcp-baseline-placa-canonica-v1.json`;
+- desbloqueio no caminho: restrições agora aceitam `-1` como âncora na
+  origem do sketch (coincident/concentric e cotas de distância) — sem isso,
+  0 DoF era inalcançável pelo contrato publicado;
+- pendentes: case com tampa, suporte, flange e estágio planetário como
+  Bodies paramétricos;
 - benchmark com agente real (não seletor lexical): mesmas tarefas no TALOS e
   no freecad-mcp clonado, medindo turnos, tokens, taxa de sucesso e os seis
   critérios de qualidade;

@@ -39,6 +39,28 @@ class SketchMixin:
             raise ValueError("Sketch geometry index is out of range.")
         return checked
 
+    @classmethod
+    def _anchor_geometry_index(cls, sketch: Any, index: int) -> int:
+        """Resolve a constraint endpoint; -1 addresses the sketch origin point."""
+
+        checked = int(index)
+        if not isinstance(index, bool) and checked == index and checked == -1:
+            return -1
+        return cls._geometry_index(sketch, index)
+
+    @classmethod
+    def _origin_point_position(cls, geometry: int, position: str) -> int:
+        """Return the Sketcher point code; the origin only exposes start."""
+
+        if geometry == -1:
+            checked = str(position).strip().lower()
+            if checked != "start":
+                raise ValueError(
+                    "The sketch origin point only exposes the start position."
+                )
+            return 1
+        return cls._point_position(position)
+
     @staticmethod
     def _constraint_index(sketch: Any, index: int) -> int:
         checked = int(index)

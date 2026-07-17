@@ -17,7 +17,7 @@ class SketchConstraintMixin:
         second_position: str | None = None,
     ) -> dict[str, Any]:
         target = self._sketch_or_error(sketch)
-        first = self._geometry_index(target, first_geometry)
+        first = self._anchor_geometry_index(target, first_geometry)
         checked_type = str(constraint_type).strip().lower()
         sketcher = self._sketcher_module()
         unary = {"horizontal": "Horizontal", "vertical": "Vertical", "block": "Block"}
@@ -27,6 +27,11 @@ class SketchConstraintMixin:
             "tangent": "Tangent",
             "equal": "Equal",
         }
+        if first < 0 and checked_type not in {"coincident", "concentric"}:
+            raise ValueError(
+                "The sketch origin point only supports coincident and "
+                "concentric constraints."
+            )
         if checked_type in unary:
             constraint = sketcher.Constraint(unary[checked_type], first)
         elif checked_type in binary:
@@ -41,19 +46,29 @@ class SketchConstraintMixin:
                 raise ValueError(
                     "Coincident requires second_geometry and both point positions."
                 )
-            second = self._geometry_index(target, second_geometry)
+            second = self._anchor_geometry_index(target, second_geometry)
+            if second == first:
+                raise ValueError("A binary sketch constraint requires two geometries.")
             constraint = sketcher.Constraint(
                 "Coincident",
                 first,
-                self._point_position(first_position),
+                self._origin_point_position(first, first_position),
                 second,
-                self._point_position(second_position),
+                self._origin_point_position(second, second_position),
             )
         elif checked_type == "concentric":
             if second_geometry is None:
                 raise ValueError("Concentric requires second_geometry.")
-            second = self._geometry_index(target, second_geometry)
-            constraint = sketcher.Constraint("Coincident", first, 3, second, 3)
+            second = self._anchor_geometry_index(target, second_geometry)
+            if second == first:
+                raise ValueError("A binary sketch constraint requires two geometries.")
+            constraint = sketcher.Constraint(
+                "Coincident",
+                first,
+                1 if first < 0 else 3,
+                second,
+                1 if second < 0 else 3,
+            )
         elif checked_type == "point_on_object":
             if second_geometry is None or first_position is None:
                 raise ValueError(
@@ -96,8 +111,12 @@ class SketchConstraintMixin:
     ) -> dict[str, Any]:
         checked_value = self._positive_values(value)[0]
         target = self._sketch_or_error(sketch)
-        first = self._geometry_index(target, geometry)
+        first = self._anchor_geometry_index(target, geometry)
         checked_type = str(constraint_type).strip().lower()
+        if first < 0 and checked_type not in {"distance", "distance_x", "distance_y"}:
+            raise ValueError(
+                "The sketch origin point only supports distance dimensions."
+            )
         sketcher = self._sketcher_module()
         if checked_type == "length":
             constraint = sketcher.Constraint("Distance", first, checked_value)
@@ -116,7 +135,7 @@ class SketchConstraintMixin:
         elif checked_type in {"distance", "distance_x", "distance_y"}:
             if position is None:
                 raise ValueError(f"{checked_type} requires a first point position.")
-            first_pos = self._point_position(position)
+            first_pos = self._origin_point_position(first, position)
             freecad_type = {
                 "distance": "Distance",
                 "distance_x": "DistanceX",
@@ -131,13 +150,17 @@ class SketchConstraintMixin:
                     raise ValueError(
                         f"{checked_type} between points requires second_position."
                     )
-                second = self._geometry_index(target, second_geometry)
+                second = self._anchor_geometry_index(target, second_geometry)
+                if second == first:
+                    raise ValueError(
+                        "A distance between points requires two geometries."
+                    )
                 constraint = sketcher.Constraint(
                     freecad_type,
                     first,
                     first_pos,
                     second,
-                    self._point_position(second_position),
+                    self._origin_point_position(second, second_position),
                     checked_value,
                 )
             unit = "mm"

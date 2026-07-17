@@ -96,6 +96,12 @@ dos argumentos. O snapshot separa:
 A estimativa não inclui framing do transporte nem substitui o tokenizer do cliente.
 As métricas são descartadas ao encerrar o processo MCP.
 
+A primeira baseline real está versionada em
+`benchmarks/mcp-baseline-placa-canonica-v1.json`: a placa canônica do P6
+custa 142 chamadas de ponte (~25 s de ponte, ~39 s de execução na GUI),
+~66 KiB de payload MCP e ~16,6 mil tokens estimados em 65 mutações. É a
+referência de comparação para planos compostos, `get_cad_changes` e CAD-IR.
+
 ### Recuperação e generalização
 
 O benchmark agora informa recall, rank-1, MRR, precisão@K, cobertura de

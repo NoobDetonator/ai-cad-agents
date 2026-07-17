@@ -12,6 +12,9 @@ from aicad.core.tool_registry import ToolRisk, ToolSpec
 
 
 GEOMETRY_INDEX = {"type": "integer", "minimum": 0, "maximum": 4095}
+# Constraint endpoints also accept -1: the sketch origin point (position
+# "start"), required to fully anchor a profile without construction geometry.
+ANCHOR_GEOMETRY_INDEX = {"type": "integer", "minimum": -1, "maximum": 4095}
 CONSTRAINT_INDEX = {"type": "integer", "minimum": 0, "maximum": 8191}
 POINT_POSITION = {"type": "string", "enum": ["start", "end", "center"]}
 INDEX_LIST = {
@@ -284,7 +287,11 @@ def sketch_tool_specs() -> tuple[ToolSpec, ...]:
             "cad.add_sketch_geometric_constraint",
             "Add a geometric constraint: horizontal, vertical, parallel, "
             "perpendicular, tangent, equal, coincident, concentric, "
-            "point_on_object or block.",
+            "point_on_object or block. Geometry -1 addresses the sketch "
+            "origin point (position start) for coincident and concentric, "
+            'anchoring a profile: {"sketch": "Base", "constraint_type": '
+            '"coincident", "first_geometry": 0, "first_position": "start", '
+            '"second_geometry": -1, "second_position": "start"}.',
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -304,8 +311,8 @@ def sketch_tool_specs() -> tuple[ToolSpec, ...]:
                             "block",
                         ],
                     },
-                    "first_geometry": GEOMETRY_INDEX,
-                    "second_geometry": GEOMETRY_INDEX,
+                    "first_geometry": ANCHOR_GEOMETRY_INDEX,
+                    "second_geometry": ANCHOR_GEOMETRY_INDEX,
                     "first_position": POINT_POSITION,
                     "second_position": POINT_POSITION,
                 },
@@ -320,7 +327,9 @@ def sketch_tool_specs() -> tuple[ToolSpec, ...]:
             "cad.add_sketch_dimensional_constraint",
             "Add a driving dimensional constraint in millimeters, except angle "
             "which is supplied in degrees: length, radius, diameter, angle, "
-            "distance, distance_x or distance_y.",
+            "distance, distance_x or distance_y. Geometry -1 addresses the "
+            "sketch origin point (position start) in distance dimensions, "
+            "measuring a point's absolute offset from the origin.",
             ToolRisk.MODIFY,
             _object_schema(
                 {
@@ -337,10 +346,10 @@ def sketch_tool_specs() -> tuple[ToolSpec, ...]:
                             "distance_y",
                         ],
                     },
-                    "geometry": GEOMETRY_INDEX,
+                    "geometry": ANCHOR_GEOMETRY_INDEX,
                     "value": POSITIVE,
                     "position": POINT_POSITION,
-                    "second_geometry": GEOMETRY_INDEX,
+                    "second_geometry": ANCHOR_GEOMETRY_INDEX,
                     "second_position": POINT_POSITION,
                 },
                 ("sketch", "constraint_type", "geometry", "value"),

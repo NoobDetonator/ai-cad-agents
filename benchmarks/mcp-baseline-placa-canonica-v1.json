@@ -1,0 +1,1282 @@
+{
+  "steps": [],
+  "criteria": {
+    "esboco_base_0dof": true,
+    "esboco_furos_0dof": true,
+    "parametro_recalcula_valido": true,
+    "chanfro_semantico": true,
+    "massa_verificada": true,
+    "imprime_sem_suporte": true
+  },
+  "captures": [
+    "aicad://view/4cf1f9995b0046e1bb1db9d3356494d4",
+    "aicad://view/9ffcd3635e7247fe9f8fe1b8efa175ba"
+  ],
+  "mutations": 65,
+  "reads": 12,
+  "telemetry": {
+    "contract_version": "1.0",
+    "scope": "current_mcp_process",
+    "privacy": {
+      "request_content_retained": false,
+      "wall_clock_timestamps_retained": false,
+      "recent_call_limit": 128
+    },
+    "session": {
+      "uptime_ms": 124382.568,
+      "pending_confirmation_workflows": 0
+    },
+    "mcp": {
+      "calls": 142,
+      "failures": 0,
+      "duration_ms": 25345.8,
+      "average_duration_ms": 178.492,
+      "input_bytes": 26528,
+      "output_bytes": 39819,
+      "estimated_tokens": 16587,
+      "token_estimate_method": "utf8_payload_bytes_divided_by_4"
+    },
+    "bridge": {
+      "calls": 142,
+      "failures": 0,
+      "duration_ms": 25312.402,
+      "average_duration_ms": 178.256,
+      "input_bytes": 30560,
+      "output_bytes": 42910,
+      "gui_timing_samples": 77,
+      "gui_queue_wait_ms": 20538.0,
+      "gui_confirmation_wait_ms": 32.0,
+      "gui_execution_ms": 39280.0,
+      "gui_total_ms": 59850.0,
+      "by_operation": {
+        "cad.add_chamfer": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 306.377,
+          "average_duration_ms": 153.189,
+          "input_bytes": 508,
+          "output_bytes": 621
+        },
+        "cad.add_hole": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 303.992,
+          "average_duration_ms": 151.996,
+          "input_bytes": 542,
+          "output_bytes": 541
+        },
+        "cad.add_pad": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 252.485,
+          "average_duration_ms": 126.242,
+          "input_bytes": 366,
+          "output_bytes": 493
+        },
+        "cad.add_sketch_circle": {
+          "calls": 8,
+          "failures": 0,
+          "duration_ms": 1097.41,
+          "average_duration_ms": 137.176,
+          "input_bytes": 1664,
+          "output_bytes": 2493
+        },
+        "cad.add_sketch_dimensional_constraint": {
+          "calls": 28,
+          "failures": 0,
+          "duration_ms": 3767.499,
+          "average_duration_ms": 134.554,
+          "input_bytes": 6922,
+          "output_bytes": 9027
+        },
+        "cad.add_sketch_geometric_constraint": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 254.147,
+          "average_duration_ms": 127.073,
+          "input_bytes": 602,
+          "output_bytes": 616
+        },
+        "cad.add_sketch_rectangle": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 242.219,
+          "average_duration_ms": 121.11,
+          "input_bytes": 408,
+          "output_bytes": 691
+        },
+        "cad.analyze_print_readiness": {
+          "calls": 1,
+          "failures": 0,
+          "duration_ms": 615.361,
+          "average_duration_ms": 615.361,
+          "input_bytes": 166,
+          "output_bytes": 601
+        },
+        "cad.bind_feature_parameter": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 256.585,
+          "average_duration_ms": 128.293,
+          "input_bytes": 442,
+          "output_bytes": 541
+        },
+        "cad.bind_sketch_datum": {
+          "calls": 28,
+          "failures": 0,
+          "duration_ms": 4062.053,
+          "average_duration_ms": 145.073,
+          "input_bytes": 6360,
+          "output_bytes": 7595
+        },
+        "cad.capture_views": {
+          "calls": 1,
+          "failures": 0,
+          "duration_ms": 788.518,
+          "average_duration_ms": 788.518,
+          "input_bytes": 203,
+          "output_bytes": 798
+        },
+        "cad.create_body": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 254.419,
+          "average_duration_ms": 127.21,
+          "input_bytes": 304,
+          "output_bytes": 458
+        },
+        "cad.create_body_sketch": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 292.277,
+          "average_duration_ms": 146.139,
+          "input_bytes": 384,
+          "output_bytes": 511
+        },
+        "cad.create_face_sketch": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 296.473,
+          "average_duration_ms": 148.236,
+          "input_bytes": 464,
+          "output_bytes": 506
+        },
+        "cad.create_parameter_set": {
+          "calls": 2,
+          "failures": 0,
+          "duration_ms": 286.084,
+          "average_duration_ms": 143.042,
+          "input_bytes": 324,
+          "output_bytes": 447
+        },
+        "cad.get_context_snapshot": {
+          "calls": 1,
+          "failures": 0,
+          "duration_ms": 549.764,
+          "average_duration_ms": 549.764,
+          "input_bytes": 195,
+          "output_bytes": 920
+        },
+        "cad.get_sketch_status": {
+          "calls": 4,
+          "failures": 0,
+          "duration_ms": 2315.281,
+          "average_duration_ms": 578.82,
+          "input_bytes": 662,
+          "output_bytes": 1935
+        },
+        "cad.measure_mass_properties": {
+          "calls": 1,
+          "failures": 0,
+          "duration_ms": 600.859,
+          "average_duration_ms": 600.859,
+          "input_bytes": 181,
+          "output_bytes": 502
+        },
+        "cad.measure_object": {
+          "calls": 3,
+          "failures": 0,
+          "duration_ms": 1892.578,
+          "average_duration_ms": 630.859,
+          "input_bytes": 471,
+          "output_bytes": 1575
+        },
+        "cad.rename_sketch_constraint": {
+          "calls": 28,
+          "failures": 0,
+          "duration_ms": 3836.177,
+          "average_duration_ms": 137.006,
+          "input_bytes": 5748,
+          "output_bytes": 7203
+        },
+        "cad.set_master_parameter": {
+          "calls": 18,
+          "failures": 0,
+          "duration_ms": 2394.099,
+          "average_duration_ms": 133.005,
+          "input_bytes": 3500,
+          "output_bytes": 4549
+        },
+        "cad.validate_document": {
+          "calls": 1,
+          "failures": 0,
+          "duration_ms": 647.746,
+          "average_duration_ms": 647.746,
+          "input_bytes": 144,
+          "output_bytes": 287
+        }
+      }
+    },
+    "confirmation_workflows": {
+      "completed": 65,
+      "pending": 0,
+      "total_wait_ms": 98670.884,
+      "average_wait_ms": 1518.014,
+      "last_wait_ms": 1512.226
+    },
+    "by_tool": {
+      "execute_cad_read_tool": {
+        "calls": 12,
+        "failures": 0,
+        "duration_ms": 7413.583,
+        "average_duration_ms": 617.799,
+        "input_bytes": 1110,
+        "output_bytes": 3527
+      },
+      "request_cad_tool": {
+        "calls": 130,
+        "failures": 0,
+        "duration_ms": 17932.217,
+        "average_duration_ms": 137.94,
+        "input_bytes": 25418,
+        "output_bytes": 36292
+      }
+    },
+    "recent_calls": [
+      {
+        "sequence": 14,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 13.736,
+        "input_bytes": 178,
+        "output_bytes": 377
+      },
+      {
+        "sequence": 15,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 254.775,
+        "input_bytes": 165,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 16,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.436,
+        "input_bytes": 165,
+        "output_bytes": 350
+      },
+      {
+        "sequence": 17,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 252.242,
+        "input_bytes": 128,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 18,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.53,
+        "input_bytes": 128,
+        "output_bytes": 307
+      },
+      {
+        "sequence": 19,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 289.359,
+        "input_bytes": 168,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 20,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 3.324,
+        "input_bytes": 168,
+        "output_bytes": 360
+      },
+      {
+        "sequence": 21,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 239.884,
+        "input_bytes": 180,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 22,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.804,
+        "input_bytes": 180,
+        "output_bytes": 540
+      },
+      {
+        "sequence": 23,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 251.804,
+        "input_bytes": 209,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 24,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.149,
+        "input_bytes": 209,
+        "output_bytes": 485
+      },
+      {
+        "sequence": 25,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 267.249,
+        "input_bytes": 184,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 26,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.584,
+        "input_bytes": 184,
+        "output_bytes": 357
+      },
+      {
+        "sequence": 27,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 243.844,
+        "input_bytes": 202,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 28,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 14.543,
+        "input_bytes": 202,
+        "output_bytes": 384
+      },
+      {
+        "sequence": 29,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 247.62,
+        "input_bytes": 208,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 30,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.711,
+        "input_bytes": 208,
+        "output_bytes": 485
+      },
+      {
+        "sequence": 31,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 240.973,
+        "input_bytes": 180,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 32,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 3.882,
+        "input_bytes": 180,
+        "output_bytes": 365
+      },
+      {
+        "sequence": 33,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 243.83,
+        "input_bytes": 194,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 34,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.583,
+        "input_bytes": 194,
+        "output_bytes": 375
+      },
+      {
+        "sequence": 35,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 251.883,
+        "input_bytes": 277,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 36,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.737,
+        "input_bytes": 277,
+        "output_bytes": 465
+      },
+      {
+        "sequence": 37,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 513.859,
+        "input_bytes": 89,
+        "output_bytes": 228
+      },
+      {
+        "sequence": 38,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 250.142,
+        "input_bytes": 159,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 39,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.882,
+        "input_bytes": 159,
+        "output_bytes": 342
+      },
+      {
+        "sequence": 40,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 254.411,
+        "input_bytes": 197,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 41,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.578,
+        "input_bytes": 197,
+        "output_bytes": 390
+      },
+      {
+        "sequence": 42,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 281.485,
+        "input_bytes": 208,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 43,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.48,
+        "input_bytes": 208,
+        "output_bytes": 355
+      },
+      {
+        "sequence": 44,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 268.944,
+        "input_bytes": 184,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 45,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.695,
+        "input_bytes": 184,
+        "output_bytes": 448
+      },
+      {
+        "sequence": 46,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 248.533,
+        "input_bytes": 211,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 47,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.392,
+        "input_bytes": 211,
+        "output_bytes": 487
+      },
+      {
+        "sequence": 48,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 271.809,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 49,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.392,
+        "input_bytes": 181,
+        "output_bytes": 367
+      },
+      {
+        "sequence": 50,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 263.532,
+        "input_bytes": 205,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 51,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.603,
+        "input_bytes": 205,
+        "output_bytes": 386
+      },
+      {
+        "sequence": 52,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 248.624,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 53,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.809,
+        "input_bytes": 233,
+        "output_bytes": 466
+      },
+      {
+        "sequence": 54,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 252.28,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 55,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.565,
+        "input_bytes": 181,
+        "output_bytes": 354
+      },
+      {
+        "sequence": 56,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 286.197,
+        "input_bytes": 194,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 57,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.836,
+        "input_bytes": 194,
+        "output_bytes": 388
+      },
+      {
+        "sequence": 58,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 253.051,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 59,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.595,
+        "input_bytes": 233,
+        "output_bytes": 489
+      },
+      {
+        "sequence": 60,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 261.528,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 61,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.681,
+        "input_bytes": 181,
+        "output_bytes": 354
+      },
+      {
+        "sequence": 62,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 254.751,
+        "input_bytes": 194,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 63,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 14.803,
+        "input_bytes": 194,
+        "output_bytes": 375
+      },
+      {
+        "sequence": 64,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 264.453,
+        "input_bytes": 184,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 65,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.591,
+        "input_bytes": 184,
+        "output_bytes": 472
+      },
+      {
+        "sequence": 66,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 283.477,
+        "input_bytes": 211,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 67,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.673,
+        "input_bytes": 211,
+        "output_bytes": 499
+      },
+      {
+        "sequence": 68,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 256.502,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 69,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.702,
+        "input_bytes": 181,
+        "output_bytes": 354
+      },
+      {
+        "sequence": 70,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 259.201,
+        "input_bytes": 205,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 71,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.69,
+        "input_bytes": 205,
+        "output_bytes": 386
+      },
+      {
+        "sequence": 72,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 258.055,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 73,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.579,
+        "input_bytes": 233,
+        "output_bytes": 490
+      },
+      {
+        "sequence": 74,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 256.823,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 75,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.733,
+        "input_bytes": 181,
+        "output_bytes": 367
+      },
+      {
+        "sequence": 76,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 261.303,
+        "input_bytes": 215,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 77,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.077,
+        "input_bytes": 215,
+        "output_bytes": 408
+      },
+      {
+        "sequence": 78,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 290.382,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 79,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.781,
+        "input_bytes": 233,
+        "output_bytes": 501
+      },
+      {
+        "sequence": 80,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 266.012,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 81,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.472,
+        "input_bytes": 181,
+        "output_bytes": 367
+      },
+      {
+        "sequence": 82,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 309.968,
+        "input_bytes": 194,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 83,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.524,
+        "input_bytes": 194,
+        "output_bytes": 387
+      },
+      {
+        "sequence": 84,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 265.54,
+        "input_bytes": 184,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 85,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.66,
+        "input_bytes": 184,
+        "output_bytes": 485
+      },
+      {
+        "sequence": 86,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 269.296,
+        "input_bytes": 211,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 87,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.612,
+        "input_bytes": 211,
+        "output_bytes": 498
+      },
+      {
+        "sequence": 88,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 294.212,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 89,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.613,
+        "input_bytes": 181,
+        "output_bytes": 354
+      },
+      {
+        "sequence": 90,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 440.181,
+        "input_bytes": 205,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 91,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 3.007,
+        "input_bytes": 205,
+        "output_bytes": 399
+      },
+      {
+        "sequence": 92,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 266.728,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 93,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.645,
+        "input_bytes": 233,
+        "output_bytes": 503
+      },
+      {
+        "sequence": 94,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 273.165,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 95,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.448,
+        "input_bytes": 181,
+        "output_bytes": 367
+      },
+      {
+        "sequence": 96,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 267.151,
+        "input_bytes": 215,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 97,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.944,
+        "input_bytes": 215,
+        "output_bytes": 409
+      },
+      {
+        "sequence": 98,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 269.636,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 99,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.824,
+        "input_bytes": 233,
+        "output_bytes": 502
+      },
+      {
+        "sequence": 100,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 273.91,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 101,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.624,
+        "input_bytes": 181,
+        "output_bytes": 367
+      },
+      {
+        "sequence": 102,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 286.844,
+        "input_bytes": 211,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 103,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.737,
+        "input_bytes": 211,
+        "output_bytes": 393
+      },
+      {
+        "sequence": 104,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 289.612,
+        "input_bytes": 184,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 105,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.691,
+        "input_bytes": 184,
+        "output_bytes": 484
+      },
+      {
+        "sequence": 106,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 276.165,
+        "input_bytes": 211,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 107,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.871,
+        "input_bytes": 211,
+        "output_bytes": 499
+      },
+      {
+        "sequence": 108,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 289.684,
+        "input_bytes": 181,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 109,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.308,
+        "input_bytes": 181,
+        "output_bytes": 381
+      },
+      {
+        "sequence": 110,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 267.024,
+        "input_bytes": 205,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 111,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.675,
+        "input_bytes": 205,
+        "output_bytes": 399
+      },
+      {
+        "sequence": 112,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 270.215,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 113,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.694,
+        "input_bytes": 233,
+        "output_bytes": 505
+      },
+      {
+        "sequence": 114,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 275.832,
+        "input_bytes": 182,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 115,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.711,
+        "input_bytes": 182,
+        "output_bytes": 367
+      },
+      {
+        "sequence": 116,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 271.212,
+        "input_bytes": 194,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 117,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.573,
+        "input_bytes": 194,
+        "output_bytes": 387
+      },
+      {
+        "sequence": 118,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 275.329,
+        "input_bytes": 233,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 119,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 4.882,
+        "input_bytes": 233,
+        "output_bytes": 504
+      },
+      {
+        "sequence": 120,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 273.728,
+        "input_bytes": 182,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 121,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.134,
+        "input_bytes": 182,
+        "output_bytes": 368
+      },
+      {
+        "sequence": 122,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 338.841,
+        "input_bytes": 211,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 123,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.596,
+        "input_bytes": 211,
+        "output_bytes": 405
+      },
+      {
+        "sequence": 124,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 558.716,
+        "input_bytes": 90,
+        "output_bytes": 230
+      },
+      {
+        "sequence": 125,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 289.478,
+        "input_bytes": 247,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 126,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 15.17,
+        "input_bytes": 247,
+        "output_bytes": 390
+      },
+      {
+        "sequence": 127,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 630.472,
+        "input_bytes": 81,
+        "output_bytes": 237
+      },
+      {
+        "sequence": 128,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 296.298,
+        "input_bytes": 171,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 129,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.747,
+        "input_bytes": 171,
+        "output_bytes": 345
+      },
+      {
+        "sequence": 130,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 606.629,
+        "input_bytes": 81,
+        "output_bytes": 237
+      },
+      {
+        "sequence": 131,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 304.012,
+        "input_bytes": 230,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 132,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 2.93,
+        "input_bytes": 230,
+        "output_bytes": 470
+      },
+      {
+        "sequence": 133,
+        "tool": "request_cad_tool",
+        "status": "pending_confirmation",
+        "duration_ms": 285.051,
+        "input_bytes": 168,
+        "output_bytes": 151
+      },
+      {
+        "sequence": 134,
+        "tool": "request_cad_tool",
+        "status": "completed",
+        "duration_ms": 3.592,
+        "input_bytes": 168,
+        "output_bytes": 355
+      },
+      {
+        "sequence": 135,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 647.907,
+        "input_bytes": 68,
+        "output_bytes": 26
+      },
+      {
+        "sequence": 136,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 656.254,
+        "input_bytes": 81,
+        "output_bytes": 320
+      },
+      {
+        "sequence": 137,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 601.107,
+        "input_bytes": 105,
+        "output_bytes": 241
+      },
+      {
+        "sequence": 138,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 615.57,
+        "input_bytes": 90,
+        "output_bytes": 341
+      },
+      {
+        "sequence": 139,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 789.212,
+        "input_bytes": 127,
+        "output_bytes": 537
+      },
+      {
+        "sequence": 140,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 654.08,
+        "input_bytes": 89,
+        "output_bytes": 228
+      },
+      {
+        "sequence": 141,
+        "tool": "execute_cad_read_tool",
+        "status": "completed",
+        "duration_ms": 589.67,
+        "input_bytes": 90,
+        "output_bytes": 230
+      }
+    ]
+  }
+}
