@@ -11,6 +11,7 @@ from aicad.core.tool_catalog.governance import governance_tool_specs
 from aicad.core.tool_catalog.mechanical import mechanical_part_tool_specs
 from aicad.core.tool_catalog.modeling import modeling_tool_specs
 from aicad.core.tool_catalog.objects import object_tool_specs
+from aicad.core.tool_catalog.parameters import parameter_tool_specs
 from aicad.core.tool_catalog.partdesign import partdesign_tool_specs
 from aicad.core.tool_catalog.patterns import pattern_tool_specs
 from aicad.core.tool_catalog.primitives import primitive_tool_specs
@@ -27,6 +28,7 @@ CATALOG_BUILDERS: tuple[ToolSpecBuilder, ...] = (
     object_tool_specs,
     sketch_tool_specs,
     modeling_tool_specs,
+    parameter_tool_specs,
     partdesign_tool_specs,
     pattern_tool_specs,
     mechanical_part_tool_specs,

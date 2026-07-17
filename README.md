@@ -17,12 +17,14 @@ regras do produto permanecem independentes dele.
 
 - FreeCAD 1.1.1 instalado no Windows;
 - Workbench **TALOS MCP** com painel de ponte, capacidades, aprovações e atividade;
-- 109 ferramentas no mesmo `ToolRegistry` para a ponte e o servidor MCP;
+- 115 ferramentas no mesmo `ToolRegistry` para a ponte e o servidor MCP;
 - núcleo Part Design paramétrico (P1): Body, sketches anexados aos planos de
   origem, pad/pocket/revolução/groove/padrões por reflexão governada, edição
   por cota e status de restrições do sketch;
 - referências semânticas (P2): faces e arestas por papel geométrico, sketch
   em face sólida e dressups fillet/chanfro paramétricos;
+- parâmetros mestres (P3): VarSet com cotas e features vinculadas por
+  expressão de gramática fechada — mudar um parâmetro recalcula o modelo;
 - M0 a M7 concluídos; E1 — MCP em escala em execução;
 - modelagem básica e avançada, Sketch, montagens, rolamentos e exportação;
 - mutações transacionais, validadas, auditadas e reversíveis;

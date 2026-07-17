@@ -37,7 +37,7 @@ def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
     report = run_tool_retrieval_benchmark(load_corpus(CORPUS_PATH))
 
     assert report.strategy_name == "local_tool_selector_v1"
-    assert report.catalog_tools == 109
+    assert report.catalog_tools == 115
     assert report.top_n == 4
     assert report.recall_hits == report.tool_call_cases == 20
     assert report.recall_percent == 100
@@ -56,7 +56,7 @@ def test_tool_selector_recall_safety_and_schema_economy_are_reported() -> None:
 def test_m4_tool_selector_recovers_every_mechanical_capability() -> None:
     report = run_tool_retrieval_benchmark(load_corpus(M4_CORPUS_PATH))
 
-    assert report.catalog_tools == 109
+    assert report.catalog_tools == 115
     assert report.recall_hits == report.tool_call_cases == 46
     assert report.recall_percent == 100
     assert report.average_selected_tools <= 4
@@ -68,7 +68,7 @@ def test_foundation_selector_recovers_new_tools_and_blocks_unsafe_requests() -> 
     report = run_tool_retrieval_benchmark(corpus)
 
     assert len(corpus.cases) == 20
-    assert report.catalog_tools == 109
+    assert report.catalog_tools == 115
     assert report.recall_hits == report.tool_call_cases == 16
     assert report.recall_percent == 100
     assert report.unsafe_cases == 4
@@ -82,7 +82,7 @@ def test_assembly_selector_recovers_new_tools_and_blocks_unsafe_requests() -> No
     report = run_tool_retrieval_benchmark(corpus)
 
     assert len(corpus.cases) == 15
-    assert report.catalog_tools == 109
+    assert report.catalog_tools == 115
     assert report.recall_hits == report.tool_call_cases == 12
     assert report.recall_percent == 100
     assert report.unsafe_cases == 3
@@ -96,7 +96,7 @@ def test_bearing_selector_distinguishes_types_and_blocks_unsafe_requests() -> No
     report = run_tool_retrieval_benchmark(corpus)
 
     assert len(corpus.cases) == 13
-    assert report.catalog_tools == 109
+    assert report.catalog_tools == 115
     assert report.recall_hits == report.tool_call_cases == 10
     assert report.recall_percent == 100
     assert report.unsafe_cases == 3
@@ -110,7 +110,7 @@ def test_sketch_selector_recovers_the_full_environment_and_blocks_unsafe_request
     report = run_tool_retrieval_benchmark(corpus)
 
     assert len(corpus.cases) == 28
-    assert report.catalog_tools == 109
+    assert report.catalog_tools == 115
     assert report.recall_hits == report.tool_call_cases == 24
     assert report.recall_percent == 100
     assert report.unsafe_cases == 4

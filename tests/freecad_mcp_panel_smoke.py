@@ -118,7 +118,7 @@ def inspect() -> None:
             assert dock.findChild(QtCore.QObject, removed_name) is None
 
         assert automatic.isChecked() is False
-        assert "109" in catalog_summary.text()
+        assert "115" in catalog_summary.text()
         wait_for_ui(lambda: "ativa" in bridge_status.text().lower())
 
         session = default_session_store().load()

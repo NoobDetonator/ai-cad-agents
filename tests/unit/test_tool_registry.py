@@ -26,6 +26,7 @@ EXPECTED_CATALOG_FAMILIES = {
         "sketch",
     },
     "aicad.core.tool_catalog.objects": {"object"},
+    "aicad.core.tool_catalog.parameters": {"parameters"},
     "aicad.core.tool_catalog.partdesign": {"partdesign"},
     "aicad.core.tool_catalog.patterns": {"pattern"},
     "aicad.core.tool_catalog.primitives": {"primitive"},
@@ -45,7 +46,7 @@ def test_default_registry_has_unique_tools() -> None:
     assert [spec.name for spec in specs if spec.essential] == [
         "cad.get_context_snapshot"
     ]
-    assert len(specs) == 109
+    assert len(specs) == 115
     audit_names = {"cad.get_audit_history", "cad.export_audit_history"}
     assert {spec.name for spec in specs if spec.name in audit_names} == audit_names
     export_names = {spec.name for spec in specs if spec.family == "export"}

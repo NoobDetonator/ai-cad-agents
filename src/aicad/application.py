@@ -540,6 +540,12 @@ def build_cad_tool_registry(adapter: CadAdapter) -> ToolRegistry:
         "cad.create_face_sketch": "create_face_sketch",
         "cad.add_fillet": "add_fillet_feature",
         "cad.add_chamfer": "add_chamfer_feature",
+        "cad.create_parameter_set": "create_parameter_set",
+        "cad.set_master_parameter": "set_master_parameter",
+        "cad.list_master_parameters": "list_master_parameters",
+        "cad.rename_sketch_constraint": "rename_sketch_constraint",
+        "cad.bind_sketch_datum": "bind_sketch_datum",
+        "cad.bind_feature_parameter": "bind_feature_parameter",
     }
     for tool_name, method_name in bindings.items():
         bind(tool_name, method_name)

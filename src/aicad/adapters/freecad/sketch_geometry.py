@@ -222,11 +222,39 @@ class SketchGeometryMixin:
             part.LineSegment(app.Vector(*points[index], 0), app.Vector(*points[(index + 1) % 4], 0))
             for index in range(4)
         ]
-        return self._add_sketch_geometry(
+        sketcher = self._sketcher_module()
+        before = int(target.GeometryCount)
+
+        def add(_: Any) -> None:
+            target.addGeometry(geometries, construction)
+            # A rectangle must stay a closed rectangle under the solver:
+            # corner coincidences always, axis alignment when unrotated —
+            # the same constraints the GUI rectangle tool creates. Without
+            # them, driving one dimension tears the wire open.
+            constraints = [
+                sketcher.Constraint(
+                    "Coincident", before + index, 2, before + (index + 1) % 4, 1
+                )
+                for index in range(4)
+            ]
+            if math.isclose(checked_rotation % 360, 0.0):
+                constraints.extend(
+                    (
+                        sketcher.Constraint("Horizontal", before),
+                        sketcher.Constraint("Horizontal", before + 2),
+                        sketcher.Constraint("Vertical", before + 1),
+                        sketcher.Constraint("Vertical", before + 3),
+                    )
+                )
+            target.addConstraint(constraints)
+            return None
+
+        self._mutate_sketch(target, f"add rectangle to {target.Name}", add)
+        added = list(range(before, int(target.GeometryCount)))
+        return self._sketch_result(
             target,
-            geometries,
-            construction,
-            f"add rectangle to {target.Name}",
+            added_geometry=added,
+            construction=construction,
             closed=True,
             width_mm=checked_width,
             height_mm=checked_height,

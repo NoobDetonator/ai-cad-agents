@@ -345,6 +345,112 @@ assert close(
     0.01,
 ), resized["volume_mm3"]
 
+# --- Master parameters driving the model (P3) ------------------------------
+
+modify("cad.create_parameter_set", {"name": "Params"})
+modify(
+    "cad.set_master_parameter",
+    {"name": "plate_width", "value": 30, "kind": "length"},
+)
+modify(
+    "cad.set_master_parameter",
+    {"name": "plate_height", "value": 6, "kind": "length"},
+)
+
+modify("cad.create_body", {"name": "ParamBody"})
+modify(
+    "cad.create_body_sketch",
+    {"body": "ParamBody", "plane": "xy", "name": "ParamBase"},
+)
+modify(
+    "cad.add_sketch_rectangle",
+    {"sketch": "ParamBase", "x": 0, "y": 0, "width": 30, "height": 15},
+)
+width_dimension = modify(
+    "cad.add_sketch_dimensional_constraint",
+    {
+        "sketch": "ParamBase",
+        "constraint_type": "length",
+        "geometry": 0,
+        "value": 30,
+    },
+)
+modify(
+    "cad.rename_sketch_constraint",
+    {
+        "sketch": "ParamBase",
+        "constraint": width_dimension["added_constraint"],
+        "name": "plate_width",
+    },
+)
+bound_datum = modify(
+    "cad.bind_sketch_datum",
+    {
+        "sketch": "ParamBase",
+        "constraint": "plate_width",
+        "expression": "Params.plate_width",
+    },
+)
+assert bound_datum["value"] == 30, bound_datum
+
+param_pad = modify(
+    "cad.add_pad",
+    {"body": "ParamBody", "sketch": "ParamBase", "length": 6, "name": "ParamPad"},
+)
+assert close(30 * 15 * 6, param_pad["volume_mm3"]), param_pad["volume_mm3"]
+bound_feature = modify(
+    "cad.bind_feature_parameter",
+    {
+        "feature": "ParamPad",
+        "parameter": "length",
+        "expression": "Params.plate_height",
+    },
+)
+assert bound_feature["value"] == 6, bound_feature
+
+# One parameter change recomputes sketch AND feature: the money shot.
+modify(
+    "cad.set_master_parameter",
+    {"name": "plate_width", "value": 50, "kind": "length"},
+)
+modify(
+    "cad.set_master_parameter",
+    {"name": "plate_height", "value": 10, "kind": "length"},
+)
+recomputed = read("cad.measure_object", {"object": "ParamBody"})
+assert close(50 * 15 * 10, recomputed["volume_mm3"]), recomputed["volume_mm3"]
+
+listing = read("cad.list_master_parameters", {})
+assert listing["count"] == 1, listing
+parameter_names = {
+    item["name"] for item in listing["sets"][0]["parameters"]
+}
+assert parameter_names == {"plate_width", "plate_height"}, listing
+
+# Unsafe expressions must be rejected before touching FreeCAD.
+try:
+    modify(
+        "cad.bind_feature_parameter",
+        {
+            "feature": "ParamPad",
+            "parameter": "length",
+            "expression": "sin(Params.plate_height)",
+        },
+    )
+    raise AssertionError("A function-call expression must be rejected.")
+except ValueError:
+    pass
+
+# Clearing a binding restores direct dimensional editing.
+cleared = modify(
+    "cad.bind_feature_parameter",
+    {"feature": "ParamPad", "parameter": "length", "expression": None},
+)
+assert cleared["expression"] is None, cleared
+modify("cad.edit_feature", {"feature": "ParamPad", "properties": {"length": 4}})
+direct = read("cad.measure_object", {"object": "ParamBody"})
+assert close(50 * 15 * 4, direct["volume_mm3"]), direct["volume_mm3"]
+
 # --- Guard rails ----------------------------------------------------------
 
 try:

@@ -20,7 +20,7 @@ FOUNDATION_TOOLS = (
 def test_foundation_specs_have_risk_and_output_contracts() -> None:
     registry = build_default_registry()
 
-    assert len(registry.list_specs()) == 109
+    assert len(registry.list_specs()) == 115
     for name in FOUNDATION_TOOLS:
         spec = registry.get_spec(name)
         assert spec.output_schema is not None

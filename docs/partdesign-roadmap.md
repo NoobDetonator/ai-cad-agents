@@ -124,16 +124,27 @@ O coração do plano. Estado:
 - nota empírica: `Face.normalAt` já devolve a normal orientada para fora;
   não aplicar correção por `Orientation`.
 
-### P3 — Parâmetros mestres
+### P3 — Parâmetros mestres ✅ (núcleo entregue)
 
-- `cad.create_parameter_set` (VarSet), `cad.set_parameter`,
-  `cad.list_parameters`;
-- vincular restrição dimensional ou propriedade de feature a expressão que
-  referencia parâmetros — expressões validadas por gramática fechada
-  (identificadores + aritmética; nenhuma chamada de função além de allowlist
-  matemática do FreeCAD);
-- entrega o critério 3 e o teste canônico: mudar um parâmetro recalcula o
-  modelo válido.
+- ✅ `cad.create_parameter_set` (App::VarSet), `cad.set_master_parameter`
+  (length/angle/count/factor) e `cad.list_master_parameters`;
+- ✅ `cad.rename_sketch_constraint` para dar nome estável às cotas;
+- ✅ `cad.bind_sketch_datum` e `cad.bind_feature_parameter` com expressões
+  validadas por gramática fechada em `core/expressions.py` (identificadores
+  pontuados + aritmética; chamadas de função rejeitadas; null desfaz o
+  vínculo);
+- ✅ critério 3 provado no smoke: mudar um parâmetro recalcula sketch e
+  features com volume exato;
+- correção estrutural no caminho: `cad.add_sketch_rectangle` agora cria as
+  restrições que a GUI cria (coincidentes nos cantos, horizontal/vertical
+  quando não rotacionado) — sem elas, dirigir uma cota rasgava o wire.
+
+### Decisão registrada — `$ref` entre passos de plano
+
+Adiado deliberadamente: como toda criação no TALOS exige nome explícito e
+único (`_ensure_new_name`), os passos de um plano já se referenciam de forma
+determinística pelos nomes que o próprio plano define. `$ref` volta ao escopo
+junto com o CAD-IR completo (E1.3), se a prática mostrar necessidade.
 
 ### P4 — Metodologia embutida
 
