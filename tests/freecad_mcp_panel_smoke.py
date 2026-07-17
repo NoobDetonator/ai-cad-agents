@@ -196,6 +196,11 @@ def inspect() -> None:
         validate_button.click()
         wait_for_ui(lambda: "Valida" in event_log.toPlainText())
         copy_config.click()
+        # A escrita no clipboard do Windows e assincrona; sem esperar, a
+        # leitura imediata ocasionalmente devolve texto vazio.
+        wait_for_ui(
+            lambda: QtWidgets.QApplication.clipboard().text().strip() != ""
+        )
         copied = json.loads(QtWidgets.QApplication.clipboard().text())
         assert copied["mcpServers"]["talos"]["command"].endswith(
             ("talos-freecad-mcp.exe", "aicad-mcp.exe")

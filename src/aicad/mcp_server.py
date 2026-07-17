@@ -504,6 +504,57 @@ def cad_visual_context_resource(capture_id: str) -> bytes:
     return read_capture(capture_id)
 
 
+PART_DESIGN_METHODOLOGY = """\
+Metodologia Part Design do TALOS — modele como um profissional:
+
+1. PARÂMETROS PRIMEIRO: crie um conjunto com cad.create_parameter_set e
+   declare as dimensões que governam a peça com cad.set_master_parameter
+   (ex.: wall_thickness, plate_width). Nomes minúsculos com underscore.
+2. BODY: toda peça vive em um PartDesign::Body (cad.create_body). Nunca use
+   os sólidos estáticos legados (cad.pad_sketch) para trabalho novo.
+3. SKETCH MESTRE: cad.create_body_sketch no plano de origem certo; desenhe
+   com as ferramentas add_sketch_*; cote com
+   cad.add_sketch_dimensional_constraint; nomeie as cotas importantes com
+   cad.rename_sketch_constraint e vincule-as aos parâmetros com
+   cad.bind_sketch_datum.
+4. TOTALMENTE RESTRITO: antes de qualquer feature, confirme com
+   cad.get_sketch_status que degrees_of_freedom chegou a 0. Um sketch com
+   liberdade sobrando produz modelos que quebram ao editar.
+5. FEATURE BASE: um único pad ou revolução define o volume principal
+   (cad.add_pad, cad.add_revolution). Vincule comprimentos a parâmetros com
+   cad.bind_feature_parameter.
+6. FEATURES SECUNDÁRIAS: pockets, furos (cad.add_hole com counterbore ou
+   countersink) e novos sketches sobre faces resolvidas semanticamente
+   (cad.resolve_body_reference antes, cad.create_face_sketch depois).
+7. PADRÕES: repita com cad.add_linear_pattern, cad.add_polar_pattern ou
+   cad.add_mirrored_pattern em vez de duplicar features.
+8. DRESSUPS POR ÚLTIMO: cad.add_fillet e cad.add_chamfer sempre no fim da
+   árvore; raio bem menor que a menor dimensão vizinha.
+9. VERIFIQUE CADA FASE: cad.inspect_cad_model para medidas e imagens;
+   corrija mudando cotas (cad.set_sketch_datum, cad.edit_feature), nunca
+   recriando a árvore.
+10. ENTREGA: o teste final de qualidade é mudar um parâmetro mestre e o
+    modelo inteiro recalcular válido. Só então salve ou exporte.
+"""
+
+
+@mcp.prompt(name="part_design_methodology")
+def part_design_methodology_prompt() -> str:
+    """Professional parametric Part Design workflow for external agents."""
+
+    return PART_DESIGN_METHODOLOGY
+
+
+@mcp.resource(
+    "aicad://guides/partdesign",
+    name="part_design_guide",
+    description="Metodologia profissional de Part Design paramétrico do TALOS.",
+    mime_type="text/markdown",
+)
+def part_design_guide_resource() -> str:
+    return PART_DESIGN_METHODOLOGY
+
+
 def _recipe_prompt(recipe_id: str) -> str:
     recipe = recipe_catalog.get(recipe_id)
     return (

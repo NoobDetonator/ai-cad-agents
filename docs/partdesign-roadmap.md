@@ -146,14 +146,15 @@ Adiado deliberadamente: como toda criação no TALOS exige nome explícito e
 determinística pelos nomes que o próprio plano define. `$ref` volta ao escopo
 junto com o CAD-IR completo (E1.3), se a prática mostrar necessidade.
 
-### P4 — Metodologia embutida
+### P4 — Metodologia embutida ✅
 
-- Prompt MCP `part_design_methodology`: parâmetros primeiro → sketch mestre
-  totalmente restrito → feature base → features secundárias → padrões →
-  dressups por último → inspeção por fase → nomes descritivos sempre;
-- exemplos JSON completos em toda descrição de ferramenta nova;
-- guia por família como recurso MCP (`aicad://guides/partdesign`), carregado
-  sob demanda, fora do payload normal.
+- ✅ prompt MCP `part_design_methodology`: os dez passos do fluxo
+  profissional, dos parâmetros mestres ao teste final de mudar um parâmetro
+  e recalcular válido, citando as ferramentas exatas de cada fase;
+- ✅ exemplos JSON completos em toda descrição de ferramenta nova (padrão
+  aplicado desde o P1);
+- ✅ guia como recurso MCP (`aicad://guides/partdesign`), carregado sob
+  demanda, fora do payload normal.
 
 ### P5 — Biblioteca de partes e validação de engenharia
 

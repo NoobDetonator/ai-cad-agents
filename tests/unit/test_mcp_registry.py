@@ -182,3 +182,21 @@ def test_ambiguous_transport_failure_does_not_claim_safe_state(
 
     read_result = request_cad_tool("cad.get_document_summary", {})
     assert read_result["error"]["safe_state_restored"] is True
+
+
+def test_methodology_prompt_covers_the_professional_workflow() -> None:
+    from aicad.mcp_server import PART_DESIGN_METHODOLOGY
+
+    text = PART_DESIGN_METHODOLOGY
+    for stage_tool in (
+        "cad.create_parameter_set",
+        "cad.create_body",
+        "cad.get_sketch_status",
+        "cad.bind_sketch_datum",
+        "cad.add_hole",
+        "cad.resolve_body_reference",
+        "cad.add_fillet",
+        "cad.inspect_cad_model",
+    ):
+        assert stage_tool in text, stage_tool
+    assert "cad.pad_sketch" in text  # warns against the legacy static path
