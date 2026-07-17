@@ -2,8 +2,12 @@
 
 ## Estado
 
-Marco aprovado e em execução. A baseline M0–M7 permanece concluída e estável.
-E1 inicia uma linha nova de evolução; não renomeia nem reabre os marcos antigos.
+Marco aprovado. A baseline M0–M7 permanece concluída e estável. E1 inicia uma
+linha nova de evolução; não renomeia nem reabre os marcos antigos.
+
+A ordem de implementação de capacidade foi substituída pelo
+[plano P — Part Design profissional](partdesign-roadmap.md). As frentes E1 já
+entregues permanecem válidas; as pendentes ficam adiadas até o P concluir.
 
 Já foram concluídos a descoberta escalável, os erros recuperáveis, a captura
 multivista e o corte visual seguro por plano. E1.2 continua em execução.

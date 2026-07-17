@@ -4,6 +4,9 @@
 .downloads/
 .runtime/
 
+# Repositórios de terceiros clonados para estudo
+.study/
+
 # Python
 __pycache__/
 *.py[cod]
