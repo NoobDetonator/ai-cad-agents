@@ -191,8 +191,17 @@ junto com o CAD-IR completo (E1.3), se a prática mostrar necessidade.
   inalcançável pelo contrato publicado. A convenção real do Sketcher
   (`-1`/`-2` são os eixos, `-3` em diante é geometria externa) está provada
   por sonda de posição no smoke;
-- pendentes: case com tampa, suporte e estágio planetário como Bodies
-  paramétricos;
+- ✅ **Suporte em L** (76 mutações, 13 leituras): parede vertical em sketch
+  no plano XZ (o pad de plano vertical sai para −y; `reversed` traz para
+  dentro), furos da base e **furos em sketch anexado à face vertical** — o
+  frame local da face +y espelha o eixo X, e as cotas entre pontos escolhem
+  a ordem que mantém o valor positivo, então as expressões ficam idênticas
+  às da base. `parede_altura` e `espessura` recalculam com volume exato.
+  Baseline em `benchmarks/mcp-baseline-suporte-canonico-v1.json`;
+- nota de heurística: `cad.analyze_print_readiness` não flagra o teto de
+  furos horizontais (normal amostrada no centro da face cilíndrica aponta
+  para o lado) — limitação declarada em `normals_sampled_at_face_center`;
+- pendentes: case com tampa e estágio planetário como Bodies paramétricos;
 - benchmark com agente real (não seletor lexical): mesmas tarefas no TALOS e
   no freecad-mcp clonado, medindo turnos, tokens, taxa de sucesso e os seis
   critérios de qualidade;
