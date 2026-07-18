@@ -201,7 +201,16 @@ junto com o CAD-IR completo (E1.3), se a prática mostrar necessidade.
 - nota de heurística: `cad.analyze_print_readiness` não flagra o teto de
   furos horizontais (normal amostrada no centro da face cilíndrica aponta
   para o lado) — limitação declarada em `normals_sampled_at_face_center`;
-- pendentes: case com tampa e estágio planetário como Bodies paramétricos;
+- ✅ **Case com tampa** (68 mutações, 17 leituras): dois Bodies dirigidos
+  pela mesma VarSet — caixa com cavidade e tampa com plugue, folga de
+  encaixe como parâmetro (`Params.parede + Params.folga`). A tampa é
+  modelada em pose de impressão, posicionada no encaixe por
+  `cad.transform_object`, e `cad.analyze_interferences` prova o ajuste:
+  contato com volume comum zero quando alinhada, `interference_count: 1`
+  quando desalinhada 2 mm de propósito, e `parede` 2,4→3 recalcula os dois
+  corpos mantendo o encaixe. Baseline em
+  `benchmarks/mcp-baseline-case-canonico-v1.json`;
+- pendente: estágio planetário como Bodies paramétricos;
 - benchmark com agente real (não seletor lexical): mesmas tarefas no TALOS e
   no freecad-mcp clonado, medindo turnos, tokens, taxa de sucesso e os seis
   critérios de qualidade;
