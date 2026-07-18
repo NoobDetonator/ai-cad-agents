@@ -93,9 +93,18 @@ Para verificação, `inspect_cad_model` agrupa as leituras comuns e confirma por
 `get_mcp_performance_snapshot` mostra métricas apenas do processo atual, sem
 armazenar argumentos, nomes de arquivos ou conteúdo dos pedidos.
 
-## Exemplo validado
+## Vitrine
 
-Estágio planetário 60/20/20 com dois planetas opostos, validado no FreeCAD sem interferências entre os quatro engrenamentos.
+**[Turbina Savonius de mesa](showcase/turbina-savonius/README.md)** — duas
+peças, zero parafusos: rotor de três pás com rolamento print-in-place fundido
+no cubo, base com pino chanfrado, folga verificada por interferência e tudo
+dirigido por parâmetros mestres. Modelada inteira por um agente via MCP.
+
+![Turbina Savonius](showcase/turbina-savonius/turbina-isometrica.png)
+
+Outros exemplos validados: estágio planetário 60/20/20 sem interferências
+entre os quatro engrenamentos e os cinco projetos canônicos do plano P, com
+baselines de telemetria em `benchmarks/`.
 
 ![Estágio planetário validado](docs/images/planetary-gear-demo.png)
 

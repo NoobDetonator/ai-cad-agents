@@ -1,0 +1,40 @@
+{
+  "criteria": {
+    "esbocos_0dof": true,
+    "parametros_recalculam": true,
+    "encaixe_com_folga": true,
+    "base_sem_suporte": true
+  },
+  "rolamento_volume_mm3": 4271.590380738559,
+  "rotor_print": {
+    "floating_rollers": 8,
+    "overhang_faces": 9,
+    "nota": "roletes flutuam por projeto no print-in-place"
+  },
+  "encaixe": {
+    "left": "RotorCompleto",
+    "right": "Base",
+    "minimum_distance_mm": 0.19999999999999954,
+    "common_volume_mm3": 0.0,
+    "status": "clear",
+    "clearance_violation": false
+  },
+  "massas_pla_g": {
+    "rotor": 230.5,
+    "base": 152.2
+  },
+  "captures": [
+    "talos://view/c0a5078c1e114ec2a29f088ed269680c",
+    "talos://view/f6f967e017874cd78c51dd025853c6b7",
+    "talos://view/3814c115f64e4041a79fc8e147c526a5",
+    "talos://view/36eca5b241b64de986ab9a7f695d7062"
+  ],
+  "mutations": 75,
+  "reads": 17,
+  "telemetry_resumo": {
+    "bridge_calls": 167,
+    "bridge_ms": 26753,
+    "gui_exec_ms": 39652,
+    "payload_bytes": 80743
+  }
+}
