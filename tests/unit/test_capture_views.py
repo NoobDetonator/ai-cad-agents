@@ -362,10 +362,21 @@ class FakeVector(tuple):
         return super().__new__(cls, (float(x), float(y), float(z)))
 
 
+class FakeMatrix(tuple):
+    def __new__(cls, *values: float):
+        return super().__new__(cls, tuple(float(value) for value in values))
+
+
 class FakeRotation:
-    def __init__(self, source: FakeVector, target: FakeVector) -> None:
-        self.source = source
-        self.target = target
+    def __init__(self, source=None, target=None) -> None:
+        if target is None and isinstance(source, FakeMatrix):
+            self.matrix = tuple(source)
+            self.source = None
+            self.target = None
+        else:
+            self.matrix = None
+            self.source = source
+            self.target = target
 
 
 class FakePlacement:
@@ -377,6 +388,7 @@ class FakePlacement:
 FAKE_APP = SimpleNamespace(
     Vector=FakeVector,
     Rotation=FakeRotation,
+    Matrix=FakeMatrix,
     Placement=FakePlacement,
 )
 
@@ -412,6 +424,42 @@ def test_section_capture_applies_plane_and_restores_clipping(
     assert result["kept_side"] == "positive_normal"
     assert result["capped"] is False
     assert result["clipping_restored"] is True
+
+
+def test_section_capture_camera_faces_the_cut(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TALOS_VISUAL_CACHE", str(tmp_path))
+
+    class DirectionalView(FakeActiveView):
+        def __init__(self) -> None:
+            super().__init__()
+            self.camera_matrices: list[tuple[float, ...]] = []
+
+        def setCameraOrientation(self, rotation) -> None:
+            self.camera_matrices.append(rotation.matrix)
+            self.camera = "cut-facing"
+
+    view = DirectionalView()
+    install_fake_gui(monkeypatch, view)
+    context = ContextReadsMixin()
+    monkeypatch.setattr(context, "_modules", lambda: (FAKE_APP, None), raising=False)
+
+    result = context.capture_section_view(plane="xz", offset=0)
+
+    # Sem flip o corte descarta o lado +Y: a coluna Z da matriz (eixo da
+    # camera apontando do modelo para ela) deve ter componente Y positivo.
+    matrix = view.camera_matrices[0]
+    assert matrix[6] > 0, matrix
+    assert result["camera_faces_cut"] is True
+    assert result["view"] == "isometric"
+    assert view.camera == "original-camera"
+    assert view.animation_enabled is True
+
+    flipped = context.capture_section_view(plane="xz", offset=0, flip=True)
+    assert view.camera_matrices[1][6] < 0, view.camera_matrices
+    assert flipped["camera_faces_cut"] is True
 
 
 def test_section_capture_failure_removes_temporary_clipping(

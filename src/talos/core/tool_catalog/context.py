@@ -421,7 +421,9 @@ def context_tool_specs() -> tuple[ToolSpec, ...]:
             "Capture a non-destructive visual section through the active model "
             "using the XY, XZ or YZ plane. Offset is measured from the global "
             "origin along the plane normal. The default keeps the negative-normal "
-            "side; flip=true keeps the positive-normal side. This is viewport "
+            "side; flip=true keeps the positive-normal side. With the default "
+            "isometric view the camera is placed on the discarded side so the "
+            "cut face always faces the capture. This is viewport "
             "clipping, so cut faces are not capped. The temporary clipping plane, "
             "camera and visual overlays are restored before return. Refuses to "
             "replace a clipping plane already configured by the user.",

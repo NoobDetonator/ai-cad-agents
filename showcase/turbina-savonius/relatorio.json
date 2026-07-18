@@ -24,17 +24,17 @@
     "base": 152.2
   },
   "captures": [
-    "talos://view/c0a5078c1e114ec2a29f088ed269680c",
-    "talos://view/f6f967e017874cd78c51dd025853c6b7",
-    "talos://view/3814c115f64e4041a79fc8e147c526a5",
-    "talos://view/36eca5b241b64de986ab9a7f695d7062"
+    "talos://view/0440abe9955e4f3ba29db8cb41f4b3f0",
+    "talos://view/b6c838a576724db38d3c771fd4a8fd02",
+    "talos://view/9c9346d29d324686b68c37d51ce5c662",
+    "talos://view/0e6c60059e0243c488adbfdc9f94ee69"
   ],
   "mutations": 75,
   "reads": 17,
   "telemetry_resumo": {
-    "bridge_calls": 167,
-    "bridge_ms": 26753,
-    "gui_exec_ms": 39652,
-    "payload_bytes": 80743
+    "bridge_calls": 168,
+    "bridge_ms": 60047,
+    "gui_exec_ms": 91535,
+    "payload_bytes": 80948
   }
 }

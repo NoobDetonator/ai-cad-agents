@@ -736,6 +736,9 @@ class ContextReadsMixin:
         )
         result = None
         cleanup_required = False
+        original_camera = active_view.getCamera()
+        original_animation = bool(active_view.isAnimationEnabled())
+        camera_faces_cut = False
         try:
             cleanup_required = True
             toggle_clipping_plane(1, False, True, placement)
@@ -743,12 +746,33 @@ class ContextReadsMixin:
             self._sync_gui()
             if not bool(has_clipping_plane()):
                 raise RuntimeError("The FreeCAD clipping plane could not be activated.")
+            capture_view_name = checked_view
+            set_camera_orientation = getattr(
+                active_view, "setCameraOrientation", None
+            )
+            if checked_view == "isometric" and set_camera_orientation is not None:
+                x_cam, y_cam, z_cam = self._section_camera_axes(
+                    checked_plane, flip
+                )
+                matrix = app.Matrix(
+                    x_cam[0], y_cam[0], z_cam[0], 0.0,
+                    x_cam[1], y_cam[1], z_cam[1], 0.0,
+                    x_cam[2], y_cam[2], z_cam[2], 0.0,
+                    0.0, 0.0, 0.0, 1.0,
+                )
+                # A orientacao anima por padrao; sem desligar, a captura sai
+                # no meio do voo da camera.
+                active_view.setAnimationEnabled(False)
+                set_camera_orientation(app.Rotation(matrix))
+                camera_faces_cut = True
+                capture_view_name = "current"
             result = self.capture_view(
                 width=checked_width,
                 height=checked_height,
-                view=checked_view,
+                view=capture_view_name,
                 fit=fit,
             )
+            result["view"] = checked_view
         finally:
             restore_error = None
             if cleanup_required:
@@ -759,6 +783,8 @@ class ContextReadsMixin:
                     self._sync_gui()
                     if bool(has_clipping_plane()):
                         raise RuntimeError("The clipping plane remains active.")
+                    self._restore_camera(active_view, original_camera)
+                    active_view.setAnimationEnabled(original_animation)
                 except Exception as exc:
                     restore_error = exc
             if restore_error is not None:
@@ -775,6 +801,7 @@ class ContextReadsMixin:
             "flip": flip,
             "normal": list(normal),
             "kept_side": "positive_normal" if flip else "negative_normal",
+            "camera_faces_cut": camera_faces_cut,
             "capped": False,
             "clipping_restored": True,
         }
@@ -799,6 +826,45 @@ class ContextReadsMixin:
         if flip:
             normal = tuple(-component for component in normal)
         return points[plane], normal
+
+    @staticmethod
+    def _section_camera_axes(
+        plane: str,
+        flip: bool,
+    ) -> tuple[
+        tuple[float, float, float],
+        tuple[float, float, float],
+        tuple[float, float, float],
+    ]:
+        """Camera axes for an isometric view that always faces the cut face.
+
+        The clipping plane discards the side its normal points to, so the
+        camera belongs on that discarded side looking into the kept half;
+        otherwise the capture shows the intact back of the model instead of
+        the section. Returns the camera X (right), Y (up) and Z (toward the
+        camera) axes; setViewDirection is a silent no-op in FreeCAD 1.1, so
+        the orientation must be applied via setCameraOrientation.
+        """
+
+        axis = {"xy": 2, "xz": 1, "yz": 0}[plane]
+        length = math.sqrt(3.0)
+        z_cam = [1.0 / length] * 3
+        if flip:
+            z_cam[axis] = -z_cam[axis]
+        up = (0.0, 0.0, 1.0) if abs(z_cam[2]) < 0.99 else (0.0, 1.0, 0.0)
+        x_cam = [
+            up[1] * z_cam[2] - up[2] * z_cam[1],
+            up[2] * z_cam[0] - up[0] * z_cam[2],
+            up[0] * z_cam[1] - up[1] * z_cam[0],
+        ]
+        norm = math.sqrt(sum(component**2 for component in x_cam))
+        x_cam = [component / norm for component in x_cam]
+        y_cam = [
+            z_cam[1] * x_cam[2] - z_cam[2] * x_cam[1],
+            z_cam[2] * x_cam[0] - z_cam[0] * x_cam[2],
+            z_cam[0] * x_cam[1] - z_cam[1] * x_cam[0],
+        ]
+        return tuple(x_cam), tuple(y_cam), tuple(z_cam)
 
     @staticmethod
     def _capture_dimensions(width: int, height: int) -> tuple[int, int]:
