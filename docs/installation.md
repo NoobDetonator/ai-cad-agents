@@ -1,42 +1,25 @@
 # Instalação
 
-O uso normal depende do FreeCAD 1.1.1 instalado no Windows. Depois de vincular o
-Workbench uma vez, abra o FreeCAD pelo menu Iniciar; scripts de inicialização são
-apenas auxiliares de desenvolvimento.
+Pré-requisito: FreeCAD 1.1+ instalado no Windows.
 
-## 1. Criar o ambiente Python
+## Instalação em um comando
 
 Na raiz do projeto:
 
 ```powershell
-& "C:\Program Files\FreeCAD 1.1\bin\python.exe" -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
-.\.venv\Scripts\python.exe -m pip install --no-build-isolation -e ".[dev]"
+.\scripts\instalar.ps1
 ```
 
-O caminho pode variar conforme a instalação do FreeCAD.
+O script localiza o FreeCAD instalado (ou aceita
+`-FreeCadBin "C:\caminho\FreeCAD\bin"`), cria a `.venv` com o Python do
+FreeCAD, instala o TALOS, vincula o Workbench no `Mod` do FreeCAD, grava os
+caminhos de runtime e imprime a configuração MCP pronta para o seu agente.
 
-## 2. Vincular o Workbench
+Depois disso:
 
-Feche o FreeCAD e execute:
-
-```powershell
-$project = (Resolve-Path .).Path
-$modRoot = Join-Path $env:APPDATA "FreeCAD\v1-1\Mod"
-$workbench = Join-Path $modRoot "Talos"
-New-Item -ItemType Directory -Force -Path $modRoot | Out-Null
-New-Item -ItemType Junction -Path $workbench `
-  -Target (Join-Path $project "src\freecad\Talos")
-```
-
-Se `Talos` já existir, confira seu destino antes de remover ou substituir.
-
-## 3. Abrir
-
-1. Abra o FreeCAD 1.1.1.
-2. Selecione o Workbench **TALOS MCP**.
-3. Confirme que o painel apareceu à direita.
-4. Confirme "Ponte MCP ativa" no painel e teste `health` pelo MCP.
+1. Abra o FreeCAD e selecione o Workbench **TALOS MCP**.
+2. Confirme "Ponte MCP ativa" no painel à direita.
+3. Conecte o agente conforme [mcp-integration.md](mcp-integration.md).
 
 O painel inicia exigindo confirmação visual de cada mutação. Defina
 `TALOS_AUTO_APPROVE=1` (ou marque a opção no painel) para aprovar
@@ -45,15 +28,30 @@ reversíveis continuam exigindo confirmação manual.
 
 ## Atualização
 
-O junction aponta para o checkout atual. Depois de atualizar o Git, reinicie o
-FreeCAD para carregar o novo código. Para remover a integração, feche o FreeCAD
-e remova somente `%APPDATA%\FreeCAD\v1-1\Mod\Talos`.
+O junction aponta para o checkout atual: depois de atualizar o Git, reinicie o
+FreeCAD. Se o `pyproject.toml` mudou, rode `.\scripts\instalar.ps1` de novo —
+ele é idempotente.
+
+Para remover a integração, feche o FreeCAD e apague somente
+`%APPDATA%\FreeCAD\v1-1\Mod\Talos`.
+
+## Instalação manual (equivalente ao script)
+
+```powershell
+& "C:\Program Files\FreeCAD 1.1\bin\python.exe" -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --no-build-isolation -e ".[dev]"
+
+$modRoot = Join-Path $env:APPDATA "FreeCAD\v1-1\Mod"
+New-Item -ItemType Directory -Force -Path $modRoot | Out-Null
+New-Item -ItemType Junction -Path (Join-Path $modRoot "Talos") `
+  -Target (Join-Path (Resolve-Path .).Path "src\freecad\Talos")
+```
 
 ## Diagnóstico
 
 | Problema | Verificação |
 | --- | --- |
-| Workbench não aparece | conferir o junction e `InitGui.py` |
-| Falha ao importar `talos` | recriar a `.venv` com Python 3.11 e reinstalar o projeto |
+| FreeCAD não encontrado | informe `-FreeCadBin` com a pasta `bin` da instalação |
+| Workbench não aparece | conferir o junction em `%APPDATA%\FreeCAD\v*\Mod\Talos` |
+| Falha ao importar `talos` | rodar `.\scripts\instalar.ps1` de novo |
 | Ponte indisponível | ativar o Workbench **TALOS MCP** e manter o FreeCAD aberto |
-| Dependência ausente | repetir a instalação editável na `.venv` |

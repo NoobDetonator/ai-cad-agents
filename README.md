@@ -25,7 +25,11 @@ regras do produto permanecem independentes dele.
   em face sólida e dressups fillet/chanfro paramétricos;
 - parâmetros mestres (P3): VarSet com cotas e features vinculadas por
   expressão de gramática fechada — mudar um parâmetro recalcula o modelo;
-- M0 a M7 concluídos; E1 — MCP em escala em execução;
+- cinco projetos canônicos provados de ponta a ponta por agente via MCP
+  (placa, flange, suporte em L, case com tampa e estágio planetário), com
+  baselines de telemetria versionadas em `benchmarks/`;
+- validação de engenharia: massa/CG por densidade e prontidão de impressão
+  3D (P5);
 - modelagem básica e avançada, Sketch, montagens, rolamentos e exportação;
 - mutações transacionais, validadas, auditadas e reversíveis;
 - erros MCP categorizados, recuperáveis e com estado seguro explícito;
@@ -41,23 +45,28 @@ conecta ao MCP.
 
 ### Atualizações recentes
 
-- P1 entregue: 12 ferramentas Part Design paramétricas geradas de um registro
-  declarativo com allowlist ([plano P](docs/partdesign-roadmap.md));
-- E1.1 concluída com busca escalável de capacidades e schemas sob demanda;
-- erros recuperáveis compartilhados entre catálogo, ponte e MCP;
-- capturas independentes de vários ângulos em uma única chamada;
-- corte visual não destrutivo por plano e offset;
-- framebuffer estabilizado antes da captura para evitar imagens parciais;
-- baseline holdout separada com rank-1, MRR, precisão@K e falsos positivos.
+- P1–P4 entregues: Part Design paramétrico por reflexão governada,
+  referências semânticas, parâmetros mestres por expressão e a metodologia
+  embutida ([plano P](docs/partdesign-roadmap.md));
+- P5 e os cinco canônicos do P6 provados por agente via MCP, com sonda
+  headless de frames e baselines de telemetria versionadas;
+- restrições ancoram na origem e nos eixos do Sketcher (datums -1/-2);
+- nome unificado: o pacote, o Workbench e o executável agora são `talos`.
 
 ## Início rápido
 
-1. Prepare a `.venv` e vincule o Workbench conforme
-   [docs/installation.md](docs/installation.md).
-2. Abra o FreeCAD normalmente.
-3. Selecione o Workbench **TALOS MCP**.
-4. Mantenha o painel aberto para publicar a ponte MCP.
-5. Conecte seu agente seguindo [docs/mcp-integration.md](docs/mcp-integration.md).
+Com o FreeCAD 1.1 instalado, um comando prepara tudo (venv, Workbench e
+configuração MCP):
+
+```powershell
+.\scripts\instalar.ps1
+```
+
+Depois:
+
+1. Abra o FreeCAD e selecione o Workbench **TALOS MCP**.
+2. Mantenha o painel aberto para publicar a ponte MCP.
+3. Conecte seu agente seguindo [docs/mcp-integration.md](docs/mcp-integration.md).
 
 O repositório já inclui `.mcp.json`. No uso diário não é necessário iniciar o
 FreeCAD por script. O painel também oferece a configuração MCP pronta para copiar.
@@ -146,7 +155,6 @@ esclarecimentos e exposição indevida de mutações. A economia de schema repor
 - [Rolamentos](docs/bearings.md)
 - [Auditoria](docs/audit.md)
 - [Visão do produto](docs/product-vision.md)
-- [Baseline M0–M7](docs/milestones.md)
 - [Otimização do agente](docs/ai-agent-optimization-plan.md)
 - [E1 — MCP em escala](docs/mcp-scale-roadmap.md)
 - [P — Part Design profissional](docs/partdesign-roadmap.md)
